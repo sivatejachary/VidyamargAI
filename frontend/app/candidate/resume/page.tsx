@@ -9,7 +9,7 @@ import {
   X, Check, AlertCircle, ShieldCheck, TrendingUp, Zap, 
   AlertTriangle, Award, Link2, ExternalLink, GraduationCap, 
   Briefcase, MapPin, Mail, Phone, Camera, Code, Folder, Trophy,
-  Globe, Languages
+  Globe, Languages, User
 } from "lucide-react";
 
 interface ResumeVersion {
@@ -588,7 +588,7 @@ export default function ResumeBuilder() {
             </button>
             <button 
               onClick={() => setIsEditOpen(true)}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-950 dark:bg-slate-50 hover:bg-slate-900 dark:hover:bg-slate-205 text-xs font-bold text-white dark:text-slate-955 transition-all shadow-md shrink-0 cursor-pointer"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 transition-all shadow-sm shrink-0 cursor-pointer"
             >
               <Eye size={14} />
               <span>View Profile Details</span>
@@ -602,8 +602,112 @@ export default function ResumeBuilder() {
           {/* LEFT 2 COLUMNS */}
           <div className="lg:col-span-2 space-y-6">
             
-            {/* Row 1: Candidate Profile Info + Profile Completion side-by-side inside a single border box */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-855 shadow-sm">
+            {/* MOBILE ONLY VERSION OF THE PROFILE CARD (Shown on screens < md) */}
+            <div className="block md:hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 p-6 shadow-sm">
+              <div className="flex flex-col gap-6">
+                
+                {/* Bio Column */}
+                <div className="flex flex-col items-center gap-4">
+                  <div className="relative shrink-0">
+                    <div className="w-24 h-24 rounded-full overflow-hidden border border-slate-200/60 dark:border-slate-800 shadow-sm bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-800 dark:text-slate-200 text-3xl font-black">
+                      {avatarLetter}
+                    </div>
+                    <button 
+                      onClick={triggerUpload}
+                      disabled={uploading}
+                      className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-350 flex items-center justify-center border border-slate-200 dark:border-slate-700 hover:bg-slate-55 dark:hover:bg-slate-750 transition-all shadow-sm cursor-pointer"
+                      title="Upload Resume to Update Profile"
+                    >
+                      {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-2 text-center min-w-0 w-full">
+                    <div className="flex items-center justify-center gap-2">
+                      <h2 className="text-xl font-black text-slate-900 dark:text-white truncate max-w-[200px]" title={displayName || undefined}>
+                        {displayName}
+                      </h2>
+                      <span className="inline-flex px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/40">
+                        Verified Profile
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 inline-block text-left">
+                      <div className="flex items-center gap-2">
+                        <User size={14} className="text-slate-400 shrink-0" />
+                        <span className="truncate">{getFirstRole() || "Not specified"}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <MapPin size={14} className="text-slate-400 shrink-0" />
+                        <span className="truncate">{profile?.address || "Not specified"}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Mail size={14} className="text-slate-400 shrink-0" />
+                        <span className="truncate">{displayEmail}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Phone size={14} className="text-slate-400 shrink-0" />
+                        <span>{profile?.phone || "Not specified"}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Completion Column */}
+                <div className="flex flex-col items-center justify-center w-full">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3">Profile Completion</span>
+                  
+                  <div className="relative flex items-center justify-center my-1">
+                    <svg width="100" height="100" className="transform -rotate-90">
+                      <circle cx="50" cy="50" r="43" fill="none" strokeWidth="8" className="text-slate-100 dark:text-slate-800" stroke="currentColor" />
+                      <circle cx="50" cy="50" r="43" fill="none" strokeWidth="8" strokeDasharray={2 * Math.PI * 43} strokeDashoffset={2 * Math.PI * 43 - (completionScore / 100) * (2 * Math.PI * 43)} strokeLinecap="round" stroke="#10b981" className="transition-all duration-700 ease-out" />
+                    </svg>
+                    <div className="absolute text-2xl font-black text-slate-900 dark:text-white">{completionScore}%</div>
+                  </div>
+                  
+                  <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 mt-3">
+                    {completionScore >= 75 ? "Good Progress!" : (completionScore > 0 ? "Started" : "No Resume Uploaded")}
+                  </span>
+                </div>
+
+              </div>
+
+              {/* Horizontal Divider Line */}
+              <div className="border-t border-slate-200/60 dark:border-slate-800/80 my-5" />
+
+              {/* Missing Section */}
+              <div className="space-y-3">
+                <span className="text-xs font-black text-slate-455 dark:text-slate-400 uppercase tracking-wider block">
+                  Missing ({100 - completionScore}%)
+                </span>
+                
+                <div className="flex flex-wrap gap-x-4 gap-y-2">
+                  {missingItems.length > 0 ? (
+                    missingItems.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-1.5 text-xs text-slate-505 dark:text-slate-400 font-bold">
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0" />
+                        <span>{item}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-xs text-emerald-500 font-black">All sections complete! ✓</span>
+                  )}
+                </div>
+
+                <div className="pt-2 flex justify-start">
+                  <button 
+                    onClick={handleCompleteNow}
+                    className="px-6 py-2 rounded-xl bg-teal-505 hover:bg-teal-600 text-xs font-extrabold text-white transition-all shadow-sm shadow-teal-500/10 cursor-pointer w-full"
+                  >
+                    View Profile Gaps
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+            {/* DESKTOP ONLY VERSION OF THE PROFILE CARD (Shown on screens >= md) */}
+            <div className="hidden md:grid grid-cols-1 md:grid-cols-2 gap-6 p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-855 shadow-sm">
               
               {/* Bio Column */}
               <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 md:border-r border-slate-155 dark:border-slate-800/80 md:pr-6">
@@ -634,7 +738,7 @@ export default function ResumeBuilder() {
                     {getFirstRole()}
                   </p>
                   
-                  <div className="space-y-1.5 pt-1 text-xs font-semibold text-slate-450 dark:text-slate-450">
+                  <div className="space-y-1.5 pt-1 text-xs font-semibold text-slate-455 dark:text-slate-450">
                     <div className="flex items-center gap-2 justify-center sm:justify-start">
                       <MapPin size={12} className="text-slate-400 shrink-0" />
                       <span className="truncate">{profile?.address || "Not specified"}</span>
@@ -674,7 +778,7 @@ export default function ResumeBuilder() {
                     <div className="mt-1.5 space-y-1 inline-block text-left">
                       {missingItems.length > 0 ? (
                         missingItems.map((item, idx) => (
-                          <div key={idx} className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-bold">
+                          <div key={idx} className="flex items-center gap-1.5 text-xs text-slate-505 dark:text-slate-400 font-bold">
                             <span className="w-1.5 h-1.5 rounded-full bg-teal-505 shrink-0" />
                             <span>{item}</span>
                           </div>
