@@ -10,4 +10,4 @@ requests>=2.31.0
 pypdf>=4.0.0
 pydantic-settings
 redis
-beautifulsoup4
+googlesearch-python

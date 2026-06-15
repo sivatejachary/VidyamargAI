@@ -92,8 +92,8 @@ app = FastAPI(
 
 origins = [
     "https://vidyamarg-ai.vercel.app",
-    "vidyamarg-ai-git-main-shiva-s-projects27.vercel.app",
-    "vidyamarg-ouhsg53xj-shiva-s-projects27.vercel.app",
+    "https://vidyamarg-ai-git-main-shiva-s-projects27.vercel.app",
+    "https://vidyamarg-ouhsg53xj-shiva-s-projects27.vercel.app",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://192.168.1.7:3000",
@@ -111,8 +111,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Attach routes
-#app.include_router(api_router, prefix=settings.API_V1_STR)
+# Attach all API routes
+app.include_router(api_router, prefix=settings.API_V1_STR)
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
