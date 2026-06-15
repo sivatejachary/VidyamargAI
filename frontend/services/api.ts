@@ -1,3 +1,18 @@
+import { useAuthStore } from "@/store/authStore";
+
+const customFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  const res = await fetch(input, init);
+  if (res.status === 401) {
+    if (typeof window !== "undefined") {
+      useAuthStore.getState().logout();
+      if (window.location.pathname !== "/") {
+        window.location.href = "/";
+      }
+    }
+  }
+  return res;
+};
+
 const getBaseUrl = () => {
   // Use deployed backend URL if available
   if (process.env.NEXT_PUBLIC_API_URL) {
@@ -31,7 +46,7 @@ const getHeaders = () => {
 export const apiService = {
   // Auth
   async signup(data: any) {
-    const res = await fetch(`${getBaseUrl()}/auth/signup`, {
+    const res = await customFetch(`${getBaseUrl()}/auth/signup`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -41,7 +56,7 @@ export const apiService = {
   },
 
   async login(formData: URLSearchParams) {
-    const res = await fetch(`${getBaseUrl()}/auth/login`, {
+    const res = await customFetch(`${getBaseUrl()}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: formData.toString(),
@@ -51,7 +66,7 @@ export const apiService = {
   },
 
   async getMe() {
-    const res = await fetch(`${getBaseUrl()}/auth/me`, {
+    const res = await customFetch(`${getBaseUrl()}/auth/me`, {
       headers: getHeaders(),
     });
     if (!res.ok) throw new Error("Failed to fetch session");
@@ -61,13 +76,13 @@ export const apiService = {
   // Jobs
   async getJobs(search?: string) {
     const url = search ? `${getBaseUrl()}/jobs?search=${encodeURIComponent(search)}` : `${getBaseUrl()}/jobs`;
-    const res = await fetch(url, { headers: getHeaders() });
+    const res = await customFetch(url, { headers: getHeaders() });
     if (!res.ok) throw new Error("Failed to fetch jobs");
     return res.json();
   },
 
   async createJob(data: any) {
-    const res = await fetch(`${getBaseUrl()}/jobs`, {
+    const res = await customFetch(`${getBaseUrl()}/jobs`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...getHeaders() },
       body: JSON.stringify(data),
@@ -77,7 +92,7 @@ export const apiService = {
   },
 
   async deleteJob(id: number) {
-    const res = await fetch(`${getBaseUrl()}/jobs/${id}`, {
+    const res = await customFetch(`${getBaseUrl()}/jobs/${id}`, {
       method: "DELETE",
       headers: getHeaders(),
     });
@@ -86,13 +101,13 @@ export const apiService = {
   },
 
   async getSavedJobs() {
-    const res = await fetch(`${getBaseUrl()}/candidate/jobs/saved`, { headers: getHeaders() });
+    const res = await customFetch(`${getBaseUrl()}/candidate/jobs/saved`, { headers: getHeaders() });
     if (!res.ok) throw new Error("Failed to fetch saved jobs");
     return res.json();
   },
 
   async saveJob(jobId: number | string) {
-    const res = await fetch(`${getBaseUrl()}/candidate/jobs/${jobId}/save`, {
+    const res = await customFetch(`${getBaseUrl()}/candidate/jobs/${jobId}/save`, {
       method: "POST",
       headers: getHeaders(),
     });
@@ -101,7 +116,7 @@ export const apiService = {
   },
 
   async unsaveJob(jobId: number | string) {
-    const res = await fetch(`${getBaseUrl()}/candidate/jobs/${jobId}/save`, {
+    const res = await customFetch(`${getBaseUrl()}/candidate/jobs/${jobId}/save`, {
       method: "DELETE",
       headers: getHeaders(),
     });
@@ -110,7 +125,7 @@ export const apiService = {
   },
 
   async refreshJobs() {
-    const res = await fetch(`${getBaseUrl()}/candidate/jobs/refresh`, {
+    const res = await customFetch(`${getBaseUrl()}/candidate/jobs/refresh`, {
       method: "POST",
       headers: getHeaders(),
     });
@@ -119,20 +134,20 @@ export const apiService = {
   },
 
   async getSearchHistory() {
-    const res = await fetch(`${getBaseUrl()}/candidate/jobs/search-history`, { headers: getHeaders() });
+    const res = await customFetch(`${getBaseUrl()}/candidate/jobs/search-history`, { headers: getHeaders() });
     if (!res.ok) throw new Error("Failed to fetch search history");
     return res.json();
   },
 
   async getCandidateJobsDashboard() {
-    const res = await fetch(`${getBaseUrl()}/candidate/jobs/dashboard`, { headers: getHeaders() });
+    const res = await customFetch(`${getBaseUrl()}/candidate/jobs/dashboard`, { headers: getHeaders() });
     if (!res.ok) throw new Error("Failed to fetch candidate jobs dashboard");
     return res.json();
   },
 
   // Profile
   async getProfile() {
-    const res = await fetch(`${getBaseUrl()}/candidates/profile`, {
+    const res = await customFetch(`${getBaseUrl()}/candidates/profile`, {
       headers: getHeaders(),
     });
     if (!res.ok) throw new Error("Failed to get profile");
@@ -140,7 +155,7 @@ export const apiService = {
   },
 
   async updateProfile(data: any) {
-    const res = await fetch(`${getBaseUrl()}/candidates/profile`, {
+    const res = await customFetch(`${getBaseUrl()}/candidates/profile`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", ...getHeaders() },
       body: JSON.stringify(data),
@@ -152,7 +167,7 @@ export const apiService = {
   async uploadResume(file: File) {
     const formData = new FormData();
     formData.append("file", file);
-    const res = await fetch(`${getBaseUrl()}/candidates/resume`, {
+    const res = await customFetch(`${getBaseUrl()}/candidates/resume`, {
       method: "POST",
       headers: getHeaders(),
       body: formData,
@@ -162,7 +177,7 @@ export const apiService = {
   },
 
   async getResumeUrl() {
-    const res = await fetch(`${getBaseUrl()}/candidates/resume`, {
+    const res = await customFetch(`${getBaseUrl()}/candidates/resume`, {
       headers: getHeaders(),
     });
     if (!res.ok) return null;
@@ -170,7 +185,7 @@ export const apiService = {
   },
 
   async getResumes() {
-    const res = await fetch(`${getBaseUrl()}/candidates/resumes`, {
+    const res = await customFetch(`${getBaseUrl()}/candidates/resumes`, {
       headers: getHeaders(),
     });
     if (!res.ok) return [];
@@ -178,7 +193,7 @@ export const apiService = {
   },
 
   async deleteResumeVersion(id: number) {
-    const res = await fetch(`${getBaseUrl()}/candidates/resume/${id}`, {
+    const res = await customFetch(`${getBaseUrl()}/candidates/resume/${id}`, {
       method: "DELETE",
       headers: getHeaders(),
     });
@@ -187,7 +202,7 @@ export const apiService = {
   },
 
   async analyzeResume() {
-    const res = await fetch(`${getBaseUrl()}/candidates/resume/analyze`, {
+    const res = await customFetch(`${getBaseUrl()}/candidates/resume/analyze`, {
       method: "POST",
       headers: getHeaders(),
     });
@@ -199,7 +214,7 @@ export const apiService = {
     const body: any = {};
     if (jobId) body.job_id = jobId;
     if (jobDescription) body.job_description = jobDescription;
-    const res = await fetch(`${getBaseUrl()}/candidates/resume/ats`, {
+    const res = await customFetch(`${getBaseUrl()}/candidates/resume/ats`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...getHeaders() },
       body: JSON.stringify(body),
@@ -210,7 +225,7 @@ export const apiService = {
 
   // Applications
   async applyJob(jobId: number) {
-    const res = await fetch(`${getBaseUrl()}/applications?job_id=${jobId}`, {
+    const res = await customFetch(`${getBaseUrl()}/applications?job_id=${jobId}`, {
       method: "POST",
       headers: getHeaders(),
     });
@@ -219,7 +234,7 @@ export const apiService = {
   },
 
   async getApplications() {
-    const res = await fetch(`${getBaseUrl()}/applications`, {
+    const res = await customFetch(`${getBaseUrl()}/applications`, {
       headers: getHeaders(),
     });
     if (!res.ok) throw new Error("Failed to get applications");
@@ -228,7 +243,7 @@ export const apiService = {
 
   // Assessments
   async getAssessment(appId: number) {
-    const res = await fetch(`${getBaseUrl()}/assessments/attempt/${appId}`, {
+    const res = await customFetch(`${getBaseUrl()}/assessments/attempt/${appId}`, {
       headers: getHeaders(),
     });
     if (!res.ok) throw new Error("Failed to fetch assessment details");
@@ -236,7 +251,7 @@ export const apiService = {
   },
 
   async submitAssessment(appId: number, answers: any) {
-    const res = await fetch(`${getBaseUrl()}/assessments/attempt/${appId}/submit`, {
+    const res = await customFetch(`${getBaseUrl()}/assessments/attempt/${appId}/submit`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...getHeaders() },
       body: JSON.stringify({ answers: JSON.stringify(answers) }),
@@ -246,7 +261,7 @@ export const apiService = {
   },
 
   async logProctorEvent(appId: number, eventType: string, details: string) {
-    const res = await fetch(`${getBaseUrl()}/assessments/proctor/log/${appId}`, {
+    const res = await customFetch(`${getBaseUrl()}/assessments/proctor/log/${appId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...getHeaders() },
       body: JSON.stringify({ event_type: eventType, details }),
@@ -256,7 +271,7 @@ export const apiService = {
 
   // Interviews
   async getInterview(appId: number) {
-    const res = await fetch(`${getBaseUrl()}/interviews/${appId}`, {
+    const res = await customFetch(`${getBaseUrl()}/interviews/${appId}`, {
       headers: getHeaders(),
     });
     if (!res.ok) throw new Error("Failed to fetch interview session");
@@ -264,7 +279,7 @@ export const apiService = {
   },
 
   async answerInterviewQuestion(interviewId: number, answer: string) {
-    const res = await fetch(`${getBaseUrl()}/interviews/${interviewId}/answer`, {
+    const res = await customFetch(`${getBaseUrl()}/interviews/${interviewId}/answer`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...getHeaders() },
       body: JSON.stringify({ answer }),
@@ -274,7 +289,7 @@ export const apiService = {
   },
 
   async getInterviewAnalysis(interviewId: number) {
-    const res = await fetch(`${getBaseUrl()}/interviews/${interviewId}/analysis`, {
+    const res = await customFetch(`${getBaseUrl()}/interviews/${interviewId}/analysis`, {
       headers: getHeaders(),
     });
     if (!res.ok) throw new Error("Failed to fetch interview analysis");
@@ -283,7 +298,7 @@ export const apiService = {
 
   // Offers
   async getOffer(appId: number) {
-    const res = await fetch(`${getBaseUrl()}/offers/${appId}`, {
+    const res = await customFetch(`${getBaseUrl()}/offers/${appId}`, {
       headers: getHeaders(),
     });
     if (!res.ok) throw new Error("Failed to fetch offer");
@@ -291,7 +306,7 @@ export const apiService = {
   },
 
   async respondOffer(offerId: number, accept: boolean) {
-    const res = await fetch(`${getBaseUrl()}/offers/${offerId}/respond?accept=${accept}`, {
+    const res = await customFetch(`${getBaseUrl()}/offers/${offerId}/respond?accept=${accept}`, {
       method: "POST",
       headers: getHeaders(),
     });
@@ -301,7 +316,7 @@ export const apiService = {
 
   // Admin Dashboard & Rankings
   async getAdminMetrics() {
-    const res = await fetch(`${getBaseUrl()}/admin/dashboard`, {
+    const res = await customFetch(`${getBaseUrl()}/admin/dashboard`, {
       headers: getHeaders(),
     });
     if (!res.ok) throw new Error("Failed to fetch metrics");
@@ -309,7 +324,7 @@ export const apiService = {
   },
 
   async getRankings() {
-    const res = await fetch(`${getBaseUrl()}/admin/rankings`, {
+    const res = await customFetch(`${getBaseUrl()}/admin/rankings`, {
       headers: getHeaders(),
     });
     if (!res.ok) throw new Error("Failed to fetch rankings");
@@ -318,7 +333,7 @@ export const apiService = {
 
   // Notifications
   async getNotifications() {
-    const res = await fetch(`${getBaseUrl()}/notifications`, {
+    const res = await customFetch(`${getBaseUrl()}/notifications`, {
       headers: getHeaders(),
     });
     if (!res.ok) throw new Error("Failed to fetch notifications");
@@ -326,7 +341,7 @@ export const apiService = {
   },
 
   async readNotification(id: number) {
-    const res = await fetch(`${getBaseUrl()}/notifications/${id}/read`, {
+    const res = await customFetch(`${getBaseUrl()}/notifications/${id}/read`, {
       method: "PUT",
       headers: getHeaders(),
     });
@@ -335,7 +350,7 @@ export const apiService = {
 
   // Emails
   async getCandidateEmails() {
-    const res = await fetch(`${getBaseUrl()}/candidates/emails`, {
+    const res = await customFetch(`${getBaseUrl()}/candidates/emails`, {
       headers: getHeaders(),
     });
     if (!res.ok) throw new Error("Failed to fetch emails");
@@ -343,7 +358,7 @@ export const apiService = {
   },
 
   async readCandidateEmail(id: number) {
-    const res = await fetch(`${getBaseUrl()}/candidates/emails/${id}/read`, {
+    const res = await customFetch(`${getBaseUrl()}/candidates/emails/${id}/read`, {
       method: "PUT",
       headers: getHeaders(),
     });
@@ -351,7 +366,7 @@ export const apiService = {
   },
 
   async chatCopilot(message: string, history: any[]) {
-    const res = await fetch(`${getBaseUrl()}/chat/copilot`, {
+    const res = await customFetch(`${getBaseUrl()}/chat/copilot`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...getHeaders() },
       body: JSON.stringify({ message, history }),
@@ -361,7 +376,7 @@ export const apiService = {
   },
 
   async getCourses() {
-    const res = await fetch(`${getBaseUrl()}/courses`, {
+    const res = await customFetch(`${getBaseUrl()}/courses`, {
       headers: getHeaders(),
     });
     if (!res.ok) throw new Error("Failed to fetch courses");
@@ -369,7 +384,7 @@ export const apiService = {
   },
 
   async getCourseCurriculum(courseId: string | number) {
-    const res = await fetch(`${getBaseUrl()}/courses/${courseId}/curriculum`, {
+    const res = await customFetch(`${getBaseUrl()}/courses/${courseId}/curriculum`, {
       headers: getHeaders(),
     });
     if (!res.ok) throw new Error("Failed to fetch course curriculum");
@@ -377,7 +392,7 @@ export const apiService = {
   },
 
   async enrollCourse(courseId: string | number) {
-    const res = await fetch(`${getBaseUrl()}/courses/${courseId}/enroll`, {
+    const res = await customFetch(`${getBaseUrl()}/courses/${courseId}/enroll`, {
       method: "POST",
       headers: getHeaders(),
     });
@@ -386,7 +401,7 @@ export const apiService = {
   },
 
   async completeLesson(lessonId: string | number) {
-    const res = await fetch(`${getBaseUrl()}/lessons/${lessonId}/complete`, {
+    const res = await customFetch(`${getBaseUrl()}/lessons/${lessonId}/complete`, {
       method: "POST",
       headers: getHeaders(),
     });
@@ -395,7 +410,7 @@ export const apiService = {
   },
 
   async completePdf(pdfId: string | number) {
-    const res = await fetch(`${getBaseUrl()}/pdfs/${pdfId}/complete`, {
+    const res = await customFetch(`${getBaseUrl()}/pdfs/${pdfId}/complete`, {
       method: "POST",
       headers: getHeaders(),
     });
@@ -404,7 +419,7 @@ export const apiService = {
   },
 
   async getEnrollments() {
-    const res = await fetch(`${getBaseUrl()}/enrollments`, {
+    const res = await customFetch(`${getBaseUrl()}/enrollments`, {
       headers: getHeaders(),
     });
     if (!res.ok) throw new Error("Failed to fetch enrollments");
@@ -412,7 +427,7 @@ export const apiService = {
   },
 
   async getCertificates() {
-    const res = await fetch(`${getBaseUrl()}/certificates`, {
+    const res = await customFetch(`${getBaseUrl()}/certificates`, {
       headers: getHeaders(),
     });
     if (!res.ok) throw new Error("Failed to fetch certificates");
@@ -420,7 +435,7 @@ export const apiService = {
   },
 
   async submitQuiz(quizId: string | number, answers: any) {
-    const res = await fetch(`${getBaseUrl()}/quiz/${quizId}/submit`, {
+    const res = await customFetch(`${getBaseUrl()}/quiz/${quizId}/submit`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...getHeaders() },
       body: JSON.stringify({ answers: JSON.stringify(answers) }),
@@ -430,7 +445,7 @@ export const apiService = {
   },
 
   async submitWrittenAssessment(writtenId: string | number, answers: any) {
-    const res = await fetch(`${getBaseUrl()}/written/${writtenId}/submit`, {
+    const res = await customFetch(`${getBaseUrl()}/written/${writtenId}/submit`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...getHeaders() },
       body: JSON.stringify({ answers: JSON.stringify(answers) }),
@@ -440,7 +455,7 @@ export const apiService = {
   },
 
   async submitModuleInterview(interviewId: string | number, answers: any) {
-    const res = await fetch(`${getBaseUrl()}/interview/${interviewId}/submit`, {
+    const res = await customFetch(`${getBaseUrl()}/interview/${interviewId}/submit`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...getHeaders() },
       body: JSON.stringify({ answers: JSON.stringify(answers) }),
@@ -450,7 +465,7 @@ export const apiService = {
   },
 
   async getCareerReadiness() {
-    const res = await fetch(`${getBaseUrl()}/career-readiness`, {
+    const res = await customFetch(`${getBaseUrl()}/career-readiness`, {
       headers: getHeaders(),
     });
     if (!res.ok) throw new Error("Failed to fetch career readiness");
@@ -458,7 +473,7 @@ export const apiService = {
   },
 
   async getMessages() {
-    const res = await fetch(`${getBaseUrl()}/messages`, {
+    const res = await customFetch(`${getBaseUrl()}/messages`, {
       headers: getHeaders(),
     });
     if (!res.ok) throw new Error("Failed to fetch messages");
@@ -466,7 +481,7 @@ export const apiService = {
   },
 
   async sendMessage(chatId: string, text: string) {
-    const res = await fetch(`${getBaseUrl()}/messages`, {
+    const res = await customFetch(`${getBaseUrl()}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...getHeaders() },
       body: JSON.stringify({ chat_id: chatId, text }),
@@ -476,7 +491,7 @@ export const apiService = {
   },
 
   async saveHackathonAssignment(candidateId: number, data: any) {
-    const res = await fetch(`${getBaseUrl()}/candidates/${candidateId}/hackathon`, {
+    const res = await customFetch(`${getBaseUrl()}/candidates/${candidateId}/hackathon`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", ...getHeaders() },
       body: JSON.stringify(data),
@@ -486,7 +501,7 @@ export const apiService = {
   },
 
   async sendAdminMessage(candidateId: number, chatId: string, sender: string, senderName: string, text: string) {
-    const res = await fetch(`${getBaseUrl()}/admin/messages`, {
+    const res = await customFetch(`${getBaseUrl()}/admin/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...getHeaders() },
       body: JSON.stringify({ candidate_id: candidateId, chat_id: chatId, sender, sender_name: senderName, text }),
@@ -496,7 +511,7 @@ export const apiService = {
   },
 
   async getAdminCandidateMessages(candidateId: number) {
-    const res = await fetch(`${getBaseUrl()}/admin/candidates/${candidateId}/messages`, {
+    const res = await customFetch(`${getBaseUrl()}/admin/candidates/${candidateId}/messages`, {
       headers: getHeaders(),
     });
     if (!res.ok) throw new Error("Failed to fetch candidate messages");
@@ -504,7 +519,7 @@ export const apiService = {
   },
 
   async startAgentRun() {
-    const res = await fetch(`${getBaseUrl()}/candidate/agent/run`, {
+    const res = await customFetch(`${getBaseUrl()}/candidate/agent/run`, {
       method: "POST",
       headers: getHeaders(),
     });
@@ -513,7 +528,7 @@ export const apiService = {
   },
 
   async getLatestAgentRun() {
-    const res = await fetch(`${getBaseUrl()}/candidate/agent/run/latest`, {
+    const res = await customFetch(`${getBaseUrl()}/candidate/agent/run/latest`, {
       headers: getHeaders(),
     });
     if (!res.ok) throw new Error("Failed to fetch latest agent run");
@@ -521,7 +536,7 @@ export const apiService = {
   },
 
   async getAgentRunResult() {
-    const res = await fetch(`${getBaseUrl()}/candidate/agent/result`, {
+    const res = await customFetch(`${getBaseUrl()}/candidate/agent/result`, {
       headers: getHeaders(),
     });
     if (!res.ok) throw new Error("Failed to fetch agent run result");
@@ -529,7 +544,7 @@ export const apiService = {
   },
 
   async getTelegramSources() {
-    const res = await fetch(`${getBaseUrl()}/admin/telegram-sources`, {
+    const res = await customFetch(`${getBaseUrl()}/admin/telegram-sources`, {
       headers: getHeaders(),
     });
     if (!res.ok) throw new Error("Failed to fetch Telegram sources");
@@ -537,7 +552,7 @@ export const apiService = {
   },
 
   async createTelegramSource(channelName: string, active: boolean = true) {
-    const res = await fetch(`${getBaseUrl()}/admin/telegram-sources`, {
+    const res = await customFetch(`${getBaseUrl()}/admin/telegram-sources`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...getHeaders() },
       body: JSON.stringify({ channel_name: channelName, active }),
@@ -547,7 +562,7 @@ export const apiService = {
   },
 
   async updateTelegramSource(id: number, channelName: string, active: boolean) {
-    const res = await fetch(`${getBaseUrl()}/admin/telegram-sources/${id}`, {
+    const res = await customFetch(`${getBaseUrl()}/admin/telegram-sources/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", ...getHeaders() },
       body: JSON.stringify({ channel_name: channelName, active }),
@@ -557,7 +572,7 @@ export const apiService = {
   },
 
   async deleteTelegramSource(id: number) {
-    const res = await fetch(`${getBaseUrl()}/admin/telegram-sources/${id}`, {
+    const res = await customFetch(`${getBaseUrl()}/admin/telegram-sources/${id}`, {
       method: "DELETE",
       headers: getHeaders(),
     });
