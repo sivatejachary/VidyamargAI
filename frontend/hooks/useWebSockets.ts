@@ -9,15 +9,22 @@ export const useWebSockets = (clientId: string) => {
     if (!clientId) return;
 
     const getWsUrl = () => {
-      if (typeof window !== "undefined") {
-        let host = window.location.hostname;
-        if (host === "localhost") {
-          host = "127.0.0.1";
-        }
-        return `ws://${host}:8000/ws`;
-      }
-      return "ws://127.0.0.1:8000/ws";
-    };
+  if (process.env.NEXT_PUBLIC_WS_URL) {
+    return process.env.NEXT_PUBLIC_WS_URL;
+  }
+
+  if (typeof window !== "undefined") {
+    let host = window.location.hostname;
+
+    if (host === "localhost") {
+      host = "127.0.0.1";
+    }
+
+    return `ws://${host}:8000/ws`;
+  }
+
+  return "ws://127.0.0.1:8000/ws";
+};
     const WS_URL = getWsUrl();
     const socket = new WebSocket(`${WS_URL}/${clientId}`);
 
