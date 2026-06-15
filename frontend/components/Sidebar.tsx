@@ -107,8 +107,19 @@ export default function Sidebar({ portal }: SidebarProps) {
   return (
     <>
       {/* Mobile Sticky Top Header */}
-      <header className="md:hidden flex items-center justify-between px-4 py-3 bg-app-surface border-b border-app-border fixed top-0 left-0 right-0 z-40 h-16 w-full font-sans">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.push(portal === "candidate" ? "/candidate/chat" : "/admin")}>
+      <header className="md:hidden flex items-center px-4 py-3 bg-app-surface border-b border-app-border fixed top-0 left-0 right-0 z-40 h-16 w-full font-sans">
+        <button 
+          onClick={() => setMobileOpen(true)}
+          className="text-app-text-muted hover:text-app-text p-2 rounded-lg hover:bg-app-bg transition-colors z-10"
+          title="Open Menu"
+        >
+          <Menu size={20} />
+        </button>
+
+        <div 
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 cursor-pointer select-none" 
+          onClick={() => router.push(portal === "candidate" ? "/candidate/chat" : "/admin")}
+        >
           {/* Logo icon */}
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-md shrink-0">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -122,14 +133,6 @@ export default function Sidebar({ portal }: SidebarProps) {
             <span className="text-blue-600 dark:text-blue-400 font-extrabold text-base tracking-tight italic">AI</span>
           </div>
         </div>
-
-        <button 
-          onClick={() => setMobileOpen(true)}
-          className="text-app-text-muted hover:text-app-text p-2 rounded-lg hover:bg-app-bg transition-colors"
-          title="Open Menu"
-        >
-          <Menu size={20} />
-        </button>
       </header>
 
       {/* Mobile Drawer Navigation overlay */}
