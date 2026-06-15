@@ -1,10 +1,10 @@
 import json
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from backend.app.core.config import settings
-from backend.app.core.database import engine, Base
-from backend.app.core.ws import manager
-from backend.app.api.endpoints import router as api_router
+from app.core.config import settings
+from app.core.database import engine, Base
+from app.core.ws import manager
+from app.api.endpoints import router as api_router
 
 from sqlalchemy import text
 
@@ -12,9 +12,9 @@ from sqlalchemy import text
 Base.metadata.create_all(bind=engine)
 
 # Auto-seed external jobs and telegram sources on startup
-from backend.app.core.database import SessionLocal
-from backend.app.models.models import Job, TelegramSource
-from backend.app.api.endpoints import extract_and_seed_external_jobs
+from app.core.database import SessionLocal
+from app.models.models import Job, TelegramSource
+from app.api.endpoints import extract_and_seed_external_jobs
 db_session = SessionLocal()
 try:
     active_jobs_count = db_session.query(Job).filter(Job.status == "active").count()
