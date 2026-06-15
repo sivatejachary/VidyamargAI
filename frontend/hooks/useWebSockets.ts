@@ -23,7 +23,7 @@ export const useWebSockets = (clientId: string) => {
     return `ws://${host}:8000/ws`;
   }
 
-  return "ws://127.0.0.1:8000/ws";
+  return "ws://vidyamargai-production.up.railway.app/ws";
 };
     const WS_URL = getWsUrl();
     const socket = new WebSocket(`${WS_URL}/${clientId}`);
