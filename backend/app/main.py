@@ -112,7 +112,10 @@ app.add_middleware(
 )
 
 # Attach routes
-app.include_router(api_router, prefix=settings.API_V1_STR)
+#app.include_router(api_router, prefix=settings.API_V1_STR)
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
 @app.get("/")
 def read_root():
