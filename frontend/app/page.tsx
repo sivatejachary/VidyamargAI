@@ -79,11 +79,18 @@ export default function Home() {
       {/* Hero Intro Pane */}
       <div className="flex-1 p-8 md:p-16 flex flex-col justify-between relative z-10">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-gradient-tara flex items-center justify-center font-bold text-white shadow-lg">
-            H
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shrink-0">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="white" opacity="0.9"/>
+              <path d="M2 17L12 22L22 17" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
           </div>
           <div>
-            <span className="text-xl font-bold tracking-tight text-white leading-tight">HireAI</span>
+            <div className="flex items-baseline gap-0">
+              <span className="text-white font-extrabold text-xl tracking-tight">Vidyamarg</span>
+              <span className="text-blue-500 font-extrabold text-xl tracking-tight italic">AI</span>
+            </div>
             <span className="block text-[10px] text-purple-400 font-semibold tracking-wider uppercase">Enterprise Recruiting OS</span>
           </div>
         </div>
@@ -91,7 +98,7 @@ export default function Home() {
         <div className="my-12 md:my-0 max-w-lg">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-950/40 border border-purple-800/30 text-purple-300 text-xs font-semibold mb-6">
             <Sparkles size={14} className="animate-pulse" />
-            <span>Introducing Tara AI Recruiter</span>
+            <span>Introducing Tush AI Recruiter</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-extrabold text-white leading-[1.15] mb-6">
             The Autonomous <br />
@@ -100,8 +107,8 @@ export default function Home() {
             </span>
           </h1>
           <p className="text-gray-400 text-base leading-relaxed mb-8">
-            HireAI streamlines screening, creates fully tailored technical assessments, runs proctored tests, conducts video interviews with 
-            <strong> Tara AI</strong>, and drafts hiring offers.
+            VidyamargAI streamlines screening, creates fully tailored technical assessments, runs proctored tests, conducts video interviews with 
+            <strong> Tush AI</strong>, and drafts hiring offers.
           </p>
 
           <div className="grid grid-cols-2 gap-4">
@@ -118,8 +125,8 @@ export default function Home() {
           </div>
         </div>
 
-        <p className="text-xs text-gray-500 font-light">
-          © {new Date().getFullYear()} HireAI Tech Systems. All rights secured.
+        <p className="hidden md:block text-xs text-gray-500 font-light">
+          © {new Date().getFullYear()} VidyamargAI Tech Systems. All rights secured.
         </p>
       </div>
 
@@ -156,7 +163,7 @@ export default function Home() {
             </h2>
             <p className="text-sm text-gray-400">
               {isLogin 
-                ? "Enter your credentials to enter the HireAI OS portal" 
+                ? "Enter your credentials to enter the VidyamargAI OS portal" 
                 : `Join the platform as a ${portalType === "admin" ? "Recruiting Administrator" : "Job Seeking Candidate"}`}
             </p>
           </div>
@@ -228,11 +235,18 @@ export default function Home() {
               }}
               className="text-xs text-purple-400 hover:underline font-medium"
             >
-              {isLogin ? "New to HireAI? Setup an account" : "Already registered? Login here"}
+              {isLogin ? "New to VidyamargAI? Setup an account" : "Already registered? Login here"}
             </button>
           </div>
         </div>
       </div>
+
+      {/* Mobile Copyright Footer */}
+      <footer className="md:hidden w-full text-center py-6 border-t border-gray-900 bg-[#0d0e15]/50 relative z-10 mt-auto">
+        <p className="text-xs text-gray-500 font-light">
+          © {new Date().getFullYear()} VidyamargAI Tech Systems. All rights secured.
+        </p>
+      </footer>
     </main>
   );
 }
