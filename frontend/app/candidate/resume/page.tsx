@@ -1094,13 +1094,12 @@ export default function ResumeBuilder() {
               onClick={() => setIsEditOpen(false)}
               className="absolute inset-0 bg-slate-950/40 dark:bg-black/60 backdrop-blur-xs transition-opacity duration-300" 
             />
-
             {/* Panel */}
-            <div className="absolute inset-y-0 right-0 pl-10 max-w-full flex">
-              <div className="w-screen max-w-2xl transform transition-all duration-300 ease-in-out bg-white dark:bg-[#0c0c0e] border-l border-slate-150 dark:border-slate-850 shadow-2xl flex flex-col h-full">
+            <div className="absolute inset-y-0 right-0 pl-0 md:pl-10 max-w-full flex">
+              <div className="w-screen max-w-2xl transform transition-all duration-300 ease-in-out bg-white dark:bg-[#0c0c0e] border-l border-slate-150 dark:border-slate-855 shadow-2xl flex flex-col h-full">
                 
                 {/* Header */}
-                <div className="px-6 py-5 border-b border-slate-155 dark:border-slate-850 flex items-center justify-between shrink-0">
+                <div className="px-6 py-5 border-b border-slate-155 dark:border-slate-855 flex items-center justify-between shrink-0">
                   <div>
                     <h2 className="text-lg font-black text-slate-900 dark:text-white" id="slide-over-title">
                       Extracted Profile Details
@@ -1118,18 +1117,18 @@ export default function ResumeBuilder() {
                 </div>
 
                 {/* Info Note Banner */}
-                <div className="bg-slate-50 dark:bg-slate-900/40 px-6 py-3 border-b border-slate-100 dark:border-slate-850 text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-start gap-2 shrink-0">
+                <div className="bg-slate-50 dark:bg-slate-900/40 px-6 py-3 border-b border-slate-100 dark:border-slate-855 text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-start gap-2 shrink-0">
                   <AlertCircle size={14} className="text-slate-400 mt-0.5 shrink-0" />
                   <span>
                     Your profile is synchronized automatically with your latest resume. To make changes or fix inaccuracies, update your resume and upload it again.
                   </span>
                 </div>
 
-                {/* Body: Tabs on left, Content on right */}
-                <div className="flex-1 overflow-hidden flex min-h-0">
+                {/* Body: Tabs on left/top, Content on right/bottom */}
+                <div className="flex-1 overflow-hidden flex flex-col md:flex-row min-h-0">
                   
                   {/* Tabs Selector List */}
-                  <div className="w-48 bg-slate-50/50 dark:bg-slate-900/20 border-r border-slate-100 dark:border-slate-855 overflow-y-auto py-4 shrink-0">
+                  <div className="w-full md:w-48 bg-slate-50/50 dark:bg-slate-900/20 border-b md:border-b-0 md:border-r border-slate-100 dark:border-slate-855 overflow-x-auto md:overflow-y-auto py-2 md:py-4 flex md:flex-col shrink-0 scrollbar-none">
                     {profileSections.map((sec) => {
                       const TabIcon = sec.icon;
                       const isTabActive = activeTab === sec.id;
@@ -1137,7 +1136,7 @@ export default function ResumeBuilder() {
                         <button
                           key={sec.id}
                           onClick={() => setActiveTab(sec.id)}
-                          className={`w-full text-left px-4 py-2.5 text-xs font-bold flex items-center gap-2.5 transition-all border-l-2 ${
+                          className={`px-4 py-2.5 text-xs font-bold flex items-center gap-2.5 transition-all border-b-2 md:border-b-0 md:border-l-2 shrink-0 ${
                             isTabActive
                               ? "bg-slate-100 dark:bg-slate-800 text-slate-905 dark:text-white border-slate-950 dark:border-white"
                               : "text-slate-455 dark:text-slate-550 border-transparent hover:text-slate-700 dark:hover:text-slate-300"

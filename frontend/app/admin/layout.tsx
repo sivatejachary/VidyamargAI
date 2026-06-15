@@ -38,9 +38,9 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-app-bg flex transition-colors duration-300">
+    <div className="min-h-screen bg-app-bg flex flex-col md:flex-row transition-colors duration-300">
       <Sidebar portal="admin" />
-      <div className="flex-1 h-screen overflow-y-auto bg-app-bg text-app-text transition-colors duration-300 font-sans">
+      <div className="flex-1 h-[calc(100vh-4rem)] md:h-screen overflow-y-auto bg-app-bg text-app-text transition-colors duration-300 font-sans mt-16 md:mt-0">
         {children}
       </div>
     </div>

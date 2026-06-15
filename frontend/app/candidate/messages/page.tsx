@@ -5,7 +5,7 @@ import { useAuthStore } from "@/store/authStore";
 import { apiService } from "@/services/api";
 import { useWebSockets } from "@/hooks/useWebSockets";
 import { 
-  Send, Search, Users, MessageSquare, AlertCircle, Headphones, Paperclip
+  Send, Search, Users, MessageSquare, AlertCircle, Headphones, Paperclip, ArrowLeft
 } from "lucide-react";
 
 /* ─── Types ────────────────────────────────────────────────────────── */
@@ -149,6 +149,7 @@ export default function Messages() {
   const [chatMessages, setChatMessages] = useState<Record<string, MessageItem[]>>({});
   const [chatListItems, setChatListItems] = useState<ChatListItem[]>([]);
   const [inputVal, setInputVal]         = useState("");
+  const [showMobileChatList, setShowMobileChatList] = useState(true);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const { addMessageListener } = useWebSockets(email || "candidate");
@@ -329,7 +330,7 @@ export default function Messages() {
     <div className="w-full h-full flex flex-col font-sans text-slate-800 dark:text-slate-100 bg-[#F4F6F8] dark:bg-black transition-colors duration-300">
 
       {/* ── Page Header ───────────────────────────────────────────── */}
-      <div className="px-7 pt-6 pb-4 shrink-0">
+      <div className={`px-7 pt-6 pb-4 shrink-0 ${!showMobileChatList ? "hidden md:block" : "block"}`}>
         <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
           Messages
         </h1>
@@ -342,7 +343,9 @@ export default function Messages() {
       <div className="flex-1 flex gap-4 px-7 pb-6 min-h-0">
 
         {/* ━━━━━━━━━━━━━ LEFT: Conversation List ━━━━━━━━━━━━━━━━━━━ */}
-        <div className="w-[35%] min-w-[280px] bg-white dark:bg-[#0A0A0A] border border-slate-200/70 dark:border-neutral-800 rounded-2xl flex flex-col shrink-0 overflow-hidden">
+        <div className={`w-full md:w-[35%] md:min-w-[280px] bg-white dark:bg-[#0A0A0A] border border-slate-200/70 dark:border-neutral-800 rounded-2xl flex flex-col shrink-0 overflow-hidden ${
+          !showMobileChatList ? "hidden md:flex" : "flex"
+        }`}>
 
           {/* Search + Filter */}
           <div className="px-4 pt-4 pb-3 shrink-0">
@@ -406,7 +409,10 @@ export default function Messages() {
                 return (
                   <div
                     key={chat.id}
-                    onClick={() => setActiveChat(chat.id)}
+                    onClick={() => {
+                      setActiveChat(chat.id);
+                      setShowMobileChatList(false);
+                    }}
                     className={`px-4 py-3 mx-2 my-0.5 rounded-xl flex items-center gap-3 cursor-pointer transition-all ${
                       active
                         ? "bg-[#EBF2FF] dark:bg-[#2563EB]/10 border border-[#2563EB]/20 dark:border-[#2563EB]/20"
@@ -445,12 +451,22 @@ export default function Messages() {
         </div>
 
         {/* ━━━━━━━━━━━━━ RIGHT: Active Conversation ━━━━━━━━━━━━━━━━ */}
-        <div className="flex-1 bg-white dark:bg-[#0A0A0A] border border-slate-200/70 dark:border-neutral-800 rounded-2xl flex flex-col min-h-0 overflow-hidden">
+        <div className={`flex-1 bg-white dark:bg-[#0A0A0A] border border-slate-200/70 dark:border-neutral-800 rounded-2xl flex flex-col min-h-0 overflow-hidden ${
+          showMobileChatList ? "hidden md:flex" : "flex"
+        }`}>
 
           {/* Chat header */}
           {currentChat && (
             <div className="px-5 py-3.5 border-b border-slate-100 dark:border-neutral-800 bg-white dark:bg-[#0A0A0A] flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
+                {/* Back button on mobile */}
+                <button
+                  onClick={() => setShowMobileChatList(true)}
+                  className="md:hidden p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors mr-1 cursor-pointer"
+                  title="Back to conversations"
+                >
+                  <ArrowLeft size={18} />
+                </button>
                 <ChatAvatar chat={currentChat} />
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
