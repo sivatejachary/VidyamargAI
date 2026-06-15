@@ -189,6 +189,28 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 def health():
     return {"status": "ok"}
 
+@app.get("/db-test")
+def db_test():
+    import traceback
+    try:
+        from sqlalchemy import text
+        # Try to execute a simple query
+        with engine.connect() as conn:
+            res = conn.execute(text("SELECT 1")).scalar()
+        return {
+            "status": "connected",
+            "result": res,
+            "database_url_masked": settings.DATABASE_URL.split("@")[-1] if "@" in settings.DATABASE_URL else settings.DATABASE_URL
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error_type": str(type(e)),
+            "error_message": str(e),
+            "traceback": traceback.format_exc(),
+            "database_url_masked": settings.DATABASE_URL.split("@")[-1] if "@" in settings.DATABASE_URL else settings.DATABASE_URL
+        }
+
 @app.get("/")
 def read_root():
     return {"message": "Welcome to HireAI Recruitment Engine"}
