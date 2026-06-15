@@ -94,7 +94,7 @@ class Job(Base):
     description = Column(Text, nullable=False)
     required_skills = Column(String, nullable=False) # Comma separated
     experience_level = Column(String, nullable=False)
-    salary_range = Column(String, nullable=False)
+    salary_range = Column(String, nullable=True)
     location = Column(String, nullable=False)
     department = Column(String, nullable=False)
     status = Column(String, default="active")  # active, archived
