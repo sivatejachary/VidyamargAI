@@ -9,3 +9,4 @@ websockets>=12.0
 requests>=2.31.0
 pypdf>=4.0.0
 pydantic-settings
+redis
