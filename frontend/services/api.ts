@@ -1,15 +1,22 @@
 const getBaseUrl = () => {
+  // Use deployed backend URL if available
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+
+  // Fallback for local development
   if (typeof window !== "undefined") {
     let host = window.location.hostname;
-    // Map localhost to IPv4 loopback to avoid Windows IPv6 [::1] connection issues
+
     if (host === "localhost") {
       host = "127.0.0.1";
     }
+
     return `http://${host}:8000/api/v1`;
   }
+
   return "http://127.0.0.1:8000/api/v1";
 };
-
 const getHeaders = () => {
   const headers: Record<string, string> = {};
   if (typeof window !== "undefined") {
