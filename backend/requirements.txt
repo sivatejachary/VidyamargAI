@@ -10,6 +10,7 @@ requests>=2.31.0
 pypdf>=4.0.0
 pydantic-settings
 redis
+psycopg2-binary>=2.9.9
 httpx>=0.27.0
 telethon>=1.36.0
 beautifulsoup4>=4.12.0

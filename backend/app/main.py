@@ -54,39 +54,57 @@ except Exception as e:
 finally:
     db_session.close()
 
-# Run safe SQLite migration check on startup
+# Run safe DB migration on startup (PostgreSQL + SQLite compatible)
+IS_POSTGRES = settings.DATABASE_URL.startswith("postgresql") or settings.DATABASE_URL.startswith("postgres")
+
+def _get_columns(conn, table_name: str):
+    """Return list of column names for a table — works on both PG and SQLite."""
+    if IS_POSTGRES:
+        rows = conn.execute(text(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = :t"
+        ), {"t": table_name}).fetchall()
+        return [r[0] for r in rows]
+    else:
+        rows = conn.execute(text(f"PRAGMA table_info({table_name})")).fetchall()
+        return [r[1] for r in rows]
+
+def _serial():
+    """Primary key type: SERIAL for PG, INTEGER AUTOINCREMENT for SQLite."""
+    return "SERIAL PRIMARY KEY" if IS_POSTGRES else "INTEGER PRIMARY KEY AUTOINCREMENT"
+
 try:
     with engine.begin() as conn:
-        res = conn.execute(text("PRAGMA table_info(candidates)")).fetchall()
-        columns = [row[1] for row in res]
+        # ── Candidates table extra columns ──────────────────────────────────
+        cols = _get_columns(conn, "candidates")
         for col_name, col_type in [
-            ("hackathon_team", "VARCHAR"),
-            ("assigned_mentor", "VARCHAR"),
+            ("hackathon_team",    "VARCHAR"),
+            ("assigned_mentor",   "VARCHAR"),
             ("hackathon_problem", "VARCHAR"),
             ("hackathon_members", "TEXT"),
-            ("summary", "TEXT"),
-            ("achievements", "TEXT"),
-            ("languages", "TEXT"),
+            ("summary",           "TEXT"),
+            ("achievements",      "TEXT"),
+            ("languages",         "TEXT"),
         ]:
-            if col_name not in columns:
+            if col_name not in cols:
                 conn.execute(text(f"ALTER TABLE candidates ADD COLUMN {col_name} {col_type}"))
-                print(f"Migration: Added column {col_name} to candidates table.")
-                
-        # Migrate jobs table
-        res_jobs = conn.execute(text("PRAGMA table_info(jobs)")).fetchall()
-        job_columns = [row[1] for row in res_jobs]
-        for col_name, col_type in [
-            ("company_id", "INTEGER"),
-            ("recruiter_id", "INTEGER")
-        ]:
-            if col_name not in job_columns:
-                conn.execute(text(f"ALTER TABLE jobs ADD COLUMN {col_name} {col_type}"))
-                print(f"Migration: Added column {col_name} to jobs table.")
+                print(f"Migration: Added column {col_name} to candidates.")
 
-        # Create courses/learning tables if missing
-        conn.execute(text("""
+        # ── Jobs table extra columns ─────────────────────────────────────────
+        job_cols = _get_columns(conn, "jobs")
+        for col_name, col_type in [
+            ("company_id",   "INTEGER"),
+            ("recruiter_id", "INTEGER"),
+        ]:
+            if col_name not in job_cols:
+                conn.execute(text(f"ALTER TABLE jobs ADD COLUMN {col_name} {col_type}"))
+                print(f"Migration: Added column {col_name} to jobs.")
+
+        # ── Courses / Learning tables ────────────────────────────────────────
+        serial = _serial()
+        conn.execute(text(f"""
             CREATE TABLE IF NOT EXISTS courses (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {serial},
                 title VARCHAR NOT NULL,
                 instructor VARCHAR DEFAULT 'VidyaMarg Team',
                 rating REAL DEFAULT 4.5,
@@ -95,46 +113,47 @@ try:
                 thumbnail VARCHAR,
                 description TEXT,
                 category VARCHAR DEFAULT 'Technology',
-                totalModules INTEGER DEFAULT 0,
+                "totalModules" INTEGER DEFAULT 0,
                 level VARCHAR DEFAULT 'Beginner',
                 status VARCHAR DEFAULT 'published',
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """))
-        conn.execute(text("""
+        conn.execute(text(f"""
             CREATE TABLE IF NOT EXISTS modules (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                courseId INTEGER,
+                id {serial},
+                "courseId" INTEGER,
                 title VARCHAR NOT NULL,
-                moduleNo INTEGER DEFAULT 1,
-                unlockOrder INTEGER DEFAULT 1,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                "moduleNo" INTEGER DEFAULT 1,
+                "unlockOrder" INTEGER DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """))
-        conn.execute(text("""
+        conn.execute(text(f"""
             CREATE TABLE IF NOT EXISTS enrollments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {serial},
                 course_id INTEGER,
                 user_id INTEGER,
                 progress REAL DEFAULT 0.0,
                 status VARCHAR DEFAULT 'active',
-                enrolled_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                enrolled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """))
-        conn.execute(text("""
+        conn.execute(text(f"""
             CREATE TABLE IF NOT EXISTS certificates (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {serial},
                 course_id INTEGER,
                 user_id INTEGER,
                 code VARCHAR,
                 readiness_score REAL DEFAULT 0.0,
                 interview_score REAL DEFAULT 0.0,
-                earned_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                earned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """))
         print("Migration: courses/modules/enrollments/certificates tables ensured.")
 except Exception as e:
     print(f"Migration error: {e}")
+
 
 
 app = FastAPI(
