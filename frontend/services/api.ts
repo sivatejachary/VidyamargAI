@@ -73,6 +73,27 @@ export const apiService = {
     return res.json();
   },
 
+  async forgotPassword(email: string) {
+    const res = await customFetch(`${getBaseUrl()}/auth/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || "Failed to request reset code");
+    return res.json();
+  },
+
+  async resetPassword(data: { email: string; new_password: string; code: string }) {
+    const res = await customFetch(`${getBaseUrl()}/auth/reset-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || "Failed to reset password");
+    return res.json();
+  },
+
+
   // Jobs
   async getJobs(search?: string) {
     const url = search ? `${getBaseUrl()}/jobs?search=${encodeURIComponent(search)}` : `${getBaseUrl()}/jobs`;

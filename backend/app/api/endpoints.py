@@ -699,6 +699,28 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 def read_current_user(current_user: User = Depends(get_current_user)):
     return current_user
 
+@router.post("/auth/forgot-password")
+def forgot_password(req: schemas.ForgotPasswordRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == req.email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Email not registered")
+    
+    import random
+    code = f"{random.randint(100000, 999999)}"
+    return {"message": "Verification code generated successfully", "code": code}
+
+@router.post("/auth/reset-password")
+def reset_password(req: schemas.ResetPasswordRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == req.email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Email not registered")
+    
+    hashed_pwd = get_password_hash(req.new_password)
+    user.password_hash = hashed_pwd
+    db.commit()
+    return {"message": "Password updated successfully"}
+
+
 
 # ----------------- JOBS -----------------
 

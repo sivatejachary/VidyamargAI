@@ -466,3 +466,13 @@ class TelegramSourceResponse(BaseModel):
         from_attributes = True
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class ResetPasswordRequest(BaseModel):
+    email: str
+    new_password: str
+    code: str
+
+
+
