@@ -1,10 +1,10 @@
 import json
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from backend.app.core.config import settings
-from backend.app.core.database import engine, Base
-from backend.app.core.ws import manager
-from backend.app.api.endpoints import router as api_router
+from app.core.config import settings
+from app.core.database import engine, Base
+from app.core.ws import manager
+from app.api.endpoints import router as api_router
 
 from sqlalchemy import text
 
