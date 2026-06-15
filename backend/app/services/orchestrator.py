@@ -41,13 +41,15 @@ def call_gemini(prompt: str, json_mode: bool = False) -> str:
         logger.error(f"Error calling Gemini: {e}")
     return ""
 
-def call_nvidia(messages: list) -> str:
+def call_nvidia(messages, json_mode: bool = False) -> str:
     """
     Direct HTTPS call to NVIDIA Chat Completions API.
     Falls back to empty string on missing key or network error.
     """
     if not settings.NVIDIA_API_KEY:
         return ""
+    if isinstance(messages, str):
+        messages = [{"role": "user", "content": messages}]
     try:
         url = "https://integrate.api.nvidia.com/v1/chat/completions"
         headers = {

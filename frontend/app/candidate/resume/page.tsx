@@ -676,32 +676,71 @@ export default function ResumeBuilder() {
               <div className="border-t border-slate-200/60 dark:border-slate-800/80 my-5" />
 
               {/* Missing Section */}
-              <div className="space-y-3">
-                <span className="text-xs font-black text-slate-455 dark:text-slate-400 uppercase tracking-wider block">
+              <div className="space-y-4">
+                <span className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
                   Missing ({100 - completionScore}%)
                 </span>
                 
-                <div className="flex flex-wrap gap-x-4 gap-y-2">
+                {/* Mobile Missing Cards */}
+                <div className="space-y-3">
                   {missingItems.length > 0 ? (
-                    missingItems.map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-1.5 text-xs text-slate-505 dark:text-slate-400 font-bold">
-                        <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0" />
-                        <span>{item}</span>
-                      </div>
-                    ))
+                    missingItems.map((item, idx) => {
+                      let IconComponent = Award;
+                      if (item === "Achievements") IconComponent = Trophy;
+                      else if (item.includes("LinkedIn")) IconComponent = Link2;
+                      else if (item.includes("Portfolio")) IconComponent = Globe;
+                      
+                      return (
+                        <div 
+                          key={idx} 
+                          onClick={handleCompleteNow} 
+                          className="flex items-center justify-between p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/40 shrink-0">
+                              <IconComponent size={18} />
+                            </div>
+                            <span className="text-sm font-semibold text-slate-850 dark:text-slate-200">{item}</span>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            <span className="px-2.5 py-0.5 rounded-full bg-red-50 dark:bg-red-950/30 text-[10px] font-bold text-red-500 dark:text-red-400 border border-red-100 dark:border-red-950/20">
+                              Missing
+                            </span>
+                            <ChevronRight size={16} className="text-slate-400" />
+                          </div>
+                        </div>
+                      );
+                    })
                   ) : (
-                    <span className="text-xs text-emerald-500 font-black">All sections complete! ✓</span>
+                    <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-center text-xs text-emerald-600 dark:text-emerald-400 font-bold">
+                      All sections complete! ✓
+                    </div>
                   )}
                 </div>
 
-                <div className="pt-2 flex justify-start">
+                {/* Complete your profile box */}
+                <div className="p-5 rounded-2xl bg-emerald-50/20 dark:bg-slate-900/30 border border-emerald-100/50 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-4 text-left w-full sm:w-auto">
+                    <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-800 border border-emerald-100 dark:border-emerald-700 flex items-center justify-center shrink-0 shadow-sm text-emerald-600 dark:text-emerald-400">
+                      <FileText size={22} />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-sm font-black text-slate-900 dark:text-white">Complete your profile</h4>
+                      <p className="text-xs text-slate-550 dark:text-slate-400 mt-0.5 leading-relaxed">
+                        Add missing information to improve your profile and get better job opportunities.
+                      </p>
+                    </div>
+                  </div>
+                  
                   <button 
                     onClick={handleCompleteNow}
-                    className="px-6 py-2 rounded-xl bg-teal-505 hover:bg-teal-600 text-xs font-extrabold text-white transition-all shadow-sm shadow-teal-500/10 cursor-pointer w-full"
+                    className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#0e9f6e] hover:bg-emerald-700 text-xs font-black text-white transition-all shadow-sm shadow-emerald-500/10 cursor-pointer text-center shrink-0"
                   >
-                    View Profile Gaps
+                    Update Profile
                   </button>
                 </div>
+                
               </div>
 
             </div>
