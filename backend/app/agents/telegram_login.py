@@ -7,7 +7,7 @@ from telethon import TelegramClient
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 
 try:
-    from backend.app.core.config import settings
+    from app.core.config import settings
 except ImportError:
     # Fallback if path structure is slightly different
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))

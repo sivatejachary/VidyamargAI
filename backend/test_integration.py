@@ -2,12 +2,12 @@ import unittest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from backend.app.core.database import Base
-from backend.app.models.models import (
+from app.core.database import Base
+from app.models.models import (
     User, Candidate, Job, Application, Assessment, AssessmentAttempt,
     Interview, Offer, EmailNotification
 )
-from backend.app.services.orchestrator import orchestrator
+from app.services.orchestrator import orchestrator
 
 class TestHireAIEngine(unittest.IsolatedAsyncioTestCase):
     def setUp(self):

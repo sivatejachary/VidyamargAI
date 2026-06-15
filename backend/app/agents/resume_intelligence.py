@@ -3,7 +3,7 @@ import logging
 from typing import List, Optional
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from backend.app.models.models import Candidate
+from app.models.models import Candidate
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class ResumeIntelligenceAgent:
             certs_list = [c.strip() for c in candidate.certifications.split(",") if c.strip()]
 
         # 3. Calculate experience years using our smart calculation
-        from backend.app.api.endpoints import calculate_years_from_experience
+        from app.api.endpoints import calculate_years_from_experience
         exp_years = calculate_years_from_experience(candidate.experience)
 
         profile = CandidateProfileData(

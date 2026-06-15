@@ -3,11 +3,11 @@ from unittest.mock import patch, MagicMock
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from backend.app.core.database import Base
-from backend.app.models.models import TelegramSource
-from backend.app.services.job_connectors.base import LiveJob
-from backend.app.agents.telegram import TelegramCommunityAgent
-from backend.app.agents.consistency import JobConsistencyAgent
+from app.core.database import Base
+from app.models.models import TelegramSource
+from app.services.job_connectors.base import LiveJob
+from app.agents.telegram import TelegramCommunityAgent
+from app.agents.consistency import JobConsistencyAgent
 
 class TestTelegramAndConsistency(unittest.TestCase):
     def setUp(self):

@@ -4,18 +4,18 @@ from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from backend.app.core.database import Base
-from backend.app.models.models import User, Candidate, CandidateResume, JobAgentRun, JobAgentLog
-from backend.app.agents.resume_intelligence import ResumeIntelligenceAgent, CandidateProfileData
-from backend.app.agents.planning import PlanningAgent
-from backend.app.agents.search import SearchAgent
-from backend.app.agents.verification import VerificationAgent
-from backend.app.agents.matching import MatchingAgent
-from backend.app.agents.ranking import RankingAgent
-from backend.app.agents.skill_gap import SkillGapAgent
-from backend.app.agents.recommendation import RecommendationAgent
-from backend.app.agents.manager import run_agent_flow, log_step
-from backend.app.services.job_connectors.base import LiveJob
+from app.core.database import Base
+from app.models.models import User, Candidate, CandidateResume, JobAgentRun, JobAgentLog
+from app.agents.resume_intelligence import ResumeIntelligenceAgent, CandidateProfileData
+from app.agents.planning import PlanningAgent
+from app.agents.search import SearchAgent
+from app.agents.verification import VerificationAgent
+from app.agents.matching import MatchingAgent
+from app.agents.ranking import RankingAgent
+from app.agents.skill_gap import SkillGapAgent
+from app.agents.recommendation import RecommendationAgent
+from app.agents.manager import run_agent_flow, log_step
+from app.services.job_connectors.base import LiveJob
 
 class TestJobAgentSuite(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
@@ -77,8 +77,8 @@ class TestJobAgentSuite(unittest.IsolatedAsyncioTestCase):
         has_python_dev = any("Python" in q for q in queries)
         self.assertTrue(has_python_dev)
 
-    @patch('backend.app.agents.search.linkedin_jobs.fetch')
-    @patch('backend.app.agents.search.naukri.fetch')
+    @patch('app.agents.search.linkedin_jobs.fetch')
+    @patch('app.agents.search.naukri.fetch')
     def test_search_agent_integration(self, mock_naukri, mock_linkedin):
         mock_linkedin.return_value = [
             LiveJob(
@@ -96,14 +96,14 @@ class TestJobAgentSuite(unittest.IsolatedAsyncioTestCase):
         ]
         mock_naukri.return_value = []
         
-        with patch('backend.app.agents.search.indeed.fetch', return_value=[]), \
-             patch('backend.app.agents.search.foundit.fetch', return_value=[]), \
-             patch('backend.app.agents.search.wellfound.fetch', return_value=[]), \
-             patch('backend.app.agents.search.internshala.fetch', return_value=[]), \
-             patch('backend.app.agents.search.instahyre.fetch', return_value=[]), \
-             patch('backend.app.agents.search.cutshort.fetch', return_value=[]), \
-             patch('backend.app.agents.search.hirist.fetch', return_value=[]), \
-             patch('backend.app.agents.search.hiring_posts.fetch', return_value=[]):
+        with patch('app.agents.search.indeed.fetch', return_value=[]), \
+             patch('app.agents.search.foundit.fetch', return_value=[]), \
+             patch('app.agents.search.wellfound.fetch', return_value=[]), \
+             patch('app.agents.search.internshala.fetch', return_value=[]), \
+             patch('app.agents.search.instahyre.fetch', return_value=[]), \
+             patch('app.agents.search.cutshort.fetch', return_value=[]), \
+             patch('app.agents.search.hirist.fetch', return_value=[]), \
+             patch('app.agents.search.hiring_posts.fetch', return_value=[]):
              
             queries = ["Python Backend Developer India", "FastAPI Developer Remote"]
             agent = SearchAgent(queries, ["Python", "Fastapi"])
@@ -113,16 +113,16 @@ class TestJobAgentSuite(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(jobs[0].title, "Python Developer")
 
     def test_search_agent_fallback_generation(self):
-        with patch('backend.app.agents.search.linkedin_jobs.fetch', return_value=[]), \
-             patch('backend.app.agents.search.naukri.fetch', return_value=[]), \
-             patch('backend.app.agents.search.indeed.fetch', return_value=[]), \
-             patch('backend.app.agents.search.foundit.fetch', return_value=[]), \
-             patch('backend.app.agents.search.wellfound.fetch', return_value=[]), \
-             patch('backend.app.agents.search.internshala.fetch', return_value=[]), \
-             patch('backend.app.agents.search.instahyre.fetch', return_value=[]), \
-             patch('backend.app.agents.search.cutshort.fetch', return_value=[]), \
-             patch('backend.app.agents.search.hirist.fetch', return_value=[]), \
-             patch('backend.app.agents.search.hiring_posts.fetch', return_value=[]):
+        with patch('app.agents.search.linkedin_jobs.fetch', return_value=[]), \
+             patch('app.agents.search.naukri.fetch', return_value=[]), \
+             patch('app.agents.search.indeed.fetch', return_value=[]), \
+             patch('app.agents.search.foundit.fetch', return_value=[]), \
+             patch('app.agents.search.wellfound.fetch', return_value=[]), \
+             patch('app.agents.search.internshala.fetch', return_value=[]), \
+             patch('app.agents.search.instahyre.fetch', return_value=[]), \
+             patch('app.agents.search.cutshort.fetch', return_value=[]), \
+             patch('app.agents.search.hirist.fetch', return_value=[]), \
+             patch('app.agents.search.hiring_posts.fetch', return_value=[]):
              
             queries = ["Python Backend Developer India"]
             agent = SearchAgent(queries, ["Python", "FastAPI"], exp_years=2.5)

@@ -2,9 +2,9 @@ import logging
 import json
 import re
 from typing import List, Tuple, Dict, Any
-from backend.app.agents.resume_intelligence import CandidateProfileData
-from backend.app.services.job_connectors.base import LiveJob
-from backend.app.services.match_engine import _parse_years
+from app.agents.resume_intelligence import CandidateProfileData
+from app.services.job_connectors.base import LiveJob
+from app.services.match_engine import _parse_years
 
 logger = logging.getLogger(__name__)
 

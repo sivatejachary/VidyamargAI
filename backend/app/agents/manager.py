@@ -5,10 +5,10 @@ from datetime import datetime
 from typing import List, Dict, Any
 from sqlalchemy.orm import Session
 
-from backend.app.core.database import SessionLocal
-from backend.app.models.models import JobAgentRun, JobAgentLog
-from backend.app.agents.resume_intelligence import ResumeIntelligenceAgent, CandidateProfileData
-from backend.app.agents.planning import PlanningAgent
+from app.core.database import SessionLocal
+from app.models.models import JobAgentRun, JobAgentLog
+from app.agents.resume_intelligence import ResumeIntelligenceAgent, CandidateProfileData
+from app.agents.planning import PlanningAgent
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ def log_step(db: Session, run_id: int, agent_name: str, message: str, status: st
     full_msg = f"[{agent_name}] {message}"
     
     # Open a local session to ensure thread-safety when called from concurrent threads
-    from backend.app.core.database import SessionLocal
+    from app.core.database import SessionLocal
     local_db = SessionLocal()
     try:
         log = JobAgentLog(run_id=run_id, message=full_msg, status=status)
@@ -85,15 +85,15 @@ async def run_agent_flow(run_id: int, candidate_id: int):
 
     db = SessionLocal()
     try:
-        from backend.app.agents.resume_intelligence import ResumeIntelligenceAgent
-        from backend.app.agents.planning import PlanningAgent
-        from backend.app.agents.search import SearchAgent
-        from backend.app.agents.verification import VerificationAgent
-        from backend.app.agents.matching import MatchingAgent
-        from backend.app.agents.ranking import RankingAgent
-        from backend.app.agents.skill_gap import SkillGapAgent
-        from backend.app.agents.recommendation import RecommendationAgent
-        import backend.app.services.job_cache as job_cache
+        from app.agents.resume_intelligence import ResumeIntelligenceAgent
+        from app.agents.planning import PlanningAgent
+        from app.agents.search import SearchAgent
+        from app.agents.verification import VerificationAgent
+        from app.agents.matching import MatchingAgent
+        from app.agents.ranking import RankingAgent
+        from app.agents.skill_gap import SkillGapAgent
+        from app.agents.recommendation import RecommendationAgent
+        import app.services.job_cache as job_cache
 
         # 1. Resume Intelligence Agent
         log_step(db, run_id, "Resume Agent", "Loading candidate profile and latest resume...", "info")
@@ -114,7 +114,7 @@ async def run_agent_flow(run_id: int, candidate_id: int):
         await asyncio.sleep(0.5)
         
         search_agent = SearchAgent(queries, profile.skills, profile.experience_years)
-        from backend.app.agents.telegram import TelegramCommunityAgent
+        from app.agents.telegram import TelegramCommunityAgent
         telegram_agent = TelegramCommunityAgent(db)
         
         def portal_log_callback(msg, status="info"):
@@ -144,7 +144,7 @@ async def run_agent_flow(run_id: int, candidate_id: int):
         # 4b. Job Consistency Agent
         log_step(db, run_id, "Job Consistency Agent", "Auditing landing page details in parallel for title, company, and location consistency...", "info")
         await asyncio.sleep(0.5)
-        from backend.app.agents.consistency import JobConsistencyAgent
+        from app.agents.consistency import JobConsistencyAgent
         consistency_agent = JobConsistencyAgent(db)
         
         final_verified_jobs = []
@@ -240,7 +240,7 @@ async def run_agent_flow(run_id: int, candidate_id: int):
 
         # Sync/Persist all matched jobs and their match scores to the database
         log_step(db, run_id, "Database Sync", "Persisting discovered jobs to the database...", "info")
-        from backend.app.models.models import Job, Company, JobSource, JobMatch, Candidate
+        from app.models.models import Job, Company, JobSource, JobMatch, Candidate
         candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
         
         for rj in ranked_jobs:
@@ -316,7 +316,7 @@ async def run_agent_flow(run_id: int, candidate_id: int):
 
         # 9. Store complete outputs in cache for 30 minutes
         # Re-save to LIVE_JOB_STORE in endpoints as well for detail modal clicks
-        from backend.app.api.endpoints import _LIVE_JOB_STORE
+        from app.api.endpoints import _LIVE_JOB_STORE
         for rj in ranked_jobs:
             _LIVE_JOB_STORE[rj["id"]] = rj
 

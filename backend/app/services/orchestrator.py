@@ -4,14 +4,14 @@ import requests
 import random
 from datetime import datetime
 from sqlalchemy.orm import Session
-from backend.app.core.config import settings
-from backend.app.core.ws import manager
-from backend.app.models.models import (
+from app.core.config import settings
+from app.core.ws import manager
+from app.models.models import (
     User, Candidate, CandidateProfile, CandidateResume, Application, ScreeningResult,
     Assessment, AssessmentAttempt, FraudLog, Interview, InterviewResult,
     CandidateRanking, Offer, Notification, AuditLog, EmailNotification
 )
-from backend.app.services.storage import storage_service
+from app.services.storage import storage_service
 
 logger = logging.getLogger(__name__)
 

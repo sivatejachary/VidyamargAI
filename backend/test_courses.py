@@ -4,10 +4,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-from backend.app.main import app
-from backend.app.core.database import Base, get_db
-from backend.app.models.models import User, Candidate
-from backend.app.core.security import get_password_hash
+from app.main import app
+from app.core.database import Base, get_db
+from app.models.models import User, Candidate
+from app.core.security import get_password_hash
 
 # Setup test DB path
 DB_FILE = "test_courses_temp.db"

@@ -1,7 +1,7 @@
 import logging
 import re
 from typing import List
-from backend.app.services.job_connectors.base import LiveJob
+from app.services.job_connectors.base import LiveJob
 
 logger = logging.getLogger(__name__)
 

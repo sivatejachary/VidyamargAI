@@ -10,10 +10,10 @@ from typing import List, Dict, Any
 from bs4 import BeautifulSoup
 from sqlalchemy.orm import Session
 
-from backend.app.models.models import TelegramSource
-from backend.app.services.orchestrator import call_nvidia
-from backend.app.services.job_connectors.base import LiveJob
-from backend.app.core.config import settings
+from app.models.models import TelegramSource
+from app.services.orchestrator import call_nvidia
+from app.services.job_connectors.base import LiveJob
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

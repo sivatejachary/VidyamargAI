@@ -4,8 +4,8 @@ import re
 import httpx
 from bs4 import BeautifulSoup
 from typing import List, Dict, Any, Tuple
-from backend.app.services.job_connectors.base import LiveJob
-from backend.app.services.orchestrator import call_nvidia
+from app.services.job_connectors.base import LiveJob
+from app.services.orchestrator import call_nvidia
 
 logger = logging.getLogger(__name__)
 

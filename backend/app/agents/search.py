@@ -1,8 +1,8 @@
 import logging
 import concurrent.futures
 from typing import List
-from backend.app.services.job_connectors.base import LiveJob
-from backend.app.services.job_connectors import (
+from app.services.job_connectors.base import LiveJob
+from app.services.job_connectors import (
     linkedin_jobs, naukri, foundit, internshala, wellfound, hiring_posts,
     indeed, instahyre, cutshort, hirist
 )

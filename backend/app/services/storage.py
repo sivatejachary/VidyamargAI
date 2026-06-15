@@ -1,5 +1,5 @@
 from pathlib import Path
-from backend.app.core.config import settings
+from app.core.config import settings
 
 # Base directory for local file storage fallback
 STORAGE_DIR = Path("storage")

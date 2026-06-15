@@ -1,7 +1,7 @@
 import logging
 from typing import List
-from backend.app.agents.resume_intelligence import CandidateProfileData
-from backend.app.services.job_connectors.query_generator import SKILL_TO_ROLE, FALLBACK_ROLES
+from app.agents.resume_intelligence import CandidateProfileData
+from app.services.job_connectors.query_generator import SKILL_TO_ROLE, FALLBACK_ROLES
 
 logger = logging.getLogger(__name__)
 

@@ -7,14 +7,14 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from backend.app.core.config import settings
-from backend.app.core.database import get_db
-from backend.app.core.security import (
+from app.core.config import settings
+from app.core.database import get_db
+from app.core.security import (
     get_password_hash, verify_password, create_access_token, 
     get_current_user, get_current_admin
 )
-from backend.app.core.ws import manager
-from backend.app.models.models import (
+from app.core.ws import manager
+from app.models.models import (
     User, Candidate, CandidateResume, CandidateProfile, Job, Application, ScreeningResult,
     Assessment, AssessmentAttempt, FraudLog, Interview, InterviewResult,
     CandidateRanking, Offer, Notification, AuditLog, EmailNotification, Message,
@@ -23,20 +23,20 @@ from backend.app.models.models import (
 )
 
 logger = logging.getLogger(__name__)
-from backend.app.schemas import schemas
-from backend.app.services.orchestrator import orchestrator, call_nvidia, call_gemini, log_agent_action
-from backend.app.services.storage import storage_service
+from app.schemas import schemas
+from app.services.orchestrator import orchestrator, call_nvidia, call_gemini, log_agent_action
+from app.services.storage import storage_service
 
 router = APIRouter()
 
 # Import new real-time job services
-from backend.app.services.job_connectors import (
+from app.services.job_connectors import (
     linkedin_jobs, naukri, foundit, internshala, wellfound, hiring_posts
 )
-from backend.app.services.job_connectors.query_generator import generate_queries
-from backend.app.services.job_connectors.base import LiveJob
-from backend.app.services.match_engine import calculate_match
-import backend.app.services.job_cache as job_cache
+from app.services.job_connectors.query_generator import generate_queries
+from app.services.job_connectors.base import LiveJob
+from app.services.match_engine import calculate_match
+import app.services.job_cache as job_cache
 
 # Global live-job store keyed by stable_id string (for save/apply lookup)
 _LIVE_JOB_STORE: dict = {}
@@ -621,7 +621,7 @@ import asyncio
 async def periodic_job_collection_agent_runner():
     while True:
         try:
-            from backend.app.core.database import SessionLocal
+            from app.core.database import SessionLocal
             db = SessionLocal()
             run_job_collection_agent_sync(db)
             db.close()
@@ -633,8 +633,8 @@ async def periodic_job_collection_agent_runner():
 async def start_job_collection_agent():
     # Mark any orphaned "running" runs as "failed" on server startup
     try:
-        from backend.app.core.database import SessionLocal
-        from backend.app.models.models import JobAgentRun
+        from app.core.database import SessionLocal
+        from app.models.models import JobAgentRun
         db = SessionLocal()
         orphaned_runs = db.query(JobAgentRun).filter(JobAgentRun.status == "running").all()
         for run in orphaned_runs:
@@ -1380,7 +1380,7 @@ async def start_job_agent_run(
     db.commit()
     db.refresh(new_run)
 
-    from backend.app.agents.manager import run_agent_flow
+    from app.agents.manager import run_agent_flow
     background_tasks.add_task(run_agent_flow, new_run.id, candidate.id)
 
     return {"run_id": new_run.id, "status": "running", "message": "Job agent run started"}
@@ -1433,11 +1433,11 @@ async def get_agent_run_result(
 @router.websocket("/ws/agent/{run_id}")
 async def websocket_agent_logs(websocket: WebSocket, run_id: int):
     await websocket.accept()
-    from backend.app.agents.manager import register_websocket, unregister_websocket
+    from app.agents.manager import register_websocket, unregister_websocket
     register_websocket(run_id, websocket)
     
     # Send historical logs first
-    from backend.app.core.database import SessionLocal
+    from app.core.database import SessionLocal
     db = SessionLocal()
     try:
         logs = db.query(JobAgentLog).filter(JobAgentLog.run_id == run_id).order_by(JobAgentLog.timestamp.asc()).all()
@@ -1940,7 +1940,7 @@ def delete_candidate_resume(resume_id: int, current_user: User = Depends(get_cur
                     metadata = {}
                     
                 if not metadata and new_latest_profile.resume_text:
-                    from backend.app.services.orchestrator import fallback_parse_resume_text
+                    from app.services.orchestrator import fallback_parse_resume_text
                     metadata = fallback_parse_resume_text(new_latest_profile.resume_text)
                     
                 # Normalize fields to strings for SQLite compatibility
@@ -3739,8 +3739,8 @@ def evaluate_written_answers_ai(questions_json: str, answers_json: str) -> tuple
         return 85.0, "Completed mock test evaluation."
 
     import json
-    from backend.app.services.orchestrator import call_gemini, call_nvidia
-    from backend.app.core.config import settings
+    from app.services.orchestrator import call_gemini, call_nvidia
+    from app.core.config import settings
 
     try:
         questions = json.loads(questions_json) if questions_json else []
@@ -3845,8 +3845,8 @@ def evaluate_interview_transcript_ai(questions_json: str, transcript_json: str) 
         return 80.0, "Completed mock test interview evaluation."
 
     import json
-    from backend.app.services.orchestrator import call_gemini, call_nvidia
-    from backend.app.core.config import settings
+    from app.services.orchestrator import call_gemini, call_nvidia
+    from app.core.config import settings
 
     try:
         questions = json.loads(questions_json) if questions_json else []
