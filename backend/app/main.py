@@ -82,8 +82,60 @@ try:
             if col_name not in job_columns:
                 conn.execute(text(f"ALTER TABLE jobs ADD COLUMN {col_name} {col_type}"))
                 print(f"Migration: Added column {col_name} to jobs table.")
+
+        # Create courses/learning tables if missing
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS courses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title VARCHAR NOT NULL,
+                instructor VARCHAR DEFAULT 'VidyaMarg Team',
+                rating REAL DEFAULT 4.5,
+                reviews INTEGER DEFAULT 0,
+                duration VARCHAR DEFAULT '4 weeks',
+                thumbnail VARCHAR,
+                description TEXT,
+                category VARCHAR DEFAULT 'Technology',
+                totalModules INTEGER DEFAULT 0,
+                level VARCHAR DEFAULT 'Beginner',
+                status VARCHAR DEFAULT 'published',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS modules (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                courseId INTEGER,
+                title VARCHAR NOT NULL,
+                moduleNo INTEGER DEFAULT 1,
+                unlockOrder INTEGER DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS enrollments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                course_id INTEGER,
+                user_id INTEGER,
+                progress REAL DEFAULT 0.0,
+                status VARCHAR DEFAULT 'active',
+                enrolled_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS certificates (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                course_id INTEGER,
+                user_id INTEGER,
+                code VARCHAR,
+                readiness_score REAL DEFAULT 0.0,
+                interview_score REAL DEFAULT 0.0,
+                earned_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        print("Migration: courses/modules/enrollments/certificates tables ensured.")
 except Exception as e:
     print(f"Migration error: {e}")
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
