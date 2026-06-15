@@ -12,9 +12,9 @@ from sqlalchemy import text
 Base.metadata.create_all(bind=engine)
 
 # Auto-seed external jobs and telegram sources on startup
-from backend.app.core.database import SessionLocal
-from backend.app.models.models import Job, TelegramSource
-from backend.app.api.endpoints import extract_and_seed_external_jobs
+from app.core.database import SessionLocal
+from app.models.models import Job, TelegramSource
+from app.api.endpoints import extract_and_seed_external_jobs
 db_session = SessionLocal()
 try:
     active_jobs_count = db_session.query(Job).filter(Job.status == "active").count()
