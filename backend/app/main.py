@@ -91,7 +91,9 @@ app = FastAPI(
 )
 
 origins = [
-    ""https://vidyamarg-ai.vercel.app"",
+    "https://vidyamarg-ai.vercel.app",
+    "vidyamarg-ai-git-main-shiva-s-projects27.vercel.app",
+    "vidyamarg-ouhsg53xj-shiva-s-projects27.vercel.app",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://192.168.1.7:3000",
