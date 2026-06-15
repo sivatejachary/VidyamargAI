@@ -1,0 +1,228 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuthStore } from "@/store/authStore";
+import { 
+  Sparkles, Briefcase, FileText, Compass, Trophy, MessageSquare, 
+  Bell, Moon, Sun, LogOut, LayoutDashboard, Users, 
+  GitFork, Cpu, PanelLeftClose, PanelLeftOpen
+} from "lucide-react";
+
+interface SidebarProps {
+  portal: "candidate" | "admin";
+}
+
+export default function Sidebar({ portal }: SidebarProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { logout, fullName, email } = useAuthStore();
+  const [theme, setTheme] = useState<"dark" | "light">("light");
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") as "dark" | "light" | null;
+    if (savedTheme) {
+      setTimeout(() => {
+        setTheme(savedTheme);
+      }, 0);
+      if (savedTheme === "light") {
+        document.documentElement.classList.add("light-theme");
+        document.documentElement.classList.remove("dark");
+      } else {
+        document.documentElement.classList.remove("light-theme");
+        document.documentElement.classList.add("dark");
+      }
+    } else {
+      document.documentElement.classList.add("light-theme");
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+
+    // Restore collapsed state
+    const savedCollapsed = localStorage.getItem("sidebar_collapsed");
+    if (savedCollapsed === "true") {
+      setTimeout(() => {
+        setCollapsed(true);
+      }, 0);
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    localStorage.setItem("theme", nextTheme);
+    if (nextTheme === "light") {
+      document.documentElement.classList.add("light-theme");
+      document.documentElement.classList.remove("dark");
+    } else {
+      document.documentElement.classList.remove("light-theme");
+      document.documentElement.classList.add("dark");
+    }
+  };
+
+  const toggleCollapsed = () => {
+    const next = !collapsed;
+    setCollapsed(next);
+    localStorage.setItem("sidebar_collapsed", String(next));
+  };
+
+  const handleLogout = () => {
+    logout();
+    router.push("/");
+  };
+
+  const handleProfileClick = () => {
+    if (portal === "candidate") {
+      router.push("/candidate/profile");
+    }
+  };
+
+  const candidateLinks = [
+    { name: "Ask Tush AI", href: "/candidate/chat", icon: Sparkles },
+    { name: "Jobs", href: "/candidate/jobs", icon: Briefcase },
+    { name: "Resume Builder", href: "/candidate/resume", icon: FileText },
+    { name: "Skill Lab", href: "/candidate/skill-lab", icon: Compass },
+    { name: "Hackathons", href: "/candidate/hackathons", icon: Trophy },
+    { name: "Messages", href: "/candidate/messages", icon: MessageSquare },
+    { name: "Notifications", href: "/candidate/notifications", icon: Bell }
+  ];
+
+  const adminLinks = [
+    { name: "Recruit Overview", href: "/admin", icon: LayoutDashboard },
+    { name: "Job Management", href: "/admin/jobs", icon: Briefcase },
+    { name: "Candidates", href: "/admin/candidates", icon: Users },
+    { name: "Pipeline Flow", href: "/admin/pipeline", icon: GitFork },
+    { name: "AI Agent Orchestrator", href: "/admin/agents", icon: Cpu }
+  ];
+
+  const activeLinks = portal === "candidate" ? candidateLinks : adminLinks;
+
+  const userInitial = fullName ? fullName[0].toUpperCase() : "U";
+  const displayName = fullName ? fullName.toLowerCase() : "user";
+  const displayEmail = email || "";
+
+  return (
+    <aside className={`${collapsed ? "w-[72px]" : "w-64"} h-screen border-r border-app-border bg-app-surface flex flex-col justify-between shrink-0 font-sans transition-all duration-300 overflow-y-auto overflow-x-hidden`}>
+      <div className={`flex flex-col gap-6 ${collapsed ? "p-3" : "p-5"}`}>
+        {/* Header Logo — VidyamargAI */}
+        <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"}`}>
+          {!collapsed && (
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.push(portal === "candidate" ? "/candidate/chat" : "/admin")}>
+              {/* Logo icon */}
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-md shrink-0">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="white" opacity="0.9"/>
+                  <path d="M2 17L12 22L22 17" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <div className="flex items-baseline gap-0">
+                <span className="text-app-text font-extrabold text-lg tracking-tight">Vidyamarg</span>
+                <span className="text-blue-600 dark:text-blue-400 font-extrabold text-lg tracking-tight italic">AI</span>
+              </div>
+            </div>
+          )}
+          <button 
+            onClick={toggleCollapsed}
+            className="text-app-text-muted hover:text-app-text p-1.5 rounded-lg hover:bg-app-bg transition-colors"
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
+        </div>
+
+        {/* Sidebar Nav Links */}
+        <nav className="flex flex-col gap-1.5 mt-2">
+          {activeLinks.map((link) => {
+            const Icon = link.icon;
+            const isActive = pathname === link.href || (link.href !== "/candidate/chat" && pathname.startsWith(link.href));
+            return (
+              <Link
+                key={link.name}
+                href={link.href}
+                title={collapsed ? link.name : undefined}
+                className={`flex items-center ${collapsed ? "justify-center px-2" : "gap-3.5 px-4.5"} py-3 rounded-xl text-sm font-semibold transition-all duration-200 border ${
+                  isActive
+                    ? "bg-blue-50 dark:bg-blue-950/30 border-blue-200/60 dark:border-blue-800/30 text-blue-600 dark:text-blue-400"
+                    : "text-app-text-secondary border-transparent hover:text-app-text hover:bg-slate-100/50 dark:hover:bg-slate-800/40"
+                }`}
+              >
+                <Icon size={18} className={`shrink-0 ${isActive ? "text-blue-600 dark:text-blue-400" : "text-app-text-muted"}`} />
+                {!collapsed && <span>{link.name}</span>}
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* Sidebar Footer */}
+      <div className={`flex flex-col gap-3 ${collapsed ? "p-3" : "p-5"} border-t border-app-border bg-app-surface`}>
+
+        {/* Theme Toggle */}
+        <button 
+          onClick={toggleTheme}
+          title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          className={`flex items-center gap-3.5 w-full py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer ${
+            collapsed 
+              ? "justify-center px-2 hover:bg-slate-100/50 dark:hover:bg-slate-800/40 text-app-text-secondary" 
+              : "px-4.5 hover:bg-slate-100/50 dark:hover:bg-slate-800/40 text-app-text-secondary"
+          }`}
+        >
+          {theme === "dark" ? (
+            <Moon size={18} className="text-slate-400 shrink-0" />
+          ) : (
+            <Sun size={18} className="text-amber-500 shrink-0" />
+          )}
+          {!collapsed && (
+            <span>{theme === "dark" ? "Dark Mode" : "Light Mode"}</span>
+          )}
+        </button>
+
+        {/* User Profile + Logout — compact inline layout */}
+        {collapsed ? (
+          <div className="flex flex-col items-center gap-2">
+            <div 
+              onClick={handleProfileClick}
+              className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0 cursor-pointer hover:ring-2 hover:ring-blue-400/40 transition-all"
+              title={fullName || "Profile"}
+            >
+              {userInitial}
+            </div>
+            <button
+              onClick={handleLogout}
+              className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors cursor-pointer"
+              title="Logout"
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2.5 py-2 px-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+            {/* Avatar */}
+            <div 
+              onClick={handleProfileClick}
+              className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0 cursor-pointer hover:ring-2 hover:ring-blue-400/40 transition-all"
+            >
+              {userInitial}
+            </div>
+            {/* Name + Email */}
+            <div className="flex-1 min-w-0 overflow-hidden cursor-pointer" onClick={handleProfileClick}>
+              <h2 className="text-xs font-bold text-app-text truncate leading-tight">{displayName}</h2>
+              <span className="text-[10px] text-app-text-muted truncate block leading-tight">{displayEmail}</span>
+            </div>
+            {/* Logout icon */}
+            <button
+              onClick={handleLogout}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors cursor-pointer shrink-0"
+              title="Logout"
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
+        )}
+      </div>
+    </aside>
+  );
+}
