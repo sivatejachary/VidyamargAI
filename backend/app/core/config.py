@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     MINIO_SECRET_KEY: str = os.getenv("MINIO_SECRET_KEY", "minioadmin")
     MINIO_SECURE: bool = os.getenv("MINIO_SECURE", "False").lower() == "true"
     MINIO_BUCKET: str = os.getenv("MINIO_BUCKET", "hireai")
+    MINIO_REGION: str = os.getenv("MINIO_REGION", "us-east-1")
     
     # Redis
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
@@ -82,6 +83,7 @@ except Exception:
         MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
         MINIO_SECURE = os.getenv("MINIO_SECURE", "False").lower() == "true"
         MINIO_BUCKET = os.getenv("MINIO_BUCKET", "hireai")
+        MINIO_REGION = os.getenv("MINIO_REGION", "us-east-1")
         REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
         GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
         OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")

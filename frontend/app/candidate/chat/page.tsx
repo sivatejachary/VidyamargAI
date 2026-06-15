@@ -359,7 +359,7 @@ export default function TushAIChat() {
           {/* Quick Suggestions */}
           <div className="w-full max-w-3xl">
             <p className="text-xs font-semibold text-app-text-muted text-center mb-5 uppercase tracking-wider">Quick suggestions</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
               {quickSuggestions.map((suggestion) => {
                 const Icon = suggestion.icon;
                 return (

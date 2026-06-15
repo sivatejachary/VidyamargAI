@@ -608,7 +608,7 @@ export default function ResumeBuilder() {
               {/* Bio Column */}
               <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 md:border-r border-slate-155 dark:border-slate-800/80 md:pr-6">
                 <div className="relative shrink-0">
-                  <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-slate-100 dark:border-slate-800 shadow-sm bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-3xl font-black">
+                  <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-slate-100 dark:border-slate-800 shadow-sm bg-blue-600 flex items-center justify-center text-white text-3xl font-black">
                     {avatarLetter}
                   </div>
                   <button 

@@ -340,10 +340,10 @@ export default function Messages() {
       </div>
 
       {/* ── Main 2-column layout ──────────────────────────────────── */}
-      <div className="flex-1 flex gap-4 px-7 pb-6 min-h-0">
+      <div className="flex-1 flex gap-0 md:gap-4 px-0 pb-0 md:px-7 md:pb-6 min-h-0">
 
         {/* ━━━━━━━━━━━━━ LEFT: Conversation List ━━━━━━━━━━━━━━━━━━━ */}
-        <div className={`w-full md:w-[35%] md:min-w-[280px] bg-white dark:bg-[#0A0A0A] border border-slate-200/70 dark:border-neutral-800 rounded-2xl flex flex-col shrink-0 overflow-hidden ${
+        <div className={`w-full md:w-[35%] md:min-w-[280px] bg-white dark:bg-[#0A0A0A] border-0 md:border border-slate-200/70 dark:border-neutral-800 rounded-none md:rounded-2xl flex flex-col shrink-0 overflow-hidden ${
           !showMobileChatList ? "hidden md:flex" : "flex"
         }`}>
 
@@ -451,7 +451,7 @@ export default function Messages() {
         </div>
 
         {/* ━━━━━━━━━━━━━ RIGHT: Active Conversation ━━━━━━━━━━━━━━━━ */}
-        <div className={`flex-1 bg-white dark:bg-[#0A0A0A] border border-slate-200/70 dark:border-neutral-800 rounded-2xl flex flex-col min-h-0 overflow-hidden ${
+        <div className={`flex-1 bg-white dark:bg-[#0A0A0A] border-0 md:border border-slate-200/70 dark:border-neutral-800 rounded-none md:rounded-2xl flex flex-col min-h-0 overflow-hidden ${
           showMobileChatList ? "hidden md:flex" : "flex"
         }`}>
 

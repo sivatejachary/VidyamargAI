@@ -1,0 +1,25 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Pytest / Cache
+.pytest_cache/
+.eslintcache
+.next/
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+
+# Databases
+*.db-journal
+test_temp.db
+
+# Environment variables (except the base one if needed, but local overrides should be ignored)
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db

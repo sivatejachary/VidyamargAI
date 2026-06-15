@@ -8,151 +8,278 @@ from app.api.endpoints import router as api_router
 
 from sqlalchemy import text
 
-# Auto create database tables on start
-Base.metadata.create_all(bind=engine)
+# Startup database creation and migration helper
+def init_db_safely():
+    try:
+        print("Creating all tables via SQLAlchemy metadata...")
+        Base.metadata.create_all(bind=engine)
+        print("Database tables created successfully.")
+    except Exception as e:
+        print(f"Error during Base.metadata.create_all: {e}")
+        # If Base creation fails, skip subsequent database queries to avoid crashing
+        return
 
-# Auto-seed external jobs and telegram sources on startup
-from app.core.database import SessionLocal
-from app.models.models import Job, TelegramSource
-from app.api.endpoints import extract_and_seed_external_jobs
-db_session = SessionLocal()
-try:
-    active_jobs_count = db_session.query(Job).filter(Job.status == "active").count()
-    if active_jobs_count < 5:
-        print("Database has few jobs. Initializing external job extraction from Remotive API...")
-        added = extract_and_seed_external_jobs(db_session, limit=20)
-        print(f"External job extraction seeded {added} jobs successfully.")
-    
-    # Auto-seed telegram source
-    tg_sources_count = db_session.query(TelegramSource).count()
-    if tg_sources_count == 0:
-        default_channels = [
-            "freshers_opening",
-            "RisersSquad",
-            "DebugDominators",
-            "walkindrive",
-            "freshers_openings",
-            "CorporateIdeas",
-            "jobsvillaa",
-            "jobupdateschannel",
-            "hiringdaily",
-            "engineerjobsindia",
-            "internseeker",
-            "fresher_offcampus_drives",
-            "jobsinternshipshub",
-            "job4fresherss",
-            "freshershunt",
-            "jobseekeras"
-        ]
-        print(f"Seeding {len(default_channels)} default Telegram channels...")
-        for ch in default_channels:
-            db_session.add(TelegramSource(channel_name=ch, active=True))
-        db_session.commit()
-        print("Default Telegram channels seeded successfully.")
-except Exception as e:
-    print(f"Auto-seed warning: {e}")
-finally:
-    db_session.close()
+    # Auto-seed external jobs and telegram sources
+    try:
+        from app.core.database import SessionLocal
+        from app.models.models import Job, TelegramSource
+        from app.api.endpoints import extract_and_seed_external_jobs
+        db_session = SessionLocal()
+        try:
+            active_jobs_count = db_session.query(Job).filter(Job.status == "active").count()
+            if active_jobs_count < 5:
+                print("Database has few jobs. Initializing external job extraction from Remotive API...")
+                added = extract_and_seed_external_jobs(db_session, limit=20)
+                print(f"External job extraction seeded {added} jobs successfully.")
+            
+            # Auto-seed telegram source
+            tg_sources_count = db_session.query(TelegramSource).count()
+            if tg_sources_count == 0:
+                default_channels = [
+                    "freshers_opening",
+                    "RisersSquad",
+                    "DebugDominators",
+                    "walkindrive",
+                    "freshers_openings",
+                    "CorporateIdeas",
+                    "jobsvillaa",
+                    "jobupdateschannel",
+                    "hiringdaily",
+                    "engineerjobsindia",
+                    "internseeker",
+                    "fresher_offcampus_drives",
+                    "jobsinternshipshub",
+                    "job4fresherss",
+                    "freshershunt",
+                    "jobseekeras"
+                ]
+                print(f"Seeding {len(default_channels)} default Telegram channels...")
+                for ch in default_channels:
+                    db_session.add(TelegramSource(channel_name=ch, active=True))
+                db_session.commit()
+                print("Default Telegram channels seeded successfully.")
+        except Exception as e:
+            print(f"Auto-seed warning: {e}")
+        finally:
+            db_session.close()
+    except Exception as e:
+        print(f"Auto-seed warning initialization failed: {e}")
 
-# Run safe DB migration on startup (PostgreSQL + SQLite compatible)
-IS_POSTGRES = settings.DATABASE_URL.startswith("postgresql") or settings.DATABASE_URL.startswith("postgres")
+    # Run safe DB migration (PostgreSQL + SQLite compatible)
+    IS_POSTGRES = settings.DATABASE_URL.startswith("postgresql") or settings.DATABASE_URL.startswith("postgres")
 
-def _get_columns(conn, table_name: str):
-    """Return list of column names for a table — works on both PG and SQLite."""
-    if IS_POSTGRES:
-        rows = conn.execute(text(
-            "SELECT column_name FROM information_schema.columns "
-            "WHERE table_name = :t"
-        ), {"t": table_name}).fetchall()
-        return [r[0] for r in rows]
-    else:
-        rows = conn.execute(text(f"PRAGMA table_info({table_name})")).fetchall()
-        return [r[1] for r in rows]
+    def _get_columns(conn, table_name: str):
+        """Return list of column names for a table — works on both PG and SQLite."""
+        if IS_POSTGRES:
+            rows = conn.execute(text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name = :t"
+            ), {"t": table_name}).fetchall()
+            return [r[0] for r in rows]
+        else:
+            rows = conn.execute(text(f"PRAGMA table_info({table_name})")).fetchall()
+            return [r[1] for r in rows]
 
-def _serial():
-    """Primary key type: SERIAL for PG, INTEGER AUTOINCREMENT for SQLite."""
-    return "SERIAL PRIMARY KEY" if IS_POSTGRES else "INTEGER PRIMARY KEY AUTOINCREMENT"
+    def _serial():
+        """Primary key type: SERIAL for PG, INTEGER AUTOINCREMENT for SQLite."""
+        return "SERIAL PRIMARY KEY" if IS_POSTGRES else "INTEGER PRIMARY KEY AUTOINCREMENT"
 
-try:
-    with engine.begin() as conn:
-        # ── Candidates table extra columns ──────────────────────────────────
-        cols = _get_columns(conn, "candidates")
-        for col_name, col_type in [
-            ("hackathon_team",    "VARCHAR"),
-            ("assigned_mentor",   "VARCHAR"),
-            ("hackathon_problem", "VARCHAR"),
-            ("hackathon_members", "TEXT"),
-            ("summary",           "TEXT"),
-            ("achievements",      "TEXT"),
-            ("languages",         "TEXT"),
-        ]:
-            if col_name not in cols:
-                conn.execute(text(f"ALTER TABLE candidates ADD COLUMN {col_name} {col_type}"))
-                print(f"Migration: Added column {col_name} to candidates.")
+    try:
+        with engine.begin() as conn:
+            # ── Candidates table extra columns ──────────────────────────────────
+            cols = _get_columns(conn, "candidates")
+            for col_name, col_type in [
+                ("hackathon_team",    "VARCHAR"),
+                ("assigned_mentor",   "VARCHAR"),
+                ("hackathon_problem", "VARCHAR"),
+                ("hackathon_members", "TEXT"),
+                ("summary",           "TEXT"),
+                ("achievements",      "TEXT"),
+                ("languages",         "TEXT"),
+            ]:
+                if col_name not in cols:
+                    conn.execute(text(f"ALTER TABLE candidates ADD COLUMN {col_name} {col_type}"))
+                    print(f"Migration: Added column {col_name} to candidates.")
 
-        # ── Jobs table extra columns ─────────────────────────────────────────
-        job_cols = _get_columns(conn, "jobs")
-        for col_name, col_type in [
-            ("company_id",   "INTEGER"),
-            ("recruiter_id", "INTEGER"),
-        ]:
-            if col_name not in job_cols:
-                conn.execute(text(f"ALTER TABLE jobs ADD COLUMN {col_name} {col_type}"))
-                print(f"Migration: Added column {col_name} to jobs.")
+            # ── Jobs table extra columns ─────────────────────────────────────────
+            job_cols = _get_columns(conn, "jobs")
+            for col_name, col_type in [
+                ("company_id",   "INTEGER"),
+                ("recruiter_id", "INTEGER"),
+            ]:
+                if col_name not in job_cols:
+                    conn.execute(text(f"ALTER TABLE jobs ADD COLUMN {col_name} {col_type}"))
+                    print(f"Migration: Added column {col_name} to jobs.")
 
-        # ── Courses / Learning tables ────────────────────────────────────────
-        serial = _serial()
-        conn.execute(text(f"""
-            CREATE TABLE IF NOT EXISTS courses (
-                id {serial},
-                title VARCHAR NOT NULL,
-                instructor VARCHAR DEFAULT 'VidyaMarg Team',
-                rating REAL DEFAULT 4.5,
-                reviews INTEGER DEFAULT 0,
-                duration VARCHAR DEFAULT '4 weeks',
-                thumbnail VARCHAR,
-                description TEXT,
-                category VARCHAR DEFAULT 'Technology',
-                "totalModules" INTEGER DEFAULT 0,
-                level VARCHAR DEFAULT 'Beginner',
-                status VARCHAR DEFAULT 'published',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """))
-        conn.execute(text(f"""
-            CREATE TABLE IF NOT EXISTS modules (
-                id {serial},
-                "courseId" INTEGER,
-                title VARCHAR NOT NULL,
-                "moduleNo" INTEGER DEFAULT 1,
-                "unlockOrder" INTEGER DEFAULT 1,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """))
-        conn.execute(text(f"""
-            CREATE TABLE IF NOT EXISTS enrollments (
-                id {serial},
-                course_id INTEGER,
-                user_id INTEGER,
-                progress REAL DEFAULT 0.0,
-                status VARCHAR DEFAULT 'active',
-                enrolled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """))
-        conn.execute(text(f"""
-            CREATE TABLE IF NOT EXISTS certificates (
-                id {serial},
-                course_id INTEGER,
-                user_id INTEGER,
-                code VARCHAR,
-                readiness_score REAL DEFAULT 0.0,
-                interview_score REAL DEFAULT 0.0,
-                earned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """))
-        print("Migration: courses/modules/enrollments/certificates tables ensured.")
-except Exception as e:
-    print(f"Migration error: {e}")
+            # ── Courses / Learning tables ────────────────────────────────────────
+            serial = _serial()
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS courses (
+                    id VARCHAR PRIMARY KEY,
+                    title VARCHAR NOT NULL,
+                    instructor VARCHAR DEFAULT 'VidyaMarg Team',
+                    rating REAL DEFAULT 4.5,
+                    reviews INTEGER DEFAULT 0,
+                    duration VARCHAR DEFAULT '4 weeks',
+                    thumbnail VARCHAR,
+                    description TEXT,
+                    category VARCHAR DEFAULT 'Technology',
+                    "totalModules" INTEGER DEFAULT 0,
+                    level VARCHAR DEFAULT 'Beginner',
+                    status VARCHAR DEFAULT 'published',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS modules (
+                    id VARCHAR PRIMARY KEY,
+                    "courseId" VARCHAR,
+                    title VARCHAR NOT NULL,
+                    "moduleNo" INTEGER DEFAULT 1,
+                    "unlockOrder" INTEGER DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS enrollments (
+                    id {serial},
+                    course_id VARCHAR,
+                    user_id INTEGER,
+                    progress REAL DEFAULT 0.0,
+                    status VARCHAR DEFAULT 'active',
+                    enrolled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS certificates (
+                    id {serial},
+                    course_id VARCHAR,
+                    user_id INTEGER,
+                    code VARCHAR,
+                    readiness_score REAL DEFAULT 0.0,
+                    interview_score REAL DEFAULT 0.0,
+                    earned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            
+            # categories table
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS categories (
+                    id {serial},
+                    name VARCHAR NOT NULL UNIQUE,
+                    description TEXT
+                )
+            """))
+            # lessons table
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS lessons (
+                    id VARCHAR PRIMARY KEY,
+                    "moduleId" VARCHAR NOT NULL,
+                    title VARCHAR NOT NULL,
+                    "youtubeUrl" VARCHAR,
+                    duration VARCHAR
+                )
+            """))
+            # pdfs table
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS pdfs (
+                    id VARCHAR PRIMARY KEY,
+                    "moduleId" VARCHAR NOT NULL,
+                    title VARCHAR NOT NULL,
+                    "pdfUrl" VARCHAR NOT NULL
+                )
+            """))
+            # quizzes table
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS quizzes (
+                    id VARCHAR PRIMARY KEY,
+                    "moduleId" VARCHAR NOT NULL,
+                    title VARCHAR NOT NULL,
+                    "passPercentage" INTEGER,
+                    questions_json TEXT NOT NULL
+                )
+            """))
+            # written_assessments table
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS written_assessments (
+                    id VARCHAR PRIMARY KEY,
+                    "moduleId" VARCHAR NOT NULL,
+                    title VARCHAR NOT NULL,
+                    "passPercentage" INTEGER,
+                    questions_json TEXT NOT NULL
+                )
+            """))
+            # ai_interviews table
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS ai_interviews (
+                    id VARCHAR PRIMARY KEY,
+                    "moduleId" VARCHAR NOT NULL,
+                    title VARCHAR NOT NULL,
+                    "passPercentage" INTEGER,
+                    questions_json TEXT NOT NULL
+                )
+            """))
+            # user_progress table
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS user_progress (
+                    id {serial},
+                    "userId" INTEGER NOT NULL,
+                    "courseId" VARCHAR NOT NULL,
+                    "moduleId" VARCHAR NOT NULL,
+                    "videoCompleted" BOOLEAN,
+                    "pdfCompleted" BOOLEAN,
+                    "quizCompleted" BOOLEAN,
+                    "writtenCompleted" BOOLEAN,
+                    "interviewCompleted" BOOLEAN,
+                    "moduleUnlocked" BOOLEAN,
+                    "nextModuleUnlocked" BOOLEAN
+                )
+            """))
+            # quiz_attempts table
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS quiz_attempts (
+                    id {serial},
+                    user_id INTEGER NOT NULL,
+                    quiz_id VARCHAR NOT NULL,
+                    score REAL NOT NULL,
+                    passed BOOLEAN,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            # written_assessment_attempts table
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS written_assessment_attempts (
+                    id {serial},
+                    user_id INTEGER NOT NULL,
+                    written_assessment_id VARCHAR NOT NULL,
+                    answers_json TEXT NOT NULL,
+                    score REAL,
+                    passed BOOLEAN,
+                    feedback TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            # ai_interview_attempts table
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS ai_interview_attempts (
+                    id {serial},
+                    user_id INTEGER NOT NULL,
+                    ai_interview_id VARCHAR NOT NULL,
+                    transcript_json TEXT NOT NULL,
+                    knowledge_score REAL,
+                    communication_score REAL,
+                    confidence_score REAL,
+                    interview_score REAL,
+                    passed BOOLEAN,
+                    feedback TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            
+            print("Migration: courses/modules/enrollments/certificates and curriculum tables ensured.")
+    except Exception as e:
+        print(f"Migration error: {e}")
+
 
 
 
@@ -160,6 +287,11 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
+
+@app.on_event("startup")
+def startup_event():
+    init_db_safely()
+
 
 origins = [
     "https://vidyamarg-ai.vercel.app",

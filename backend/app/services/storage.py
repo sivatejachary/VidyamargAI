@@ -18,11 +18,18 @@ class StorageService:
         if settings.MINIO_ENDPOINT and settings.MINIO_ACCESS_KEY != "minioadmin":
             try:
                 from minio import Minio
+                
+                # Resolve region to avoid 'undefined' string or empty value
+                region = settings.MINIO_REGION
+                if not region or region.lower() == "undefined":
+                    region = "us-east-1"
+                
                 self.client = Minio(
                     settings.MINIO_ENDPOINT,
                     access_key=settings.MINIO_ACCESS_KEY,
                     secret_key=settings.MINIO_SECRET_KEY,
-                    secure=settings.MINIO_SECURE
+                    secure=settings.MINIO_SECURE,
+                    region=region
                 )
                 # Ensure bucket exists
                 if not self.client.bucket_exists(settings.MINIO_BUCKET):
