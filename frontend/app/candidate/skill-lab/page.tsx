@@ -145,8 +145,25 @@ function transformNewCurriculumToOld(newCur: any) {
 }
 
 export default function SkillLab() {
+  // Session storage caching helpers for instant (0ms) loads
+  const getCachedValue = (key: string, fallback: any) => {
+    if (typeof window !== "undefined") {
+      const cached = sessionStorage.getItem(key);
+      if (cached) {
+        try { return JSON.parse(cached); } catch { return fallback; }
+      }
+    }
+    return fallback;
+  };
+
+  const setCachedValue = (key: string, val: any) => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(key, JSON.stringify(val));
+    }
+  };
+
   const [activeView, setActiveView] = useState<"explore" | "course-details" | "course-player" | "my-learning" | "certificates" | "ai-mentor">("explore");
-  const [courses, setCourses] = useState<any[]>([]);
+  const [courses, setCourses] = useState<any[]>(() => getCachedValue("skill_lab_courses", []));
   const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
   const [activeMediaTab, setActiveMediaTab] = useState<"video" | "pdf">("video");
   
@@ -156,26 +173,26 @@ export default function SkillLab() {
   const [showAllCourses, setShowAllCourses] = useState(false);
 
   // Dynamic LMS Curriculum States
-  const [curriculum, setCurriculum] = useState<any>(null);
+  const [curriculum, setCurriculum] = useState<any>(() => getCachedValue("skill_lab_curriculum", null));
   const [loadingCurriculum, setLoadingCurriculum] = useState(false);
   const [currentLesson, setCurrentLesson] = useState<any>(null);
   const [completedLessonIds, setCompletedLessonIds] = useState<number[]>([]);
-  const [enrollments, setEnrollments] = useState<any[]>([]);
-  const [certificates, setCertificates] = useState<any[]>([]);
-  const [enrolledCourseIds, setEnrolledCourseIds] = useState<any[]>([]);
+  const [enrollments, setEnrollments] = useState<any[]>(() => getCachedValue("skill_lab_enrollments", []));
+  const [certificates, setCertificates] = useState<any[]>(() => getCachedValue("skill_lab_certificates", []));
+  const [enrolledCourseIds, setEnrolledCourseIds] = useState<any[]>(() => getCachedValue("skill_lab_enrolledCourseIds", []));
 
   // Background active enrollment tracking for Continue LearningStepper
-  const [activeEnrollmentCurriculum, setActiveEnrollmentCurriculum] = useState<any>(null);
-  const [activeEnrollmentCourse, setActiveEnrollmentCourse] = useState<any>(null);
+  const [activeEnrollmentCurriculum, setActiveEnrollmentCurriculum] = useState<any>(() => getCachedValue("skill_lab_activeEnrollmentCurriculum", null));
+  const [activeEnrollmentCourse, setActiveEnrollmentCourse] = useState<any>(() => getCachedValue("skill_lab_activeEnrollmentCourse", null));
 
   // Gamification & Streak States
-  const [xp, setXp] = useState(80);
-  const [level, setLevel] = useState(12);
-  const [streak, setStreak] = useState(25);
-  const [hoursLearned, setHoursLearned] = useState(0);
-  const [completedCoursesCount, setCompletedCoursesCount] = useState(0);
-  const [earnedCertsCount, setEarnedCertsCount] = useState(0);
-  const [readinessScore, setReadinessScore] = useState(64);
+  const [xp, setXp] = useState<number>(() => getCachedValue("skill_lab_xp", 80));
+  const [level, setLevel] = useState<number>(() => getCachedValue("skill_lab_level", 12));
+  const [streak, setStreak] = useState<number>(() => getCachedValue("skill_lab_streak", 25));
+  const [hoursLearned, setHoursLearned] = useState<number>(() => getCachedValue("skill_lab_hoursLearned", 0));
+  const [completedCoursesCount, setCompletedCoursesCount] = useState<number>(() => getCachedValue("skill_lab_completedCoursesCount", 0));
+  const [earnedCertsCount, setEarnedCertsCount] = useState<number>(() => getCachedValue("skill_lab_earnedCertsCount", 0));
+  const [readinessScore, setReadinessScore] = useState<number>(() => getCachedValue("skill_lab_readinessScore", 64));
 
   // Notepad States
   const [notepadText, setNotepadText] = useState("");
@@ -191,6 +208,7 @@ export default function SkillLab() {
       const rawData = await apiService.getCourseCurriculum(courseId);
       const data = transformNewCurriculumToOld(rawData);
       setCurriculum(data);
+      setCachedValue("skill_lab_curriculum", data);
       setCompletedLessonIds(data.completed_lesson_ids || []);
       
       const flatLessons: any[] = [];
@@ -227,8 +245,11 @@ export default function SkillLab() {
     try {
       const data = await apiService.getEnrollments();
       setEnrollments(data || []);
+      setCachedValue("skill_lab_enrollments", data || []);
       if (data) {
-        setEnrolledCourseIds(data.map((e: any) => e.course_id));
+        const ids = data.map((e: any) => e.course_id);
+        setEnrolledCourseIds(ids);
+        setCachedValue("skill_lab_enrolledCourseIds", ids);
       }
     } catch (err) {
       console.error("Failed to load enrollments", err);
@@ -239,6 +260,7 @@ export default function SkillLab() {
     try {
       const data = await apiService.getCertificates();
       setCertificates(data || []);
+      setCachedValue("skill_lab_certificates", data || []);
     } catch (err) {
       console.error("Failed to load certificates", err);
     }
@@ -254,6 +276,7 @@ export default function SkillLab() {
         .then((fetchedCourses) => {
           if (fetchedCourses && fetchedCourses.length > 0) {
             setCourses(fetchedCourses);
+            setCachedValue("skill_lab_courses", fetchedCourses);
           }
         })
         .catch((courseErr) => {
@@ -265,7 +288,10 @@ export default function SkillLab() {
     if (token) {
       promises.push(
         apiService.getProfile()
-          .then((prof) => setProfile(prof))
+          .then((prof) => {
+            setProfile(prof);
+            setCachedValue("skill_lab_profile", prof);
+          })
           .catch((err) => console.error("Failed to load profile", err))
       );
 
@@ -284,12 +310,23 @@ export default function SkillLab() {
           .then((cr) => {
             if (cr) {
               setStreak(cr.learning_streak);
+              setCachedValue("skill_lab_streak", cr.learning_streak);
               setHoursLearned(cr.hours_learned);
+              setCachedValue("skill_lab_hoursLearned", cr.hours_learned);
               setCompletedCoursesCount(cr.courses_completed);
+              setCachedValue("skill_lab_completedCoursesCount", cr.courses_completed);
               setEarnedCertsCount(cr.certificates_earned);
+              setCachedValue("skill_lab_earnedCertsCount", cr.certificates_earned);
               setReadinessScore(Math.round(cr.career_readiness_score));
-              if (cr.xp !== undefined) setXp(cr.xp);
-              if (cr.level !== undefined) setLevel(cr.level);
+              setCachedValue("skill_lab_readinessScore", Math.round(cr.career_readiness_score));
+              if (cr.xp !== undefined) {
+                setXp(cr.xp);
+                setCachedValue("skill_lab_xp", cr.xp);
+              }
+              if (cr.level !== undefined) {
+                setLevel(cr.level);
+                setCachedValue("skill_lab_level", cr.level);
+              }
             }
           })
           .catch((err) => console.error("Failed to load career readiness", err))
@@ -310,10 +347,12 @@ export default function SkillLab() {
       const courseObj = courses.find(c => c.id === activeEnroll.course_id) || activeEnroll.course;
       if (courseObj) {
         setActiveEnrollmentCourse(courseObj);
+        setCachedValue("skill_lab_activeEnrollmentCourse", courseObj);
         apiService.getCourseCurriculum(courseObj.id)
           .then(rawData => {
             const data = transformNewCurriculumToOld(rawData);
             setActiveEnrollmentCurriculum(data);
+            setCachedValue("skill_lab_activeEnrollmentCurriculum", data);
           })
           .catch(err => {
             console.error("Error background fetching active curriculum", err);

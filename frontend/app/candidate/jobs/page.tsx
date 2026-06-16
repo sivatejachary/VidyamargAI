@@ -97,14 +97,31 @@ function getMatchStyles(score: number) {
 }
 
 export default function CandidateJobs() {
-  const [jobs, setJobs] = useState<LiveJob[]>([]);
-  const [skillGaps, setSkillGaps] = useState<SkillGap[]>([]);
-  const [recommendations, setRecommendations] = useState<Recommendations | null>(null);
+  // Session storage caching helpers for instant (0ms) loads
+  const getCachedValue = (key: string, fallback: any) => {
+    if (typeof window !== "undefined") {
+      const cached = sessionStorage.getItem(key);
+      if (cached) {
+        try { return JSON.parse(cached); } catch { return fallback; }
+      }
+    }
+    return fallback;
+  };
+
+  const setCachedValue = (key: string, val: any) => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(key, JSON.stringify(val));
+    }
+  };
+
+  const [jobs, setJobs] = useState<LiveJob[]>(() => getCachedValue("jobs_list", []));
+  const [skillGaps, setSkillGaps] = useState<SkillGap[]>(() => getCachedValue("jobs_skill_gaps", []));
+  const [recommendations, setRecommendations] = useState<Recommendations | null>(() => getCachedValue("jobs_recommendations", null));
   
   // Agent Run States
-  const [runId, setRunId] = useState<number | null>(null);
-  const [agentStatus, setAgentStatus] = useState<string>("idle"); // idle, running, completed, failed
-  const [logs, setLogs] = useState<any[]>([]);
+  const [runId, setRunId] = useState<number | null>(() => getCachedValue("jobs_run_id", null));
+  const [agentStatus, setAgentStatus] = useState<string>(() => getCachedValue("jobs_agent_status", "idle")); // idle, running, completed, failed
+  const [logs, setLogs] = useState<any[]>(() => getCachedValue("jobs_agent_logs", []));
 
   // Page level states
   const [loading, setLoading] = useState(true);
@@ -128,21 +145,24 @@ export default function CandidateJobs() {
     try {
       setLoading(true);
       setError("");
-      setJobs([]);
-      setSkillGaps([]);
-      setRecommendations(null);
+      // NOTE: We DO NOT clear jobs, skillGaps, and recommendations here so they remain displayed instantly!
       setLogs([]);
       setAgentStatus("running");
+      setCachedValue("jobs_agent_status", "running");
+      setCachedValue("jobs_agent_logs", []);
       setCurrentPage(1);
       setShowAllOpportunities(false);
 
       const res = await apiService.startAgentRun();
       setRunId(res.run_id);
       setAgentStatus(res.status);
+      setCachedValue("jobs_run_id", res.run_id);
+      setCachedValue("jobs_agent_status", res.status);
     } catch (err: any) {
       console.error("Error starting agent run:", err);
       setError(err.message || "Failed to start autonomous job discovery.");
       setAgentStatus("failed");
+      setCachedValue("jobs_agent_status", "failed");
     } finally {
       setLoading(false);
     }
@@ -151,11 +171,16 @@ export default function CandidateJobs() {
   // Callback on WebSocket completion
   const handleRunComplete = useCallback(async () => {
     setAgentStatus("completed");
+    setCachedValue("jobs_agent_status", "completed");
     try {
       const result = await apiService.getAgentRunResult();
       setJobs(result.jobs || []);
       setSkillGaps(result.skill_gaps || []);
       setRecommendations(result.recommendations || null);
+      
+      setCachedValue("jobs_list", result.jobs || []);
+      setCachedValue("jobs_skill_gaps", result.skill_gaps || []);
+      setCachedValue("jobs_recommendations", result.recommendations || null);
     } catch (err: any) {
       setError("Failed to fetch job recommendations from cache.");
     }
@@ -177,12 +202,20 @@ export default function CandidateJobs() {
           setRunId(runData.run_id);
           setAgentStatus(runData.status);
           setLogs(runData.logs || []);
+          
+          setCachedValue("jobs_run_id", runData.run_id);
+          setCachedValue("jobs_agent_status", runData.status);
+          setCachedValue("jobs_agent_logs", runData.logs || []);
 
           if (runData.status === "completed") {
             const result = await apiService.getAgentRunResult();
             setJobs(result.jobs || []);
             setSkillGaps(result.skill_gaps || []);
             setRecommendations(result.recommendations || null);
+            
+            setCachedValue("jobs_list", result.jobs || []);
+            setCachedValue("jobs_skill_gaps", result.skill_gaps || []);
+            setCachedValue("jobs_recommendations", result.recommendations || null);
           } else if (runData.status === "failed" || runData.status === "idle") {
             await triggerAgentRun();
           }
