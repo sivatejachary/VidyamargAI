@@ -70,7 +70,7 @@ export default function RecommendedLearning({ recommendations }: RecommendedLear
       </div>
 
       {/* Content Area */}
-      <div className="min-h-[200px]">
+      <div className="min-h-200">
         <AnimatePresence mode="wait">
           {activeTab === "roadmap" && (
             <motion.div
@@ -117,7 +117,7 @@ export default function RecommendedLearning({ recommendations }: RecommendedLear
                   </div>
                   <div>
                     <h4 className="font-bold text-foreground text-xs leading-snug">{cert}</h4>
-                    <span className="text-[10px] text-muted-foreground mt-0.5 block">Recommended Credential</span>
+                    <span className="text-10 text-muted-foreground mt-0.5 block">Recommended Credential</span>
                   </div>
                 </div>
               ))}
@@ -140,7 +140,7 @@ export default function RecommendedLearning({ recommendations }: RecommendedLear
                   </div>
                   <div className="flex-1 min-w-0">
                     <h4 className="font-bold text-foreground text-sm">{proj}</h4>
-                    <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                    <p className="text-11 text-muted-foreground mt-1 leading-relaxed">
                       Hands-on project designed to build real-world capability and enhance your resume portfolio.
                     </p>
                   </div>

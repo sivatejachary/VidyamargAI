@@ -120,13 +120,13 @@ export default function CandidateOffers() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* Offer Contract content */}
-          <div className="lg:col-span-2 glass-panel p-8 rounded-2xl border border-gray-800 flex flex-col gap-6 bg-[#0c0d14]/40">
+          <div className="lg:col-span-2 glass-panel p-8 rounded-2xl border border-gray-800 flex flex-col gap-6 bg-card/40">
             <h2 className="text-base font-bold text-white flex items-center gap-2 border-b border-gray-800 pb-3">
               <FileText size={18} className="text-purple-400" />
               <span>Employment Agreement Contract</span>
             </h2>
 
-            <div className="text-xs text-gray-300 leading-relaxed font-mono whitespace-pre-line p-5 rounded-xl border border-gray-800/60 bg-[#0d0e15]/60 h-96 overflow-y-auto">
+            <div className="text-xs text-gray-300 leading-relaxed font-mono whitespace-pre-line p-5 rounded-xl border border-gray-800/60 bg-muted/60 h-96 overflow-y-auto">
               {offer ? (
                 `# HireAI Employment Offer\n\nPosition: ${selectedApp.job.title}\nAnnual Salary Offered: $${offer.salary_offered.toLocaleString()} USD\nDepartment: ${selectedApp.job.department}\n\nDear Applicant,\n\nWe are extremely pleased to invite you to join HireAI as a full-time software developer. We were highly impressed by your results across the technical MCQ exam, algorithmic sandbox challenge, and speech diagnostic loop with Tara AI.\n\nUpon signing, you will be initialized in the onboarding tracker list where corporate identifiers, welcome packages, and communications tools will be provisioned automatically.`
               ) : (
@@ -136,7 +136,7 @@ export default function CandidateOffers() {
           </div>
 
           {/* Action box */}
-          <div className="glass-panel p-6 rounded-2xl border border-gray-800 bg-[#0d0e15]/40 flex flex-col gap-6 h-fit">
+          <div className="glass-panel p-6 rounded-2xl border border-gray-800 bg-muted/40 flex flex-col gap-6 h-fit">
             <h3 className="text-xs font-bold text-white flex items-center gap-2 border-b border-gray-800 pb-3">
               <Building size={14} className="text-purple-400" />
               <span>Agreement Details</span>
@@ -166,7 +166,7 @@ export default function CandidateOffers() {
                   </button>
                   <button
                     onClick={() => handleOfferResponse(false)}
-                    className="w-full bg-[#12131e] border border-gray-800 text-gray-400 hover:text-red-400 hover:border-red-500/10 py-2.5 rounded-xl text-xs font-bold transition-all"
+                    className="w-full bg-muted/50 border border-gray-800 text-gray-400 hover:text-red-400 hover:border-red-500/10 py-2.5 rounded-xl text-xs font-bold transition-all"
                   >
                     Decline Offer
                   </button>
@@ -180,7 +180,7 @@ export default function CandidateOffers() {
         /* Onboarding View */
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          <div className="lg:col-span-2 glass-panel p-8 rounded-2xl border border-gray-800 flex flex-col gap-6 bg-[#0c0d14]/40">
+          <div className="lg:col-span-2 glass-panel p-8 rounded-2xl border border-gray-800 flex flex-col gap-6 bg-card/40">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/40 border border-emerald-800/30 text-emerald-400 text-xs font-semibold w-fit">
               <Sparkles size={14} className="animate-pulse" />
               <span>Welcome to HireAI!</span>
@@ -191,9 +191,9 @@ export default function CandidateOffers() {
               The **Onboarding Agent** has successfully finalized your employee folder, created matching credentials, and dispatched welcome information to your mailbox.
             </p>
 
-            <div className="border border-gray-800/80 rounded-2xl p-5 bg-[#0d0e15]/40 mt-2 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="border border-gray-800/80 rounded-2xl p-5 bg-muted/40 mt-2 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
-                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block">Assigned employee ID</span>
+                <span className="text-10 text-gray-500 font-bold uppercase tracking-wider block">Assigned employee ID</span>
                 <span className="text-lg font-mono font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-400 block mt-1">
                   HAI-2026-6819
                 </span>
@@ -207,7 +207,7 @@ export default function CandidateOffers() {
           </div>
 
           {/* Checklist */}
-          <div className="glass-panel p-6 rounded-2xl border border-gray-800 bg-[#0d0e15]/40 flex flex-col gap-4">
+          <div className="glass-panel p-6 rounded-2xl border border-gray-800 bg-muted/40 flex flex-col gap-4">
             <h3 className="text-xs font-bold text-white border-b border-gray-800 pb-3">
               Onboarding Checklist
             </h3>
@@ -229,7 +229,7 @@ export default function CandidateOffers() {
                 <Mail size={14} />
               </div>
 
-              <div className="flex items-center justify-between p-3 rounded-xl border border-gray-850 bg-[#0e0f17]/40 text-gray-500">
+              <div className="flex items-center justify-between p-3 rounded-xl border border-gray-850 bg-background/40 text-gray-500">
                 <span className="flex items-center gap-2">
                   <FileText size={14} />
                   3. Verify Tax W-4 documents
@@ -237,7 +237,7 @@ export default function CandidateOffers() {
                 <ChevronRight size={14} />
               </div>
 
-              <div className="flex items-center justify-between p-3 rounded-xl border border-gray-850 bg-[#0e0f17]/40 text-gray-500">
+              <div className="flex items-center justify-between p-3 rounded-xl border border-gray-850 bg-background/40 text-gray-500">
                 <span className="flex items-center gap-2">
                   <Building size={14} />
                   4. Hardware Provisioning

@@ -23,12 +23,22 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+class UserPreferenceSchema(BaseModel):
+    theme: str
+
+    class Config:
+        from_attributes = True
+
+class UserPreferenceUpdate(BaseModel):
+    theme: str
+
 class UserResponse(BaseModel):
     id: int
     email: str
     full_name: str
     role: str
     created_at: Optional[datetime] = None
+    preferences: Optional[UserPreferenceSchema] = None
 
     class Config:
         from_attributes = True

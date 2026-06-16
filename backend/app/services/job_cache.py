@@ -149,3 +149,9 @@ def get_stats() -> dict:
     total = len(_STORE)
     active = sum(1 for _, (_, exp) in _STORE.items() if now <= exp)
     return {"redis_connected": False, "total_entries": total, "active_entries": active, "expired_entries": total - active}
+
+
+def get_redis_client():
+    """Return the global Redis client."""
+    return _REDIS_CLIENT
+

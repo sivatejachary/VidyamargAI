@@ -123,7 +123,7 @@ export default function AdminAgents() {
       </div>
 
       {/* Tab Selectors */}
-      <div className="flex gap-6 border-b border-gray-800 pb-px">
+      <div className="flex gap-6 border-b border-border pb-px">
         <button
           onClick={() => setActiveTab("orchestrator")}
           className={`pb-3.5 text-xs font-bold transition-all relative cursor-pointer select-none ${
@@ -151,10 +151,10 @@ export default function AdminAgents() {
           {/* Metrics Row */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {agentMetrics.map((m, i) => (
-              <div key={i} className="glass-panel p-5 rounded-xl border border-gray-800 bg-[#0c0d14]/40">
-                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block">{m.label}</span>
+              <div key={i} className="glass-panel p-5 rounded-xl border border-border bg-card/40">
+                <span className="text-10 text-gray-500 font-bold uppercase tracking-wider block">{m.label}</span>
                 <span className="text-2xl font-extrabold text-white block mt-2">{m.value}</span>
-                <span className="text-[10px] text-purple-400/80 mt-1 block">{m.note}</span>
+                <span className="text-10 text-purple-400/80 mt-1 block">{m.note}</span>
               </div>
             ))}
           </div>
@@ -163,8 +163,8 @@ export default function AdminAgents() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
             {/* Agent list */}
-            <div className="lg:col-span-2 glass-panel p-6 rounded-2xl border border-gray-800 bg-[#0c0d14]/40 flex flex-col gap-5">
-              <h2 className="text-sm font-bold text-white flex items-center gap-2 border-b border-gray-800 pb-3">
+            <div className="lg:col-span-2 glass-panel p-6 rounded-2xl border border-border bg-card/40 flex flex-col gap-5">
+              <h2 className="text-sm font-bold text-white flex items-center gap-2 border-b border-border pb-3">
                 <Activity size={16} className="text-purple-400 animate-pulse" />
                 <span>Agent Orchestrator Node Statuses</span>
               </h2>
@@ -173,11 +173,11 @@ export default function AdminAgents() {
                 {agentStatuses.map((a, i) => {
                   const statusClass = getStatusColor(a.status);
                   return (
-                    <div key={i} className="flex justify-between items-center p-3 rounded-xl border border-gray-800/40 bg-[#0d0e15]/40 hover:border-gray-850 hover:bg-[#0d0e15]/60 transition-all">
+                    <div key={i} className="flex justify-between items-center p-3 rounded-xl border border-border/40 bg-card/40 hover:border-border hover:bg-card/60 transition-all">
                       <span className="text-xs font-semibold text-gray-300">{a.name}</span>
                       <div className="flex items-center gap-2">
                         <span className={`w-2 h-2 rounded-full ${statusClass.split(" ")[0]} animate-pulse`} />
-                        <span className={`text-[9px] font-bold uppercase ${statusClass.split(" ")[2]}`}>
+                        <span className={`text-9 font-bold uppercase ${statusClass.split(" ")[2]}`}>
                           {a.status}
                         </span>
                       </div>
@@ -188,13 +188,13 @@ export default function AdminAgents() {
             </div>
 
             {/* Live logs console */}
-            <div className="glass-panel p-6 rounded-2xl border border-gray-800 bg-[#0c0d14]/40 flex flex-col gap-4">
+            <div className="glass-panel p-6 rounded-2xl border border-border bg-card/40 flex flex-col gap-4">
               <h2 className="text-sm font-bold text-white flex items-center gap-2">
                 <Terminal size={16} className="text-purple-400" />
                 <span>Agent Console</span>
               </h2>
 
-              <div className="flex-1 bg-[#08090e] border border-gray-850 rounded-xl p-4 font-mono text-[10px] flex flex-col gap-2 max-h-[420px] overflow-y-auto">
+              <div className="flex-1 bg-background border border-border rounded-xl p-4 font-mono text-10 flex flex-col gap-2 max-h-420 overflow-y-auto">
                 {logs.length === 0 ? (
                   <span className="text-gray-600 italic">Listening for live execution flows...</span>
                 ) : (

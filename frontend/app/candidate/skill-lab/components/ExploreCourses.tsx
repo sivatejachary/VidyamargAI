@@ -82,13 +82,13 @@ export default function ExploreCourses({
     return (
       <div 
         key={c.id}
-        className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden hover:border-slate-350 dark:hover:border-slate-700 hover:scale-[1.02] hover:shadow-md transition-all duration-300 flex flex-col justify-between h-[390px] relative group"
+        className="bg-card border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden hover:border-slate-350 dark:hover:border-slate-700 hover:scale-[1.02] hover:shadow-md transition-all duration-300 flex flex-col justify-between h-390 relative group"
       >
         {/* Course Thumbnail placeholder with subtle gradient & icon */}
         <div className={`h-40 w-full bg-gradient-to-br ${gradientClass} flex items-center justify-center relative`}>
           <div className="absolute inset-0 bg-black/5" />
           <Brain size={44} className="text-white/40 drop-shadow" />
-          <span className="absolute bottom-3 left-3 px-2 py-0.8 rounded bg-black/45 backdrop-blur-md text-[9px] font-black text-white uppercase tracking-wider">
+          <span className="absolute bottom-3 left-3 px-2 py-0.8 rounded bg-black/45 backdrop-blur-md text-9 font-black text-white uppercase tracking-wider">
             {c.tag || c.category}
           </span>
         </div>
@@ -109,12 +109,12 @@ export default function ExploreCourses({
                   <Star key={i} size={11} className={`${i < Math.floor(c.rating || 4.5) ? 'text-amber-550 fill-amber-550' : 'text-slate-300 dark:text-slate-700'}`} />
                 ))}
               </div>
-              <span className="text-[10px] text-slate-400 dark:text-slate-500">({courseIdx * 12 + 45})</span>
+              <span className="text-10 text-slate-400 dark:text-slate-500">({courseIdx * 12 + 45})</span>
             </div>
           </div>
 
           <div className="border-t border-slate-100 dark:border-slate-800/60 pt-3 mt-4 flex items-center justify-between">
-            <div className="flex flex-col gap-0.5 text-slate-450 dark:text-slate-500 text-[10px] font-bold">
+            <div className="flex flex-col gap-0.5 text-slate-450 dark:text-slate-500 text-10 font-bold">
               <span className="flex items-center gap-1">
                 <Clock size={11} /> {c.duration || "12 Hours"}
               </span>
@@ -150,7 +150,7 @@ export default function ExploreCourses({
     let completedModulesCount = Math.round((progressPercent / 100) * totalModulesCount);
 
     return (
-      <div key={enroll?.id || enroll?.course_id || targetCourse?.id} className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:scale-[1.01] hover:shadow-md transition-all duration-300 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden w-full">
+      <div key={enroll?.id || enroll?.course_id || targetCourse?.id} className="bg-card border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:scale-[1.01] hover:shadow-md transition-all duration-300 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden w-full">
         <div className="flex items-center gap-4 flex-1 w-full">
           {/* Small clean course icon area instead of huge image */}
           <div className="w-14 h-14 rounded-xl bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center shrink-0 shadow-inner">
@@ -158,7 +158,7 @@ export default function ExploreCourses({
           </div>
 
           <div className="flex-1 min-w-0">
-            <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider">Continue Learning</span>
+            <span className="text-10 font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider">Continue Learning</span>
             <h3 className="text-base font-extrabold text-slate-950 dark:text-white mt-0.5 truncate leading-snug">{targetCourse?.title || "Course"}</h3>
             <p className="text-xs text-slate-505 dark:text-slate-400 font-medium truncate">{targetCourse?.instructor || "Jose Portilla"}</p>
           </div>
@@ -213,7 +213,7 @@ export default function ExploreCourses({
             </div>
 
             <div className="flex flex-wrap gap-3 items-center">
-              <div className="relative flex-1 min-w-[200px]">
+              <div className="relative flex-1 min-w-200">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-450 pointer-events-none" />
                 <input
                   type="text"
@@ -228,7 +228,7 @@ export default function ExploreCourses({
                   <button
                     key={cat}
                     onClick={() => setCourseCategoryFilter(cat)}
-                    className={`px-3.5 py-2 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
+                    className={`px-3.5 py-2 rounded-xl text-10 font-bold border transition-all cursor-pointer ${
                       courseCategoryFilter === cat
                         ? "bg-indigo-600 text-white border-indigo-600"
                         : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-indigo-500/40"
@@ -337,19 +337,19 @@ export default function ExploreCourses({
       <div className="flex flex-col gap-6">
         <button 
           onClick={() => setActiveView("explore")}
-          className="self-start text-[10px] font-bold text-indigo-600 hover:underline flex items-center gap-1 cursor-pointer"
+          className="self-start text-10 font-bold text-indigo-600 hover:underline flex items-center gap-1 cursor-pointer"
         >
           <span>← Back to Catalog</span>
         </button>
 
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm flex flex-col md:flex-row items-stretch">
-          <div className="md:w-56 bg-gradient-to-tr from-indigo-500/20 to-teal-500/20 flex items-center justify-center p-8 shrink-0 min-h-[160px]">
+          <div className="md:w-56 bg-gradient-to-tr from-indigo-500/20 to-teal-500/20 flex items-center justify-center p-8 shrink-0 min-h-160">
             <Brain size={48} className="text-indigo-500/50" />
           </div>
           
           <div className="p-6 flex-1 flex flex-col justify-between gap-4">
             <div>
-              <span className="text-[9px] font-mono font-bold px-2 py-0.5 bg-indigo-100 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400 rounded uppercase">
+              <span className="text-9 font-mono font-bold px-2 py-0.5 bg-indigo-100 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400 rounded uppercase">
                 {selectedCourse.tag || selectedCourse.category}
               </span>
               <h2 className="text-xl font-black text-slate-800 dark:text-white mt-2.5 leading-snug">{selectedCourse.title}</h2>
@@ -361,7 +361,7 @@ export default function ExploreCourses({
             </div>
 
             <div className="border-t border-slate-100 dark:border-slate-800/40 pt-4 flex flex-wrap gap-4 items-center justify-between">
-              <div className="flex gap-4 text-[10px] text-slate-450 font-bold">
+              <div className="flex gap-4 text-10 text-slate-450 font-bold">
                 <span className="flex items-center gap-1"><Star size={12} className="text-amber-500 fill-amber-500" /> {selectedCourse.rating}</span>
                 <span>•</span>
                 <span className="flex items-center gap-1"><Clock size={12} /> {selectedCourse.duration || "12 Hours"}</span>

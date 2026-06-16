@@ -124,6 +124,19 @@ export const useReactQuerySync = (userId: string | number, token: string) => {
       );
     });
 
+    // --- 7. Real-time Theme Synchronization Event ---
+    socket.on("theme:sync", (payload: { theme: string }) => {
+      console.info(`[Sync] Theme sync event received: ${payload.theme}`);
+      localStorage.setItem("theme", payload.theme);
+      if (payload.theme === "light") {
+        document.documentElement.classList.add("light-theme");
+        document.documentElement.classList.remove("dark");
+      } else {
+        document.documentElement.classList.remove("light-theme");
+        document.documentElement.classList.add("dark");
+      }
+    });
+
     return () => {
       socket.off("warmup:tier_complete");
       socket.off("resume:sync");
@@ -131,6 +144,7 @@ export const useReactQuerySync = (userId: string | number, token: string) => {
       socket.off("lms:progress:sync");
       socket.off("lms:certificate:sync");
       socket.off("message:new");
+      socket.off("theme:sync");
     };
   }, [userId, token, queryClient, setTierComplete]);
 

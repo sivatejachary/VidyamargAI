@@ -124,10 +124,10 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-[#07070b] flex flex-col-reverse md:flex-row relative overflow-hidden">
+    <main className="min-h-screen bg-background flex flex-col-reverse md:flex-row relative overflow-hidden">
       {/* Decorative Blur Backgrounds */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute top-[-10%] left-[-10%] w-1/2 h-1/2 bg-purple-600/10 rounded-full blur-120 pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-1/2 h-1/2 bg-indigo-600/10 rounded-full blur-120 pointer-events-none" />
 
       {/* Hero Intro Pane */}
       <div className="flex-1 p-6 md:p-16 flex flex-col justify-between relative z-10">
@@ -144,7 +144,7 @@ export default function Home() {
               <span className="text-white font-extrabold text-xl tracking-tight">Vidyamarg</span>
               <span className="text-blue-500 font-extrabold text-xl tracking-tight italic">AI</span>
             </div>
-            <span className="block text-[10px] text-purple-400 font-semibold tracking-wider uppercase">Enterprise Recruiting OS</span>
+            <span className="block text-10 text-purple-400 font-semibold tracking-wider uppercase">Enterprise Recruiting OS</span>
           </div>
         </div>
 
@@ -165,15 +165,15 @@ export default function Home() {
           </p>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="p-4 rounded-xl border border-gray-800 bg-[#0d0e15]/60">
+            <div className="p-4 rounded-xl border border-border bg-card">
               <Terminal size={20} className="text-purple-400 mb-2" />
-              <h3 className="text-sm font-semibold text-white mb-1">AI Orchestration</h3>
-              <p className="text-xs text-gray-500">12 coordinate agents processing candidates sequentially.</p>
+              <h3 className="text-sm font-semibold text-foreground mb-1">AI Orchestration</h3>
+              <p className="text-xs text-muted-foreground">12 coordinate agents processing candidates sequentially.</p>
             </div>
-            <div className="p-4 rounded-xl border border-gray-800 bg-[#0d0e15]/60">
+            <div className="p-4 rounded-xl border border-border bg-card">
               <Shield size={20} className="text-indigo-400 mb-2" />
-              <h3 className="text-sm font-semibold text-white mb-1">AI Proctoring</h3>
-              <p className="text-xs text-gray-500">Tab-monitoring, face detection, and copy-paste warnings.</p>
+              <h3 className="text-sm font-semibold text-foreground mb-1">AI Proctoring</h3>
+              <p className="text-xs text-muted-foreground">Tab-monitoring, face detection, and copy-paste warnings.</p>
             </div>
           </div>
         </div>
@@ -184,7 +184,7 @@ export default function Home() {
       </div>
 
       {/* Auth Panel Pane */}
-      <div className="w-full md:w-[480px] border-l border-gray-900 bg-[#0d0e15]/50 backdrop-blur-md p-6 md:p-12 flex flex-col justify-center relative z-10">
+      <div className="w-full md:w-480 border-l border-border bg-card/80 backdrop-blur-md p-6 md:p-12 flex flex-col justify-center relative z-10">
         <div className="w-full max-w-md mx-auto">
           {isForgotPassword ? (
             /* Forgot Password Flow */
@@ -289,12 +289,12 @@ export default function Home() {
             <div>
               {/* Portal Switcher */}
               {!isLogin && (
-                <div className="flex bg-[#12131e] p-1 rounded-xl mb-6 border border-gray-800">
+                <div className="flex bg-muted p-1 rounded-xl mb-6 border border-border">
                   <button
                     type="button"
                     onClick={() => setPortalType("candidate")}
                     className={`flex-1 text-center py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
-                      portalType === "candidate" ? "bg-purple-600 text-white shadow" : "text-gray-400 hover:text-white"
+                      portalType === "candidate" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     Candidate Portal
@@ -303,7 +303,7 @@ export default function Home() {
                     type="button"
                     onClick={() => setPortalType("admin")}
                     className={`flex-1 text-center py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
-                      portalType === "admin" ? "bg-purple-600 text-white shadow" : "text-gray-400 hover:text-white"
+                      portalType === "admin" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     Recruiter Admin
@@ -365,7 +365,7 @@ export default function Home() {
                           setForgotStep(1);
                           setSimulatedCode("");
                         }}
-                        className="text-[10px] text-purple-400 hover:underline font-medium"
+                        className="text-10 text-purple-400 hover:underline font-medium"
                       >
                         Forgot password?
                       </button>
@@ -417,7 +417,7 @@ export default function Home() {
       </div>
 
       {/* Mobile Copyright Footer */}
-      <footer className="md:hidden w-full text-center py-6 border-t border-gray-900 bg-[#0d0e15]/50 relative z-10 mt-auto">
+      <footer className="md:hidden w-full text-center py-6 border-t border-gray-900 bg-card/50 relative z-10 mt-auto">
         <p className="text-xs text-gray-500 font-light">
           © {new Date().getFullYear()} VidyamargAI Tech Systems. All rights secured.
         </p>

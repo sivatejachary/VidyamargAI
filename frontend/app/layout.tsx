@@ -92,7 +92,7 @@ export default function RootLayout({
         {/* Inline theme script — runs before paint to prevent flash of wrong theme */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme')||'light';if(t==='dark'){document.documentElement.classList.add('dark');document.documentElement.classList.remove('light-theme');}else{document.documentElement.classList.remove('dark');document.documentElement.classList.add('light-theme');}}catch(e){}})()`,
+            __html: `(function(){try{var t=localStorage.getItem('theme')||'system';var d=false;if(t==='system'){d=window.matchMedia('(prefers-color-scheme: dark)').matches;}else{d=(t==='dark');}if(d){document.documentElement.classList.add('dark');document.documentElement.classList.remove('light-theme');}else{document.documentElement.classList.remove('dark');document.documentElement.classList.add('light-theme');}}catch(e){}})()`,
           }}
         />
         {children}

@@ -643,7 +643,7 @@ export default function ResumeBuilder() {
 
   if (loading) {
     return (
-      <div className="flex-1 min-h-screen flex items-center justify-center bg-slate-50/50 dark:bg-[#09090b]">
+      <div className="flex-1 min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
           <Loader2 size={36} className="animate-spin text-slate-800 dark:text-white" />
           <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">Loading Resume Dashboard...</span>
@@ -719,7 +719,7 @@ export default function ResumeBuilder() {
         >
           <div className="flex flex-col gap-6 py-2">
             <div className="space-y-1.5 text-center">
-              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+              <span className="text-11 font-bold text-muted-foreground uppercase tracking-wider">
                 Ingestion Pipeline
               </span>
               <p className="text-xs text-muted-foreground leading-relaxed">
@@ -775,7 +775,7 @@ export default function ResumeBuilder() {
         </Modal>
       )}
 
-      <div className="max-w-[1440px] mx-auto space-y-6">
+      <div className="max-w-1440 mx-auto space-y-6">
         
         {/* Status Alerts */}
         {successMsg && (
@@ -793,7 +793,7 @@ export default function ResumeBuilder() {
         {/* 1. Header Area */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">My Resume Profile</h1>
+            <h1 className="text-3xl font-black tracking-tight text-foreground dark:text-white">My Resume Profile</h1>
             <p className="text-slate-500 dark:text-slate-455 mt-1.5 text-sm leading-relaxed max-w-2xl font-medium">
               Your resume has been parsed and your profile is ready. Keep it updated for better opportunities.
             </p>
@@ -846,7 +846,7 @@ export default function ResumeBuilder() {
                   
                   <div className="min-w-0">
                     <div className="flex flex-col items-start gap-1">
-                      <h2 className="text-sm font-black text-foreground truncate max-w-[120px]" title={displayName || undefined}>
+                      <h2 className="text-sm font-black text-foreground truncate max-w-120" title={displayName || undefined}>
                         {displayName}
                       </h2>
                       <Badge variant="success">Verified</Badge>
@@ -933,7 +933,7 @@ export default function ResumeBuilder() {
                     </div>
                     <div className="min-w-0">
                       <h4 className="text-xs font-black text-foreground">Complete your profile</h4>
-                      <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
+                      <p className="text-10 text-muted-foreground mt-0.5 leading-relaxed">
                         Add missing details to get better job matches.
                       </p>
                     </div>
@@ -972,10 +972,10 @@ export default function ResumeBuilder() {
                 
                 <div className="space-y-2 text-center sm:text-left min-w-0">
                   <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                    <h2 className="text-xl font-black text-slate-900 dark:text-white truncate max-w-[150px]" title={displayName || undefined}>
+                    <h2 className="text-xl font-black text-foreground dark:text-white truncate max-w-150" title={displayName || undefined}>
                       {displayName}
                     </h2>
-                    <span className="inline-flex px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-[9px] font-bold text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800/50">
+                    <span className="inline-flex px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-9 font-bold text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800/50">
                       Verified Profile
                     </span>
                   </div>
@@ -1003,23 +1003,23 @@ export default function ResumeBuilder() {
               {/* Completion Column */}
               <div className="flex flex-col sm:flex-row items-center gap-6 pl-0 md:pl-2 justify-between">
                 <div className="flex flex-col items-center gap-1 shrink-0">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Profile Completion</span>
+                  <span className="text-10 font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Profile Completion</span>
                   
                   <div className="relative flex items-center justify-center my-1.5">
                     <svg width="86" height="86" className="transform -rotate-90">
                       <circle cx="43" cy="43" r="37" fill="none" strokeWidth="6" className="text-slate-100 dark:text-slate-800" stroke="currentColor" />
                       <circle cx="43" cy="43" r="37" fill="none" strokeWidth="6" strokeDasharray={2 * Math.PI * 37} strokeDashoffset={2 * Math.PI * 37 - (completionScore / 100) * (2 * Math.PI * 37)} strokeLinecap="round" stroke="#0ea5e9" className="transition-all duration-700 ease-out" />
                     </svg>
-                    <div className="absolute text-lg font-black text-slate-900 dark:text-white">{completionScore}%</div>
+                    <div className="absolute text-lg font-black text-foreground dark:text-white">{completionScore}%</div>
                   </div>
-                  <span className="text-[10px] font-bold text-emerald-500 dark:text-emerald-400">
+                  <span className="text-10 font-bold text-emerald-500 dark:text-emerald-400">
                     {completionScore >= 75 ? "Good Progress!" : (completionScore > 0 ? "Started" : (resumeVersions.length > 0 ? "Resume Uploaded" : "No Resume Uploaded"))}
                   </span>
                 </div>
 
                 <div className="flex-1 flex flex-col justify-between h-full gap-3 w-full text-center sm:text-left min-w-0">
                   <div>
-                    <span className="text-[10px] font-bold text-slate-450 dark:text-slate-400 uppercase tracking-wider block">Missing ({100 - completionScore}%)</span>
+                    <span className="text-10 font-bold text-slate-450 dark:text-slate-400 uppercase tracking-wider block">Missing ({100 - completionScore}%)</span>
                     <div className="mt-1.5 space-y-1 inline-block text-left">
                       {missingItems.length > 0 ? (
                         missingItems.map((item, idx) => (
@@ -1047,89 +1047,89 @@ export default function ResumeBuilder() {
 
             {/* Row 2: Profile Summary Grid (6 widgets) */}
             <Card className="space-y-4">
-              <h3 className="text-base font-black text-slate-900 dark:text-white">Profile Summary</h3>
+              <h3 className="text-base font-black text-foreground dark:text-white">Profile Summary</h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 
                 {/* Skills */}
-                <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-900/40 flex items-center gap-4">
+                <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-muted/20 dark:bg-card/40 flex items-center gap-4">
                   <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-550 flex items-center justify-center shrink-0 border border-blue-100/50 dark:border-blue-800/30">
                     <Code size={18} />
                   </div>
                   <div className="min-w-0">
-                    <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Skills</span>
+                    <span className="text-9 font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Skills</span>
                     <div className="flex items-baseline gap-1 mt-0.5">
                       <span className="text-lg font-black text-slate-955 dark:text-slate-100">{skillsList.length}</span>
-                      <span className="text-[9px] font-bold text-slate-400">Extracted</span>
+                      <span className="text-9 font-bold text-slate-400">Extracted</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Experience */}
-                <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-900/40 flex items-center gap-4">
+                <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-muted/20 dark:bg-card/40 flex items-center gap-4">
                   <div className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-555 flex items-center justify-center shrink-0 border border-emerald-100/50 dark:border-emerald-800/30">
                     <Briefcase size={18} />
                   </div>
                   <div className="min-w-0">
-                    <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Experience</span>
+                    <span className="text-9 font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Experience</span>
                     <div className="flex items-baseline gap-1 mt-0.5">
                       <span className="text-lg font-black text-slate-955 dark:text-slate-100">{experienceYears.toFixed(1)}</span>
-                      <span className="text-[9px] font-bold text-slate-400">Years</span>
+                      <span className="text-9 font-bold text-slate-400">Years</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Education */}
-                <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-900/40 flex items-center gap-4">
+                <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-muted/20 dark:bg-card/40 flex items-center gap-4">
                   <div className="w-11 h-11 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-555 flex items-center justify-center shrink-0 border border-purple-100/50 dark:border-purple-800/30">
                     <GraduationCap size={18} />
                   </div>
                   <div className="min-w-0">
-                    <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Education</span>
+                    <span className="text-9 font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Education</span>
                     <div className="flex items-baseline gap-1 mt-0.5">
                       <span className="text-lg font-black text-slate-955 dark:text-slate-100">{educationCount}</span>
-                      <span className="text-[9px] font-bold text-slate-400">{educationCount === 1 ? "Degree" : "Degrees"}</span>
+                      <span className="text-9 font-bold text-slate-400">{educationCount === 1 ? "Degree" : "Degrees"}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Projects */}
-                <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-900/40 flex items-center gap-4">
+                <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-muted/20 dark:bg-card/40 flex items-center gap-4">
                   <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-955/40 text-amber-555 flex items-center justify-center shrink-0 border border-amber-100/50 dark:border-amber-800/30">
                     <Folder size={18} />
                   </div>
                   <div className="min-w-0">
-                    <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Projects</span>
+                    <span className="text-9 font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Projects</span>
                     <div className="flex items-baseline gap-1 mt-0.5">
                       <span className="text-lg font-black text-slate-955 dark:text-slate-100">{projectsCount}</span>
-                      <span className="text-[9px] font-bold text-slate-400">Added</span>
+                      <span className="text-9 font-bold text-slate-400">Added</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Certifications */}
-                <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-900/40 flex items-center gap-4">
+                <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-muted/20 dark:bg-card/40 flex items-center gap-4">
                   <div className="w-11 h-11 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-555 flex items-center justify-center shrink-0 border border-rose-100/50 dark:border-rose-800/30">
                     <Award size={18} />
                   </div>
                   <div className="min-w-0">
-                    <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Certifications</span>
+                    <span className="text-9 font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Certifications</span>
                     <div className="flex items-baseline gap-1 mt-0.5">
                       <span className="text-lg font-black text-slate-955 dark:text-slate-100">{certificationsCount}</span>
-                      <span className="text-[9px] font-bold text-slate-400">Added</span>
+                      <span className="text-9 font-bold text-slate-400">Added</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Achievements */}
-                <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-900/40 flex items-center gap-4">
+                <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-muted/20 dark:bg-card/40 flex items-center gap-4">
                   <div className="w-11 h-11 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-555 flex items-center justify-center shrink-0 border border-indigo-100/50 dark:border-indigo-800/30">
                     <Trophy size={18} />
                   </div>
                   <div className="min-w-0">
-                    <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Achievements</span>
+                    <span className="text-9 font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Achievements</span>
                     <div className="flex items-baseline gap-1 mt-0.5">
                       <span className="text-lg font-black text-slate-955 dark:text-slate-100">{achievementsCount}</span>
-                      <span className="text-[9px] font-bold text-slate-400">Added</span>
+                      <span className="text-9 font-bold text-slate-400">Added</span>
                     </div>
                   </div>
                 </div>
@@ -1143,7 +1143,7 @@ export default function ResumeBuilder() {
               {/* Detailed Profile Overview */}
               <Card className="flex flex-col">
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-4 shrink-0">
-                  <h3 className="text-base font-black text-slate-900 dark:text-white">Detailed Profile Overview</h3>
+                  <h3 className="text-base font-black text-foreground dark:text-white">Detailed Profile Overview</h3>
                   <button 
                     onClick={() => setIsEditOpen(true)}
                     className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
@@ -1152,14 +1152,14 @@ export default function ResumeBuilder() {
                   </button>
                 </div>
                 
-                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 flex-1">
+                <div className="space-y-2 max-h-300 overflow-y-auto pr-1 flex-1">
                   {profileSections.map((sec, idx) => {
                     const SecIcon = sec.icon;
                     return (
                       <div 
                         key={idx} 
                         onClick={() => handleSectionClick(sec.id)}
-                        className="p-2.5 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/10 dark:bg-slate-900/40 hover:bg-slate-50/50 dark:hover:bg-slate-800/60 hover:border-slate-200 dark:hover:border-slate-700 flex items-center justify-between cursor-pointer transition-all"
+                        className="p-2.5 rounded-2xl border border-slate-100 dark:border-slate-800 bg-muted/10 dark:bg-card/40 hover:bg-muted/50 dark:hover:bg-slate-800/60 hover:border-slate-200 dark:hover:border-slate-700 flex items-center justify-between cursor-pointer transition-all"
                       >
                         <div className="flex items-center gap-3">
                           <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 shrink-0">
@@ -1167,11 +1167,11 @@ export default function ResumeBuilder() {
                           </div>
                           <div>
                             <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">{sec.name}</span>
-                            <span className="text-[10px] text-slate-400 dark:text-slate-505 font-semibold block">{sec.desc}</span>
+                            <span className="text-10 text-slate-400 dark:text-muted-foreground font-semibold block">{sec.desc}</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                          <span className={`text-9 font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
                             sec.completed 
                               ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-450 border border-emerald-100 dark:border-emerald-800/40" 
                               : "bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-455 border border-amber-100 dark:border-amber-800/40"
@@ -1190,10 +1190,10 @@ export default function ResumeBuilder() {
               {/* Top Skills & Keywords */}
               <Card className="flex flex-col gap-6">
                 <div>
-                  <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 block">Top Skills</h3>
+                  <h3 className="text-10 font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 block">Top Skills</h3>
                   <div className="flex flex-wrap gap-1.5">
                     {skillsList.map((skill: string, idx: number) => (
-                      <span key={idx} className="text-[11px] font-semibold px-2.5 py-1 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-150 dark:border-slate-750 text-slate-705 dark:text-slate-300">
+                      <span key={idx} className="text-11 font-semibold px-2.5 py-1 rounded-xl bg-muted dark:bg-slate-800 border border-border dark:border-border text-foreground dark:text-slate-300">
                         {skill}
                       </span>
                     ))}
@@ -1204,7 +1204,7 @@ export default function ResumeBuilder() {
                 </div>
 
                 <div className="border-t border-slate-100 dark:border-slate-800 pt-4 flex-1">
-                  <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-505 uppercase tracking-wider mb-3 block">Top Keywords Found</h3>
+                  <h3 className="text-10 font-bold text-slate-400 dark:text-muted-foreground uppercase tracking-wider mb-3 block">Top Keywords Found</h3>
                   <div className="grid grid-cols-2 gap-2 text-xs font-bold text-slate-650 dark:text-slate-400">
                     {keywordsList.map((kw: string, idx: number) => (
                       <div key={idx} className="flex items-center gap-2">
@@ -1234,13 +1234,13 @@ export default function ResumeBuilder() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Left Column: Missing Skills */}
                   <div className="space-y-3">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Identified Missing Skills</span>
+                    <span className="text-10 font-bold text-muted-foreground uppercase tracking-wider block">Identified Missing Skills</span>
                     {skillsList.length === 0 ? (
                       <p className="text-xs text-muted-foreground italic">Upload your resume to analyze missing skills.</p>
                     ) : missingSkills.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {missingSkills.map((skill, idx) => (
-                          <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-destructive/10 dark:bg-destructive/20 border border-destructive/20 text-destructive text-[11px] font-bold">
+                          <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-destructive/10 dark:bg-destructive/20 border border-destructive/20 text-destructive text-11 font-bold">
                             <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
                             {skill}
                           </span>
@@ -1256,7 +1256,7 @@ export default function ResumeBuilder() {
 
                   {/* Right Column: Recommended Courses */}
                   <div className="space-y-3">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Recommended Upskill Courses</span>
+                    <span className="text-10 font-bold text-muted-foreground uppercase tracking-wider block">Recommended Upskill Courses</span>
                     <div className="space-y-2.5">
                       {skillsList.length === 0 ? (
                         <p className="text-xs text-muted-foreground italic">No recommendations available.</p>
@@ -1265,10 +1265,10 @@ export default function ResumeBuilder() {
                           <div key={idx} className="p-3 rounded-2xl border border-border bg-muted/20 dark:bg-muted/10 flex items-center justify-between gap-3 hover:bg-muted/30 transition-all">
                             <div>
                               <span className="text-xs font-bold text-foreground block">{course.title}</span>
-                              <span className="text-[10px] text-muted-foreground mt-0.5 block font-semibold">Upskill in: {course.skills.join(", ")}</span>
+                              <span className="text-10 text-muted-foreground mt-0.5 block font-semibold">Upskill in: {course.skills.join(", ")}</span>
                             </div>
                             <Link href="/candidate/skill-lab">
-                              <Button size="xs" variant="outline" className="text-[10px] py-1 h-auto font-bold">
+                              <Button size="xs" variant="outline" className="text-10 py-1 h-auto font-bold">
                                 Learn
                               </Button>
                             </Link>
@@ -1292,7 +1292,7 @@ export default function ResumeBuilder() {
             {/* AI Insights Card */}
             <Card>
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
-                <h3 className="text-base font-black text-slate-900 dark:text-white">AI Insights</h3>
+                <h3 className="text-base font-black text-foreground dark:text-white">AI Insights</h3>
                 <button className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">View All</button>
               </div>
 
@@ -1303,7 +1303,7 @@ export default function ResumeBuilder() {
                     <Code size={16} />
                   </div>
                   <div>
-                    <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 block">Your strongest skill</span>
+                    <span className="text-11 font-bold text-slate-400 dark:text-slate-500 block">Your strongest skill</span>
                     <span className="text-xs font-black text-slate-800 dark:text-slate-200 mt-0.5 block">{strongestSkill}</span>
                   </div>
                 </div>
@@ -1314,7 +1314,7 @@ export default function ResumeBuilder() {
                     <TrendingUp size={16} />
                   </div>
                   <div>
-                    <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 block">Top improvement area</span>
+                    <span className="text-11 font-bold text-slate-400 dark:text-slate-500 block">Top improvement area</span>
                     <span className="text-xs font-black text-slate-800 dark:text-slate-200 mt-0.5 block">{improvementArea}</span>
                   </div>
                 </div>
@@ -1325,7 +1325,7 @@ export default function ResumeBuilder() {
                     <ShieldCheck size={16} />
                   </div>
                   <div>
-                    <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 block">Profile strength</span>
+                    <span className="text-11 font-bold text-slate-400 dark:text-slate-500 block">Profile strength</span>
                     <span className="text-xs font-black text-slate-800 dark:text-slate-200 mt-0.5 block">{profileStrength}</span>
                   </div>
                 </div>
@@ -1336,7 +1336,7 @@ export default function ResumeBuilder() {
                     <FileText size={16} />
                   </div>
                   <div>
-                    <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 block">Recommended next step</span>
+                    <span className="text-11 font-bold text-slate-400 dark:text-slate-500 block">Recommended next step</span>
                     <span className="text-xs font-black text-slate-800 dark:text-slate-200 mt-0.5 block">{recommendedStep}</span>
                   </div>
                 </div>
@@ -1346,7 +1346,7 @@ export default function ResumeBuilder() {
             {/* AI Quality Score Card */}
             <Card className="space-y-6">
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                <h3 className="text-base font-black text-slate-900 dark:text-white">AI Quality Score</h3>
+                <h3 className="text-base font-black text-foreground dark:text-white">AI Quality Score</h3>
                 <button 
                   onClick={runAIAnalysis}
                   disabled={analysisLoading}
@@ -1365,11 +1365,11 @@ export default function ResumeBuilder() {
                       <circle cx="42" cy="42" r="36" fill="none" strokeWidth="6" strokeDasharray={2 * Math.PI * 36} strokeDashoffset={2 * Math.PI * 36 - (aiQualityScore * 10 / 100) * (2 * Math.PI * 36)} strokeLinecap="round" stroke="#6366f1" className="transition-all duration-700 ease-out" />
                     </svg>
                     <div className="absolute flex flex-col items-center">
-                      <span className="text-lg font-black text-slate-900 dark:text-white">{aiQualityScore}</span>
-                      <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500">/10</span>
+                      <span className="text-lg font-black text-foreground dark:text-white">{aiQualityScore}</span>
+                      <span className="text-8 font-bold text-slate-400 dark:text-slate-500">/10</span>
                     </div>
                   </div>
-                  <span className="text-[10px] font-bold text-indigo-500 mt-1.5 uppercase">
+                  <span className="text-10 font-bold text-indigo-500 mt-1.5 uppercase">
                     {skillsList.length === 0 ? "N/A" : (aiQualityScore >= 8 ? "Excellent" : (aiQualityScore >= 6 ? "Good" : "Needs Work"))}
                   </span>
                 </div>
@@ -1377,27 +1377,27 @@ export default function ResumeBuilder() {
                 {/* Score list */}
                 <div className="flex-1 space-y-1.5 text-xs font-bold text-slate-655 dark:text-slate-400 min-w-0">
                   <div className="flex justify-between items-center">
-                    <span className="font-semibold text-slate-450 dark:text-slate-505">Grammar</span>
+                    <span className="font-semibold text-slate-450 dark:text-muted-foreground">Grammar</span>
                     <span>{skillsList.length === 0 ? 0 : aiQualityBreakdown.grammar}/10</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="font-semibold text-slate-450 dark:text-slate-505">Formatting</span>
+                    <span className="font-semibold text-slate-450 dark:text-muted-foreground">Formatting</span>
                     <span>{skillsList.length === 0 ? 0 : aiQualityBreakdown.formatting}/10</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="font-semibold text-slate-455 dark:text-slate-505">Readability</span>
+                    <span className="font-semibold text-slate-455 dark:text-muted-foreground">Readability</span>
                     <span>{skillsList.length === 0 ? 0 : aiQualityBreakdown.readability}/10</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="font-semibold text-slate-455 dark:text-slate-505">Projects</span>
+                    <span className="font-semibold text-slate-455 dark:text-muted-foreground">Projects</span>
                     <span>{skillsList.length === 0 ? 0 : aiQualityBreakdown.project_quality}/10</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="font-semibold text-slate-455 dark:text-slate-505">Achievements</span>
+                    <span className="font-semibold text-slate-455 dark:text-muted-foreground">Achievements</span>
                     <span>{skillsList.length === 0 ? 0 : aiQualityBreakdown.achievement_quality}/10</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="font-semibold text-slate-455 dark:text-slate-505">Structure</span>
+                    <span className="font-semibold text-slate-455 dark:text-muted-foreground">Structure</span>
                     <span>{skillsList.length === 0 ? 0 : aiQualityBreakdown.structure}/10</span>
                   </div>
                 </div>
@@ -1415,13 +1415,13 @@ export default function ResumeBuilder() {
             {/* Resume Versions Card */}
             <Card className="space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                <h3 className="text-base font-black text-slate-900 dark:text-white">Resume Versions</h3>
+                <h3 className="text-base font-black text-foreground dark:text-white">Resume Versions</h3>
                 <button className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">View All</button>
               </div>
 
-              <div className="space-y-2.5 max-h-[260px] overflow-y-auto pr-1">
+              <div className="space-y-2.5 max-h-260 overflow-y-auto pr-1">
                 {resumeVersions.map((ver, idx) => (
-                  <div key={idx} className="p-3 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/10 dark:bg-slate-900/40 flex items-center justify-between gap-3">
+                  <div key={idx} className="p-3 rounded-2xl border border-slate-100 dark:border-slate-800 bg-muted/10 dark:bg-card/40 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-655 dark:text-slate-455 flex items-center justify-center shrink-0">
                         <FileText size={15} />
@@ -1430,33 +1430,33 @@ export default function ResumeBuilder() {
                         <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1 truncate">
                           {ver.version}
                           {ver.isLatest && (
-                            <span className="text-[9px] font-bold px-1 py-0.2 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded border border-blue-100 dark:border-blue-800/40 shrink-0">
+                            <span className="text-9 font-bold px-1 py-0.2 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded border border-blue-100 dark:border-blue-800/40 shrink-0">
                               Latest
                             </span>
                           )}
                         </span>
-                        <span className="text-[9px] text-slate-400 dark:text-slate-500 font-semibold block mt-0.5">{ver.date}</span>
+                        <span className="text-9 text-slate-400 dark:text-slate-500 font-semibold block mt-0.5">{ver.date}</span>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
                       <button 
                         onClick={() => handlePreviewResume(ver.url)}
-                        className="p-1 rounded bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-850 text-slate-450 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer hover:bg-slate-50"
+                        className="p-1 rounded bg-white dark:bg-slate-900 border border-border dark:border-slate-850 text-slate-450 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer hover:bg-muted"
                         title="Preview"
                       >
                         <Eye size={12} />
                       </button>
                       <button 
                         onClick={() => handleDownloadResumeUrl(ver.url, ver.version)}
-                        className="p-1 rounded bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-850 text-slate-450 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer hover:bg-slate-50"
+                        className="p-1 rounded bg-white dark:bg-slate-900 border border-border dark:border-slate-850 text-slate-450 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer hover:bg-muted"
                         title="Download"
                       >
                         <Download size={12} />
                       </button>
                       <button 
                         onClick={() => handleDeleteResumeVersion(ver.id)}
-                        className="p-1 rounded bg-white dark:bg-slate-900 border border-slate-155 border-slate-150 dark:border-slate-850 text-slate-455 hover:text-red-500 hover:border-red-205 cursor-pointer hover:bg-red-50"
+                        className="p-1 rounded bg-white dark:bg-slate-900 border border-slate-155 border-border dark:border-slate-850 text-slate-455 hover:text-red-500 hover:border-red-205 cursor-pointer hover:bg-red-50"
                         title="Delete"
                       >
                         <Trash2 size={12} />
@@ -1475,7 +1475,7 @@ export default function ResumeBuilder() {
               <button 
                 onClick={triggerUpload}
                 disabled={uploading}
-                className="w-full py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-305 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50"
+                className="w-full py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-muted dark:hover:bg-slate-800 text-slate-700 dark:text-slate-305 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50"
               >
                 {uploading ? (
                   <>
@@ -1508,12 +1508,12 @@ export default function ResumeBuilder() {
             />
             {/* Panel */}
             <div className="absolute inset-y-0 right-0 pl-0 md:pl-10 max-w-full flex">
-              <div className="w-screen max-w-2xl transform transition-all duration-300 ease-in-out bg-white dark:bg-[#0c0c0e] border-l border-slate-150 dark:border-slate-855 shadow-2xl flex flex-col h-full">
+              <div className="w-screen max-w-2xl transform transition-all duration-300 ease-in-out bg-card border-l border-border shadow-2xl flex flex-col h-full">
                 
                 {/* Header */}
-                <div className="px-6 py-5 border-b border-slate-155 dark:border-slate-855 flex items-center justify-between shrink-0">
+                <div className="px-6 py-5 border-b border-slate-155 dark:border-border flex items-center justify-between shrink-0">
                   <div>
-                    <h2 className="text-lg font-black text-slate-900 dark:text-white" id="slide-over-title">
+                    <h2 className="text-lg font-black text-foreground dark:text-white" id="slide-over-title">
                       Extracted Profile Details
                     </h2>
                     <p className="text-xs text-slate-400 dark:text-slate-550 font-semibold mt-1">
@@ -1529,7 +1529,7 @@ export default function ResumeBuilder() {
                 </div>
 
                 {/* Info Note Banner */}
-                <div className="bg-slate-50 dark:bg-slate-900/40 px-6 py-3 border-b border-slate-100 dark:border-slate-855 text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-start gap-2 shrink-0">
+                <div className="bg-muted dark:bg-card/40 px-6 py-3 border-b border-slate-100 dark:border-border text-11 font-semibold text-slate-500 dark:text-slate-400 flex items-start gap-2 shrink-0">
                   <AlertCircle size={14} className="text-slate-400 mt-0.5 shrink-0" />
                   <span>
                     Your profile is synchronized automatically with your latest resume. To make changes or fix inaccuracies, update your resume and upload it again.
@@ -1540,7 +1540,7 @@ export default function ResumeBuilder() {
                 <div className="flex-1 overflow-hidden flex flex-col md:flex-row min-h-0">
                   
                   {/* Tabs Selector List */}
-                  <div className="w-full md:w-48 bg-slate-50/50 dark:bg-slate-900/20 border-b md:border-b-0 md:border-r border-slate-100 dark:border-slate-855 overflow-x-auto md:overflow-y-auto py-2 md:py-4 flex md:flex-col shrink-0 scrollbar-none">
+                  <div className="w-full md:w-48 bg-muted/50 dark:bg-slate-900/20 border-b md:border-b-0 md:border-r border-slate-100 dark:border-border overflow-x-auto md:overflow-y-auto py-2 md:py-4 flex md:flex-col shrink-0 scrollbar-none">
                     {profileSections.map((sec) => {
                       const TabIcon = sec.icon;
                       const isTabActive = activeTab === sec.id;
@@ -1567,32 +1567,32 @@ export default function ResumeBuilder() {
                     {/* PERSONAL INFORMATION TAB */}
                     {activeTab === "personal" && (
                       <div className="space-y-6">
-                        <h4 className="text-sm font-black text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
+                        <h4 className="text-sm font-black text-foreground dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
                           <MapPin size={16} className="text-slate-400" />
                           <span>Personal Information</span>
                         </h4>
                         <div className="space-y-4">
                           <div>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1">Full Name</span>
-                            <div className="px-3.5 py-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30 text-xs font-semibold text-slate-800 dark:text-slate-200">
+                            <span className="text-10 font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1">Full Name</span>
+                            <div className="px-3.5 py-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-muted/30 dark:bg-slate-900/30 text-xs font-semibold text-slate-800 dark:text-slate-200">
                               {editForm.name || "Not specified"}
                             </div>
                           </div>
                           <div>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1">Email Address</span>
-                            <div className="px-3.5 py-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30 text-xs font-semibold text-slate-800 dark:text-slate-200">
+                            <span className="text-10 font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1">Email Address</span>
+                            <div className="px-3.5 py-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-muted/30 dark:bg-slate-900/30 text-xs font-semibold text-slate-800 dark:text-slate-200">
                               {editForm.email || "Not specified"}
                             </div>
                           </div>
                           <div>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1">Phone Number</span>
-                            <div className="px-3.5 py-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30 text-xs font-semibold text-slate-800 dark:text-slate-200">
+                            <span className="text-10 font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1">Phone Number</span>
+                            <div className="px-3.5 py-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-muted/30 dark:bg-slate-900/30 text-xs font-semibold text-slate-800 dark:text-slate-200">
                               {editForm.phone || "Not specified"}
                             </div>
                           </div>
                           <div>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1">Location / Address</span>
-                            <div className="px-3.5 py-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30 text-xs font-semibold text-slate-800 dark:text-slate-200">
+                            <span className="text-10 font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1">Location / Address</span>
+                            <div className="px-3.5 py-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-muted/30 dark:bg-slate-900/30 text-xs font-semibold text-slate-800 dark:text-slate-200">
                               {editForm.address || "Not specified"}
                             </div>
                           </div>
@@ -1603,13 +1603,13 @@ export default function ResumeBuilder() {
                     {/* SUMMARY TAB */}
                     {activeTab === "summary" && (
                       <div className="space-y-6">
-                        <h4 className="text-sm font-black text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
+                        <h4 className="text-sm font-black text-foreground dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
                           <FileText size={16} className="text-slate-400" />
                           <span>Professional Summary</span>
                         </h4>
                         <div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1.5">Summary</span>
-                          <div className="px-4 py-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30 text-xs font-semibold text-slate-700 dark:text-slate-350 leading-relaxed whitespace-pre-wrap">
+                          <span className="text-10 font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1.5">Summary</span>
+                          <div className="px-4 py-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-muted/30 dark:bg-slate-900/30 text-xs font-semibold text-slate-700 dark:text-slate-350 leading-relaxed whitespace-pre-wrap">
                             {editForm.summary || "No professional summary extracted."}
                           </div>
                         </div>
@@ -1619,15 +1619,15 @@ export default function ResumeBuilder() {
                     {/* SKILLS TAB */}
                     {activeTab === "skills" && (
                       <div className="space-y-6">
-                        <h4 className="text-sm font-black text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
+                        <h4 className="text-sm font-black text-foreground dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
                           <Code size={16} className="text-slate-400" />
                           <span>Extracted Skills</span>
                         </h4>
                         <div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-3">Skills List</span>
+                          <span className="text-10 font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-3">Skills List</span>
                           <div className="flex flex-wrap gap-2">
                             {skillsList.map((skill: string, idx: number) => (
-                              <span key={idx} className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-100 dark:border-slate-750 text-slate-700 dark:text-slate-300">
+                              <span key={idx} className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-muted dark:bg-slate-850 border border-slate-100 dark:border-border text-slate-700 dark:text-slate-300">
                                 {skill}
                               </span>
                             ))}
@@ -1642,20 +1642,20 @@ export default function ResumeBuilder() {
                     {/* EXPERIENCE TAB */}
                     {activeTab === "experience" && (
                       <div className="space-y-6">
-                        <h4 className="text-sm font-black text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
+                        <h4 className="text-sm font-black text-foreground dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
                           <Briefcase size={16} className="text-slate-400" />
                           <span>Work Experience</span>
                         </h4>
                         <div className="space-y-4">
                           {editForm.experienceList.map((exp: any, index: number) => (
-                            <div key={index} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/10 dark:bg-slate-900/20 space-y-2">
+                            <div key={index} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-muted/10 dark:bg-slate-900/20 space-y-2">
                               <div className="flex justify-between items-start">
                                 <div>
-                                  <h5 className="text-xs font-bold text-slate-900 dark:text-white">{exp.role || "Role not specified"}</h5>
-                                  <p className="text-[11px] text-slate-550 dark:text-slate-400 font-semibold">{exp.company || "Company not specified"}</p>
+                                  <h5 className="text-xs font-bold text-foreground dark:text-white">{exp.role || "Role not specified"}</h5>
+                                  <p className="text-11 text-slate-550 dark:text-slate-400 font-semibold">{exp.company || "Company not specified"}</p>
                                 </div>
                                 {exp.years ? (
-                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                  <span className="text-10 font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                                     {exp.years} yrs
                                   </span>
                                 ) : null}
@@ -1679,19 +1679,19 @@ export default function ResumeBuilder() {
                     {/* EDUCATION TAB */}
                     {activeTab === "education" && (
                       <div className="space-y-6">
-                        <h4 className="text-sm font-black text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
+                        <h4 className="text-sm font-black text-foreground dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
                           <GraduationCap size={16} className="text-slate-400" />
                           <span>Education</span>
                         </h4>
                         <div className="space-y-4">
                           {editForm.educationList.map((edu: any, index: number) => (
-                            <div key={index} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/10 dark:bg-slate-900/20 flex justify-between items-start">
+                            <div key={index} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-muted/10 dark:bg-slate-900/20 flex justify-between items-start">
                               <div className="space-y-1">
-                                <h5 className="text-xs font-bold text-slate-900 dark:text-white">{edu.degree || "Degree not specified"}</h5>
-                                <p className="text-[11px] text-slate-550 dark:text-slate-400 font-semibold">{edu.school || "School/University not specified"}</p>
+                                <h5 className="text-xs font-bold text-foreground dark:text-white">{edu.degree || "Degree not specified"}</h5>
+                                <p className="text-11 text-slate-550 dark:text-slate-400 font-semibold">{edu.school || "School/University not specified"}</p>
                               </div>
                               {edu.year && (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                <span className="text-10 font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                                   {edu.year}
                                 </span>
                               )}
@@ -1709,21 +1709,21 @@ export default function ResumeBuilder() {
                     {/* PROJECTS TAB */}
                     {activeTab === "projects" && (
                       <div className="space-y-6">
-                        <h4 className="text-sm font-black text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
+                        <h4 className="text-sm font-black text-foreground dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
                           <Folder size={16} className="text-slate-400" />
                           <span>Projects</span>
                         </h4>
                         <div className="space-y-4">
                           {editForm.projectList.map((proj: any, index: number) => (
-                            <div key={index} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/10 dark:bg-slate-900/20 space-y-2">
+                            <div key={index} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-muted/10 dark:bg-slate-900/20 space-y-2">
                               <div className="flex justify-between items-center">
-                                <h5 className="text-xs font-bold text-slate-900 dark:text-white">{proj.name || "Project name not specified"}</h5>
+                                <h5 className="text-xs font-bold text-foreground dark:text-white">{proj.name || "Project name not specified"}</h5>
                                 {proj.link && (
                                   <a 
                                     href={proj.link} 
                                     target="_blank" 
                                     rel="noopener noreferrer" 
-                                    className="text-[10px] font-bold text-blue-605 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
+                                    className="text-10 font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
                                   >
                                     <span>Link</span>
                                     <Globe size={10} />
@@ -1749,19 +1749,19 @@ export default function ResumeBuilder() {
                     {/* CERTIFICATIONS TAB */}
                     {activeTab === "certifications" && (
                       <div className="space-y-6">
-                        <h4 className="text-sm font-black text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
+                        <h4 className="text-sm font-black text-foreground dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
                           <Award size={16} className="text-slate-400" />
                           <span>Certifications</span>
                         </h4>
                         <div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-505 block mb-3">Extracted Certifications</span>
+                          <span className="text-10 font-bold uppercase tracking-wider text-slate-400 dark:text-muted-foreground block mb-3">Extracted Certifications</span>
                           <div className="flex flex-wrap gap-2">
                             {editForm.certifications ? (
                               editForm.certifications.split(",").map((cert: string, idx: number) => {
                                 const clean = cert.trim();
                                 if (!clean) return null;
                                 return (
-                                  <span key={idx} className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-750 text-slate-700 dark:text-slate-300">
+                                  <span key={idx} className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-muted dark:bg-slate-800 border border-slate-100 dark:border-border text-slate-700 dark:text-slate-300">
                                     {clean}
                                   </span>
                                 );
@@ -1778,7 +1778,7 @@ export default function ResumeBuilder() {
                     {/* ACHIEVEMENTS TAB */}
                     {activeTab === "achievements" && (
                       <div className="space-y-6">
-                        <h4 className="text-sm font-black text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
+                        <h4 className="text-sm font-black text-foreground dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
                           <Trophy size={16} className="text-slate-400" />
                           <span>Achievements</span>
                         </h4>
@@ -1786,7 +1786,7 @@ export default function ResumeBuilder() {
                           {editForm.achievementsList.map((ach: string, index: number) => {
                             if (!ach.trim()) return null;
                             return (
-                              <div key={index} className="flex gap-2.5 items-start p-3 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/10 dark:bg-slate-900/20 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                              <div key={index} className="flex gap-2.5 items-start p-3 rounded-2xl border border-slate-100 dark:border-slate-800 bg-muted/10 dark:bg-slate-900/20 text-xs font-semibold text-slate-700 dark:text-slate-300">
                                 <CheckCircle2 size={14} className="text-emerald-500 mt-0.5 shrink-0" />
                                 <span className="leading-relaxed">{ach}</span>
                               </div>
@@ -1804,19 +1804,19 @@ export default function ResumeBuilder() {
                     {/* LANGUAGES TAB */}
                     {activeTab === "languages" && (
                       <div className="space-y-6">
-                        <h4 className="text-sm font-black text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
+                        <h4 className="text-sm font-black text-foreground dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
                           <Languages size={16} className="text-slate-400" />
                           <span>Languages</span>
                         </h4>
                         <div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-505 block mb-3">Extracted Languages</span>
+                          <span className="text-10 font-bold uppercase tracking-wider text-slate-400 dark:text-muted-foreground block mb-3">Extracted Languages</span>
                           <div className="flex flex-wrap gap-2">
                             {editForm.languages ? (
                               editForm.languages.split(",").map((lang: string, idx: number) => {
                                 const clean = lang.trim();
                                 if (!clean) return null;
                                 return (
-                                  <span key={idx} className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-750 text-slate-700 dark:text-slate-300">
+                                  <span key={idx} className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-muted dark:bg-slate-800 border border-slate-100 dark:border-border text-slate-700 dark:text-slate-300">
                                     {clean}
                                   </span>
                                 );
@@ -1833,19 +1833,19 @@ export default function ResumeBuilder() {
                     {/* SOCIAL LINKS TAB */}
                     {activeTab === "socials" && (
                       <div className="space-y-6">
-                        <h4 className="text-sm font-black text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
+                        <h4 className="text-sm font-black text-foreground dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
                           <Globe size={16} className="text-slate-400" />
                           <span>Social Links</span>
                         </h4>
                         <div className="space-y-4">
                           {editForm.linkedin && (
                             <div>
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1">LinkedIn Profile URL</span>
+                              <span className="text-10 font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1">LinkedIn Profile URL</span>
                               <a 
                                 href={editForm.linkedin} 
                                 target="_blank" 
                                 rel="noopener noreferrer" 
-                                className="px-3.5 py-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2"
+                                className="px-3.5 py-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-muted/30 dark:bg-slate-900/30 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2"
                               >
                                 <Globe size={13} />
                                 <span>{editForm.linkedin}</span>
@@ -1854,12 +1854,12 @@ export default function ResumeBuilder() {
                           )}
                           {editForm.github && (
                             <div>
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-505 block mb-1">GitHub Profile URL</span>
+                              <span className="text-10 font-bold uppercase tracking-wider text-slate-400 dark:text-muted-foreground block mb-1">GitHub Profile URL</span>
                               <a 
                                 href={editForm.github} 
                                 target="_blank" 
                                 rel="noopener noreferrer" 
-                                className="px-3.5 py-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2"
+                                className="px-3.5 py-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-muted/30 dark:bg-slate-900/30 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2"
                               >
                                 <Code size={13} />
                                 <span>{editForm.github}</span>
@@ -1868,12 +1868,12 @@ export default function ResumeBuilder() {
                           )}
                           {editForm.portfolio && (
                             <div>
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1">Portfolio Website URL</span>
+                              <span className="text-10 font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1">Portfolio Website URL</span>
                               <a 
                                 href={editForm.portfolio} 
                                 target="_blank" 
                                 rel="noopener noreferrer" 
-                                className="px-3.5 py-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2"
+                                className="px-3.5 py-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-muted/30 dark:bg-slate-900/30 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2"
                               >
                                 <Globe size={13} />
                                 <span>{editForm.portfolio}</span>
@@ -1894,13 +1894,13 @@ export default function ResumeBuilder() {
                 </div>
 
                 {/* Footer */}
-                <div className="px-6 py-4 border-t border-slate-150 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-900/30 flex items-center justify-between gap-3 shrink-0">
+                <div className="px-6 py-4 border-t border-border dark:border-slate-850 bg-muted/50 dark:bg-slate-900/30 flex items-center justify-between gap-3 shrink-0">
                   <button 
                     onClick={() => {
                       setIsEditOpen(false);
                       triggerUpload();
                     }}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-950 dark:bg-slate-50 hover:bg-slate-900 dark:hover:bg-slate-205 text-white dark:text-slate-955 text-xs font-bold cursor-pointer transition-all shadow-md"
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-950 dark:bg-muted hover:bg-slate-900 dark:hover:bg-slate-205 text-white dark:text-slate-955 text-xs font-bold cursor-pointer transition-all shadow-md"
                   >
                     <Upload size={13} />
                     <span>Upload Resume to Update</span>

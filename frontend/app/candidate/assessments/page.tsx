@@ -346,7 +346,7 @@ export default function CandidateAssessments() {
 
   if (loading) {
     return (
-      <div className="p-8 max-w-5xl mx-auto text-gray-500 bg-[#f8fafc] dark:bg-[#07070b] min-h-screen">
+      <div className="p-8 max-w-5xl mx-auto text-gray-500 bg-background dark:bg-background min-h-screen">
         Loading assessment terminal...
       </div>
     );
@@ -355,7 +355,7 @@ export default function CandidateAssessments() {
   if (apps.length === 0) {
 
     return (
-      <div className="p-8 md:p-12 max-w-2xl mx-auto text-center flex flex-col justify-center items-center gap-6 min-h-[60vh] glass-panel border border-gray-200 dark:border-gray-800 rounded-3xl bg-white dark:bg-[#0c0d14]/40 mt-10 shadow-xl font-sans">
+      <div className="p-8 md:p-12 max-w-2xl mx-auto text-center flex flex-col justify-center items-center gap-6 min-h-[60vh] glass-panel border border-border dark:border-border rounded-3xl bg-white dark:bg-card/40 mt-10 shadow-xl font-sans">
         <div className="flex items-center gap-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-300 dark:border-purple-500/10 px-4 py-2.5 rounded-full text-purple-600 dark:text-purple-400 text-xs font-bold w-fit animate-pulse">
           <Cpu size={14} />
           <span>Tara AI Recruiter</span>
@@ -365,7 +365,7 @@ export default function CandidateAssessments() {
           "Hello! I am currently monitoring the recruitment pipeline. You do not have any active test assessments assigned to your account at this moment. Please apply for our job openings to trigger the screening phase."
         </div>
         
-        <div className="border p-4 rounded-xl bg-gray-50 dark:bg-gray-900/10 text-left w-full max-w-sm border-gray-200 dark:border-gray-800/60">
+        <div className="border p-4 rounded-xl bg-gray-50 dark:bg-gray-900/10 text-left w-full max-w-sm border-border dark:border-border/60">
           <div className="flex justify-between text-xs mb-2 text-gray-500">
             <span>Assessment Stage:</span>
             <span className="text-gray-500 dark:text-gray-400 font-semibold uppercase">Idle / No Action</span>
@@ -384,7 +384,7 @@ export default function CandidateAssessments() {
   const englishTest = assessment ? JSON.parse(assessment.english_test) : [];
 
   return (
-    <div className="p-8 md:p-12 max-w-7xl mx-auto flex flex-col gap-8 bg-[#f8fafc] dark:bg-[#07070b] min-h-screen text-gray-800 dark:text-gray-100 transition-colors duration-300">
+    <div className="p-8 md:p-12 max-w-7xl mx-auto flex flex-col gap-8 bg-background dark:bg-background min-h-screen text-gray-800 dark:text-gray-100 transition-colors duration-300">
       <div>
         <h1 className="text-2xl md:text-3xl font-extrabold text-gray-950 dark:text-white tracking-tight">AI Test Terminal</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -396,61 +396,61 @@ export default function CandidateAssessments() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* Left: Device verification */}
-          <div className="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-gray-800 flex flex-col gap-6">
+          <div className="glass-panel p-6 rounded-2xl border border-border dark:border-border flex flex-col gap-6">
             <h2 className="text-sm font-bold text-gray-950 dark:text-white flex items-center gap-2">
               <ShieldCheck size={16} className="text-purple-600 dark:text-purple-400" />
               <span>Hardware & Identity Verification</span>
             </h2>
 
             <div className="flex flex-col gap-3">
-              <div className="flex justify-between items-center text-xs p-3 rounded-xl border border-gray-200 dark:border-gray-800/40 bg-gray-50 dark:bg-[#0d0e15]/40">
+              <div className="flex justify-between items-center text-xs p-3 rounded-xl border border-border dark:border-border/40 bg-muted dark:bg-card/40">
                 <span className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
                   <Camera size={14} /> Video Webcam Feed
                 </span>
-                <span className={`text-[10px] font-bold ${checks.camera ? (isSimulated ? "text-amber-400" : "text-emerald-400") : "text-gray-500"}`}>
+                <span className={`text-10 font-bold ${checks.camera ? (isSimulated ? "text-amber-400" : "text-emerald-400") : "text-gray-500"}`}>
                   {checks.camera ? (isSimulated ? "SIMULATED" : "DETECTED") : "UNCHECKED"}
                 </span>
               </div>
 
-              <div className="flex justify-between items-center text-xs p-3 rounded-xl border border-gray-200 dark:border-gray-800/40 bg-gray-50 dark:bg-[#0d0e15]/40">
+              <div className="flex justify-between items-center text-xs p-3 rounded-xl border border-border dark:border-border/40 bg-muted dark:bg-card/40">
                 <span className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
                   <Mic size={14} /> Speech Microphone
                 </span>
-                <span className={`text-[10px] font-bold ${checks.mic ? (isSimulated ? "text-amber-400" : "text-emerald-400") : "text-gray-500"}`}>
+                <span className={`text-10 font-bold ${checks.mic ? (isSimulated ? "text-amber-400" : "text-emerald-400") : "text-gray-500"}`}>
                   {checks.mic ? (isSimulated ? "SIMULATED" : "DETECTED") : "UNCHECKED"}
                 </span>
               </div>
 
-              <div className="flex justify-between items-center text-xs p-3 rounded-xl border border-gray-200 dark:border-gray-800/40 bg-gray-50 dark:bg-[#0d0e15]/40">
+              <div className="flex justify-between items-center text-xs p-3 rounded-xl border border-border dark:border-border/40 bg-muted dark:bg-card/40">
                 <span className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
                   <Globe size={14} /> Network Speed
                 </span>
-                <span className={`text-[10px] font-bold ${checks.internet ? "text-emerald-400" : "text-gray-500"}`}>
+                <span className={`text-10 font-bold ${checks.internet ? "text-emerald-400" : "text-gray-500"}`}>
                   {checks.internet ? "OPTIMAL" : "UNCHECKED"}
                 </span>
               </div>
 
-              <div className="flex justify-between items-center text-xs p-3 rounded-xl border border-gray-200 dark:border-gray-800/40 bg-gray-50 dark:bg-[#0d0e15]/40">
+              <div className="flex justify-between items-center text-xs p-3 rounded-xl border border-border dark:border-border/40 bg-muted dark:bg-card/40">
                 <span className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
                   <Cpu size={14} /> Secure Browser Engine
                 </span>
-                <span className={`text-[10px] font-bold ${checks.browser ? "text-emerald-400" : "text-gray-500"}`}>
+                <span className={`text-10 font-bold ${checks.browser ? "text-emerald-400" : "text-gray-500"}`}>
                   {checks.browser ? "SECURE" : "UNCHECKED"}
                 </span>
               </div>
 
-              <div className="flex justify-between items-center text-xs p-3 rounded-xl border border-gray-200 dark:border-gray-800/40 bg-gray-50 dark:bg-[#0d0e15]/40">
+              <div className="flex justify-between items-center text-xs p-3 rounded-xl border border-border dark:border-border/40 bg-muted dark:bg-card/40">
                 <span className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
                   <Server size={14} /> Face Presence Detection
                 </span>
-                <span className={`text-[10px] font-bold ${checks.face ? (isSimulated ? "text-amber-400" : "text-emerald-400") : "text-gray-500"}`}>
+                <span className={`text-10 font-bold ${checks.face ? (isSimulated ? "text-amber-400" : "text-emerald-400") : "text-gray-500"}`}>
                   {checks.face ? (isSimulated ? "SIMULATED" : "VERIFIED") : "UNCHECKED"}
                 </span>
               </div>
             </div>
 
             {!isSimulated && checks.camera && stream && (
-              <div className="relative aspect-video rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800 bg-black mt-2">
+              <div className="relative aspect-video rounded-xl overflow-hidden border border-border dark:border-border bg-black mt-2">
                 <video
                   ref={(el) => {
                     if (el) el.srcObject = stream;
@@ -464,7 +464,7 @@ export default function CandidateAssessments() {
             )}
 
             {isSimulated && checks.camera && (
-              <div className="text-[10px] text-amber-400 bg-amber-950/20 border border-amber-900/30 rounded-xl p-3 flex items-start gap-2 leading-relaxed">
+              <div className="text-10 text-amber-400 bg-amber-950/20 border border-amber-900/30 rounded-xl p-3 flex items-start gap-2 leading-relaxed">
                 <AlertTriangle size={12} className="shrink-0 mt-0.5" />
                 <span>
                   Real camera/mic permissions could not be acquired (blocked or unavailable). Running in simulated mode.
@@ -475,14 +475,14 @@ export default function CandidateAssessments() {
             <button
               onClick={runDeviceVerification}
               disabled={verifying}
-              className="w-full bg-white dark:bg-[#12131e] border border-gray-200 dark:border-gray-800 text-gray-950 dark:text-white hover:border-purple-300 dark:hover:border-purple-500/50 py-2.5 rounded-xl text-xs font-semibold transition-all disabled:opacity-50"
+              className="w-full bg-white dark:bg-card border border-border dark:border-border text-gray-950 dark:text-white hover:border-purple-300 dark:hover:border-purple-500/50 py-2.5 rounded-xl text-xs font-semibold transition-all disabled:opacity-50"
             >
               {verifying ? "Checking channels..." : "Run Diagnostic check"}
             </button>
           </div>
 
           {/* Right: Intro instructions */}
-          <div className="lg:col-span-2 glass-panel p-8 rounded-2xl border border-gray-200 dark:border-gray-800 flex flex-col justify-between">
+          <div className="lg:col-span-2 glass-panel p-8 rounded-2xl border border-border dark:border-border flex flex-col justify-between">
             <div>
               <h2 className="text-lg font-bold text-gray-950 dark:text-white mb-4">Proctored Assessment Rules</h2>
               <ul className="flex flex-col gap-3 text-xs text-gray-500 dark:text-gray-400 list-disc pl-4 leading-relaxed">
@@ -515,9 +515,9 @@ export default function CandidateAssessments() {
             
             {/* MCQ Section */}
             {mcqs.length > 0 && (
-              <div className="glass-panel p-8 rounded-2xl border border-gray-200 dark:border-gray-800 flex flex-col gap-6 bg-gray-50 dark:bg-[#0c0d14]/40">
-                <h2 className="text-sm font-bold text-gray-950 dark:text-white border-b border-gray-200 dark:border-gray-800 pb-3 flex items-center gap-2">
-                  <span className="w-5 h-5 bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 text-[10px] flex items-center justify-center rounded-lg font-bold">1</span>
+              <div className="glass-panel p-8 rounded-2xl border border-border dark:border-border flex flex-col gap-6 bg-gray-50 dark:bg-card/40">
+                <h2 className="text-sm font-bold text-gray-950 dark:text-white border-b border-border dark:border-border pb-3 flex items-center gap-2">
+                  <span className="w-5 h-5 bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 text-10 flex items-center justify-center rounded-lg font-bold">1</span>
                   <span>Part A: Multiple Choice Questions</span>
                 </h2>
                 
@@ -531,7 +531,7 @@ export default function CandidateAssessments() {
                           className={`flex items-center gap-3 p-3 rounded-xl border text-xs cursor-pointer transition-colors ${
                             mcqAnswers[q.id] === oIdx
                               ? "bg-purple-50 dark:bg-purple-950/20 border-purple-300 dark:border-purple-500/50 text-purple-600 dark:text-purple-300"
-                              : "bg-gray-50 dark:bg-[#0d0e15]/40 border-gray-200 dark:border-gray-800/40 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-700"
+                              : "bg-muted dark:bg-card/40 border-border dark:border-border/40 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-700"
                           }`}
                         >
                           <input
@@ -541,7 +541,7 @@ export default function CandidateAssessments() {
                             checked={mcqAnswers[q.id] === oIdx}
                             onChange={() => handleMCQChange(q.id, oIdx)}
                           />
-                          <span className="w-4 h-4 rounded-full border border-gray-300 dark:border-gray-700 flex items-center justify-center shrink-0 text-[9px] font-bold">
+                          <span className="w-4 h-4 rounded-full border border-gray-300 dark:border-gray-700 flex items-center justify-center shrink-0 text-9 font-bold">
                             {String.fromCharCode(65 + oIdx)}
                           </span>
                           <span>{option}</span>
@@ -555,9 +555,9 @@ export default function CandidateAssessments() {
 
             {/* Coding Section */}
             {codingChallenges.length > 0 && (
-              <div className="glass-panel p-8 rounded-2xl border border-gray-200 dark:border-gray-800 flex flex-col gap-6 bg-gray-50 dark:bg-[#0c0d14]/40">
-                <h2 className="text-sm font-bold text-gray-950 dark:text-white border-b border-gray-200 dark:border-gray-800 pb-3 flex items-center gap-2">
-                  <span className="w-5 h-5 bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 text-[10px] flex items-center justify-center rounded-lg font-bold">2</span>
+              <div className="glass-panel p-8 rounded-2xl border border-border dark:border-border flex flex-col gap-6 bg-gray-50 dark:bg-card/40">
+                <h2 className="text-sm font-bold text-gray-950 dark:text-white border-b border-border dark:border-border pb-3 flex items-center gap-2">
+                  <span className="w-5 h-5 bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 text-10 flex items-center justify-center rounded-lg font-bold">2</span>
                   <span>Part B: Algorithmic Programming</span>
                 </h2>
 
@@ -568,14 +568,14 @@ export default function CandidateAssessments() {
                         <FileCode2 size={14} className="text-purple-600 dark:text-purple-400" />
                         <span>{challenge.title}</span>
                       </h3>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 leading-relaxed bg-gray-100 dark:bg-[#0d0e15]/60 p-4 rounded-xl border border-gray-200 dark:border-gray-800/40">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 leading-relaxed bg-gray-100 dark:bg-card/60 p-4 rounded-xl border border-border dark:border-border/40">
                         {challenge.description}
                       </p>
                     </div>
 
-                    <div className="flex flex-col border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
-                      <div className="bg-gray-100 dark:bg-[#0f1019] px-4 py-2 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center">
-                        <span className="text-[10px] font-mono text-gray-500">solution.py</span>
+                    <div className="flex flex-col border border-border dark:border-border rounded-xl overflow-hidden">
+                      <div className="bg-gray-100 dark:bg-muted px-4 py-2 border-b border-border dark:border-border flex justify-between items-center">
+                        <span className="text-10 font-mono text-gray-500">solution.py</span>
                       </div>
                       <textarea
                         rows={10}
@@ -591,9 +591,9 @@ export default function CandidateAssessments() {
 
             {/* English Section */}
             {englishTest.length > 0 && (
-              <div className="glass-panel p-8 rounded-2xl border border-gray-200 dark:border-gray-800 flex flex-col gap-6 bg-gray-50 dark:bg-[#0c0d14]/40">
-                <h2 className="text-sm font-bold text-gray-950 dark:text-white border-b border-gray-200 dark:border-gray-800 pb-3 flex items-center gap-2">
-                  <span className="w-5 h-5 bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 text-[10px] flex items-center justify-center rounded-lg font-bold">3</span>
+              <div className="glass-panel p-8 rounded-2xl border border-border dark:border-border flex flex-col gap-6 bg-gray-50 dark:bg-card/40">
+                <h2 className="text-sm font-bold text-gray-950 dark:text-white border-b border-border dark:border-border pb-3 flex items-center gap-2">
+                  <span className="w-5 h-5 bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 text-10 flex items-center justify-center rounded-lg font-bold">3</span>
                   <span>Part C: English Communication & Writing</span>
                 </h2>
 
@@ -605,7 +605,7 @@ export default function CandidateAssessments() {
                       value={englishAnswer}
                       onChange={(e) => setEnglishAnswer(e.target.value)}
                       rows={5}
-                      className="bg-white dark:bg-[#12131e] border border-gray-200 dark:border-gray-800 rounded-xl p-4 text-xs text-gray-950 dark:text-white focus:outline-none focus:border-purple-500 transition-colors resize-none leading-relaxed"
+                      className="bg-white dark:bg-card border border-border dark:border-border rounded-xl p-4 text-xs text-gray-950 dark:text-white focus:outline-none focus:border-purple-500 transition-colors resize-none leading-relaxed"
                     />
                   </div>
                 ))}
@@ -622,14 +622,14 @@ export default function CandidateAssessments() {
 
           {/* Right: Proctor Live Alerts */}
           <div className="flex flex-col gap-6">
-            <div className="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#0d0e15]/40 flex flex-col gap-4">
-              <h3 className="text-xs font-bold text-gray-950 dark:text-white flex items-center gap-2 border-b border-gray-200 dark:border-gray-800 pb-3">
+            <div className="glass-panel p-6 rounded-2xl border border-border dark:border-border bg-muted dark:bg-card/40 flex flex-col gap-4">
+              <h3 className="text-xs font-bold text-gray-950 dark:text-white flex items-center gap-2 border-b border-border dark:border-border pb-3">
                 <ClipboardCopy size={14} className="text-red-400 animate-pulse" />
                 <span>AI Proctor Monitoring</span>
               </h3>
 
               {!isSimulated && checks.camera && stream && (
-                <div className="relative aspect-video rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800 bg-black mt-2">
+                <div className="relative aspect-video rounded-xl overflow-hidden border border-border dark:border-border bg-black mt-2">
                   <video
                     ref={(el) => {
                       videoRef.current = el;
@@ -640,7 +640,7 @@ export default function CandidateAssessments() {
                     muted
                     className="w-full h-full object-cover transform -scale-x-100"
                   />
-                  <div className="absolute bottom-2 left-2 z-10 flex items-center gap-1.5 bg-black/60 px-2 py-0.5 rounded-md text-[9px] text-emerald-400 font-semibold border border-emerald-500/20">
+                  <div className="absolute bottom-2 left-2 z-10 flex items-center gap-1.5 bg-black/60 px-2 py-0.5 rounded-md text-9 text-emerald-400 font-semibold border border-emerald-500/20">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
                     <span>PROCTORING ACTIVE</span>
                   </div>
@@ -648,10 +648,10 @@ export default function CandidateAssessments() {
               )}
 
               {isSimulated && (
-                <div className="relative aspect-video rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-[#07080c] mt-2 flex flex-col items-center justify-center text-center p-4">
+                <div className="relative aspect-video rounded-xl overflow-hidden border border-border dark:border-border bg-gray-100 dark:bg-background mt-2 flex flex-col items-center justify-center text-center p-4">
                   <Camera size={24} className="text-amber-500/40 mb-2 animate-pulse" />
-                  <span className="text-[10px] font-bold text-amber-500 tracking-wider">SIMULATED WEB FEED</span>
-                  <span className="text-[8px] text-gray-500 mt-1 max-w-[150px] leading-normal font-sans">Webcam feed is simulated (real device blocked/unavailable)</span>
+                  <span className="text-10 font-bold text-amber-500 tracking-wider">SIMULATED WEB FEED</span>
+                  <span className="text-8 text-gray-500 mt-1 max-w-150 leading-normal font-sans">Webcam feed is simulated (real device blocked/unavailable)</span>
                 </div>
               )}
 
@@ -662,7 +662,7 @@ export default function CandidateAssessments() {
                 </span>
               </div>
 
-              <div className="text-[10px] text-gray-500 flex flex-col gap-1 border-t border-gray-200 dark:border-gray-800/60 pt-3 mt-1 font-sans">
+              <div className="text-10 text-gray-500 flex flex-col gap-1 border-t border-border dark:border-border/60 pt-3 mt-1 font-sans">
                 <div className="flex justify-between">
                   <span>AI Face & Gaze Tracking:</span>
                   <span className={blazeModel ? "text-emerald-400 font-bold" : "text-gray-600 font-bold animate-pulse"}>
@@ -677,7 +677,7 @@ export default function CandidateAssessments() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-2 max-h-40 overflow-y-auto mt-2 text-[10px] font-mono border-t border-gray-200 dark:border-gray-800/40 pt-3">
+              <div className="flex flex-col gap-2 max-h-40 overflow-y-auto mt-2 text-10 font-mono border-t border-border dark:border-border/40 pt-3">
                 {proctorLogs.length === 0 ? (
                   <span className="text-gray-600 italic">No proctor events triggered.</span>
                 ) : (
@@ -696,7 +696,7 @@ export default function CandidateAssessments() {
 
       {/* Completed panel */}
       {examCompleted && (
-        <div className="glass-panel p-12 rounded-2xl border border-gray-200 dark:border-gray-800 text-center flex flex-col items-center justify-center gap-4 min-h-[50vh]">
+        <div className="glass-panel p-12 rounded-2xl border border-border dark:border-border text-center flex flex-col items-center justify-center gap-4 min-h-[50vh]">
           <div className="w-14 h-14 bg-emerald-100 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/30 flex items-center justify-center rounded-2xl text-emerald-600 dark:text-emerald-400">
             <CheckCircle size={28} />
           </div>

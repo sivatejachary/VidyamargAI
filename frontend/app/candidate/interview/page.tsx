@@ -236,30 +236,7 @@ export default function CandidateInterview() {
   return (
     <div className="flex-1 min-h-screen bg-background text-foreground p-6 md:p-8 font-sans">
       
-      {/* Dynamic Voice Orb CSS Keyframe Animations */}
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes orb-speaking {
-          0%, 100% { transform: scale(1); box-shadow: 0 0 20px 5px rgba(139, 92, 246, 0.4), inset 0 0 15px rgba(139, 92, 246, 0.5); }
-          50% { transform: scale(1.08); box-shadow: 0 0 45px 15px rgba(139, 92, 246, 0.7), inset 0 0 25px rgba(139, 92, 246, 0.8); }
-        }
-        @keyframes orb-listening {
-          0%, 100% { transform: scale(1); border-radius: 50%; box-shadow: 0 0 20px 5px rgba(16, 185, 129, 0.4); }
-          33% { border-radius: 46% 54% 50% 50% / 50% 50% 54% 46%; }
-          66% { border-radius: 54% 46% 52% 48% / 48% 52% 46% 54%; transform: scale(1.04); box-shadow: 0 0 35px 12px rgba(16, 185, 129, 0.65); }
-        }
-        @keyframes orb-thinking {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        @keyframes orb-thinking-pulse {
-          0%, 100% { transform: scale(1); box-shadow: 0 0 20px 5px rgba(245, 158, 11, 0.4); }
-          50% { transform: scale(1.03); box-shadow: 0 0 35px 10px rgba(245, 158, 11, 0.65); }
-        }
-        @keyframes wave-bounce {
-          0%, 100% { transform: scaleY(0.3); }
-          50% { transform: scaleY(1); }
-        }
-      `}} />
+      
 
       {/* Header Area */}
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
@@ -309,7 +286,7 @@ export default function CandidateInterview() {
             <Card className="overflow-hidden p-0 relative aspect-video flex items-center justify-center bg-black border border-border">
               <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 bg-black/50 backdrop-blur-xs px-2.5 py-1 rounded-md border border-white/5">
                 <span className="w-2 h-2 rounded-full bg-destructive animate-ping shrink-0" />
-                <span className="text-[9px] font-bold text-destructive tracking-wider uppercase">LIVE FEED</span>
+                <span className="text-9 font-bold text-destructive tracking-wider uppercase">LIVE FEED</span>
               </div>
 
               {!isSimulated && stream ? (
@@ -324,7 +301,7 @@ export default function CandidateInterview() {
                 <div className="flex flex-col items-center justify-center text-center p-6 text-muted-foreground">
                   <User size={48} className="text-muted/40 mb-3" />
                   {isSimulated ? (
-                    <Badge variant="warning" className="text-[9px] tracking-wider uppercase font-bold">
+                    <Badge variant="warning" className="text-9 tracking-wider uppercase font-bold">
                       Simulated Camera Active
                     </Badge>
                   ) : (
@@ -389,7 +366,7 @@ export default function CandidateInterview() {
 
               <div className="mt-6 pt-4 border-t border-border flex items-start gap-2 bg-destructive/5 p-3 rounded-xl border border-destructive/10">
                 <AlertTriangle size={14} className="text-destructive shrink-0 mt-0.5" />
-                <p className="text-[10px] text-destructive font-bold leading-normal">
+                <p className="text-10 text-destructive font-bold leading-normal">
                   Warning: Leaving full screen or changing tabs will auto-submit the interview and record a proctor violation flag.
                 </p>
               </div>
@@ -397,7 +374,7 @@ export default function CandidateInterview() {
           </div>
 
           {/* Column B: Immersive Fullscreen ChatGPT Voice Panel (Right 8 cols) */}
-          <Card className="lg:col-span-8 flex flex-col justify-between bg-black border border-border relative overflow-hidden p-6 min-h-[600px]">
+          <Card className="lg:col-span-8 flex flex-col justify-between bg-black border border-border relative overflow-hidden p-6 min-h-600">
             
             {/* Header info */}
             <div className="flex items-center justify-between border-b border-border/40 pb-4 shrink-0">
@@ -405,7 +382,7 @@ export default function CandidateInterview() {
                 <Cpu size={18} className="text-primary animate-pulse" />
                 <div>
                   <h3 className="text-sm font-black text-white">Chamber session</h3>
-                  <span className="text-[9px] text-muted-foreground font-bold tracking-wider uppercase">Adaptive AI Recruiter</span>
+                  <span className="text-9 text-muted-foreground font-bold tracking-wider uppercase">Adaptive AI Recruiter</span>
                 </div>
               </div>
               
@@ -415,7 +392,7 @@ export default function CandidateInterview() {
                   voiceState === "listening" ? "bg-emerald-500 animate-pulse" :
                   voiceState === "thinking" ? "bg-amber-500 animate-pulse" : "bg-muted"
                 }`} />
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                <span className="text-10 font-bold text-muted-foreground uppercase tracking-wider">
                   {voiceState === "speaking" ? "Tara Speaking" :
                    voiceState === "listening" ? "Tara Listening" :
                    voiceState === "thinking" ? "Tara Thinking" : "Offline"}
@@ -433,12 +410,10 @@ export default function CandidateInterview() {
                 {voiceState === "thinking" && (
                   <>
                     <div 
-                      className="absolute border border-dashed border-amber-500/60 rounded-full w-[200px] h-[200px]"
-                      style={{ animation: "orb-thinking 8s linear infinite" }}
+                      className="absolute border border-dashed border-amber-500/60 rounded-full w-200 h-200 animate-orb-thinking-slow"
                     />
                     <div 
-                      className="absolute border border-dotted border-amber-400/40 rounded-full w-[230px] h-[230px]"
-                      style={{ animation: "orb-thinking 12s linear infinite reverse" }}
+                      className="absolute border border-dotted border-amber-400/40 rounded-full w-230 h-230 animate-orb-thinking-slow-reverse"
                     />
                   </>
                 )}
@@ -446,8 +421,7 @@ export default function CandidateInterview() {
                 {/* Pulsing sound ring for Speaking state */}
                 {voiceState === "speaking" && (
                   <div 
-                    className="absolute border border-purple-500/30 rounded-full w-[190px] h-[190px] animate-ping"
-                    style={{ animationDuration: "1.5s" }}
+                    className="absolute border border-purple-500/30 rounded-full w-190 h-190 animate-ping animate-duration-1500"
                   />
                 )}
 
@@ -477,7 +451,7 @@ export default function CandidateInterview() {
 
               {/* Real-time Subtitle / Caption Overlay */}
               <div className="max-w-xl w-full bg-slate-950/80 backdrop-blur-md border border-white/5 rounded-2xl p-4 shadow-2xl text-center space-y-1.5 mt-4 shrink-0">
-                <span className="text-[8px] font-black uppercase tracking-wider text-muted-foreground/60 block">
+                <span className="text-8 font-black uppercase tracking-wider text-muted-foreground/60 block">
                   {voiceState === "speaking" ? "Tara's Caption" : "Your Transcription"}
                 </span>
                 <p className="text-sm text-slate-100 font-medium leading-relaxed">
@@ -501,7 +475,7 @@ export default function CandidateInterview() {
                 value={answer}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setAnswer(e.target.value)}
                 onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && submitAnswer()}
-                className="bg-[#0b0c10] border-border text-white text-xs h-11"
+                className="bg-card border-border text-white text-xs h-11"
               />
               <Button
                 onClick={submitAnswer}
@@ -558,7 +532,7 @@ export default function CandidateInterview() {
             </div>
 
             <div className="mt-8 pt-4 border-t border-border">
-              <p className="text-[10px] text-muted-foreground font-semibold">
+              <p className="text-10 text-muted-foreground font-semibold">
                 Next Stage: The Candidate Ranking Agent is currently computing your composite score percentile relative to alternative applicants.
               </p>
             </div>

@@ -365,13 +365,13 @@ export default function AiMentor({
       <div className="flex justify-end gap-2 shrink-0">
         <button
           onClick={() => setShowCreateModal(true)}
-          className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-[#1F2937] text-indigo-650 dark:text-[#3B82F6] border border-indigo-150 dark:border-[#374151] hover:dark:bg-[#374151] hover:dark:border-[#3B82F6] rounded-xl text-[10px] font-bold cursor-pointer transition-all flex items-center gap-1"
+          className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 dark:bg-card text-indigo-600 dark:text-indigo-400 dark:text-blue-500 border border-indigo-200 dark:border-border hover:dark:bg-muted hover:dark:border-primary rounded-xl text-10 font-bold cursor-pointer transition-all flex items-center gap-1"
         >
           <span>+ New Roadmap</span>
         </button>
         <button
           onClick={() => setShowSidebar(true)}
-          className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 dark:bg-[#1F2937] dark:hover:bg-[#374151] text-gray-500 dark:text-[#9CA3AF] border border-gray-200 dark:border-[#374151] rounded-xl text-[10px] font-bold cursor-pointer transition-all flex items-center gap-1"
+          className="px-3 py-1.5 bg-muted hover:bg-slate-200/50 dark:bg-card dark:hover:bg-muted text-muted-foreground dark:text-muted-foreground border border-border dark:border-border rounded-xl text-10 font-bold cursor-pointer transition-all flex items-center gap-1"
           title="Open Roadmaps"
         >
           <List size={11} />
@@ -381,19 +381,19 @@ export default function AiMentor({
 
       <div className="flex flex-1 overflow-hidden justify-center items-stretch relative min-h-0 w-full">
         {/* Chat Pane */}
-        <div className="w-full max-w-full lg:max-w-[70%] md:max-w-[80%] flex flex-col h-full overflow-hidden relative min-h-0">
+        <div className="w-full max-w-full lg:max-w-70-pct md:max-w-80-pct flex flex-col h-full overflow-hidden relative min-h-0">
           
           {/* Scrollable message thread */}
-          <div className="flex-1 overflow-y-auto mb-4 p-4 bg-slate-50 dark:bg-[#000000]/30 border border-slate-100 dark:border-[#374151] rounded-2xl flex flex-col gap-4 scrollbar-thin">
+          <div className="flex-1 overflow-y-auto mb-4 p-4 bg-muted dark:bg-black/30 border border-border rounded-2xl flex flex-col gap-4 scrollbar-thin">
             {mentorMessages.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center px-4 py-4 max-w-md mx-auto w-full text-center my-auto animate-fade-in gap-2.5">
                 
                 <div>
-                  <h2 className="text-base font-black text-gray-900 dark:text-[#F9FAFB] leading-tight">
+                  <h2 className="text-base font-black text-gray-900 dark:text-foreground leading-tight">
                     Hi {firstName} 👋
                   </h2>
-                  <p className="text-xs text-gray-550 dark:text-[#9CA3AF] font-bold mt-1">
-                    I'm <span className="text-[#3B82F6] font-extrabold">Tush AI</span>, your learning mentor.
+                  <p className="text-xs text-muted-foreground dark:text-muted-foreground font-bold mt-1">
+                    I'm <span className="text-blue-500 font-extrabold">Tush AI</span>, your learning mentor.
                   </p>
                 </div>
 
@@ -408,7 +408,7 @@ export default function AiMentor({
                     <button
                       key={chip.label}
                       onClick={() => handleSendWithSuggestion(chip.query)}
-                      className="px-3 py-1.5 text-[10px] font-bold text-slate-700 dark:text-[#F9FAFB] bg-white dark:bg-[#1F2937] border border-slate-200 dark:border-[#374151] hover:border-blue-500/50 dark:hover:border-[#3B82F6] hover:bg-slate-50 dark:hover:bg-[#374151] rounded-full hover:shadow-sm transition-all duration-200 cursor-pointer"
+                      className="px-3 py-1.5 text-10 font-bold text-foreground dark:text-foreground bg-card border border-border hover:border-blue-500/50 dark:hover:border-blue-500 hover:bg-slate-50 dark:hover:bg-muted rounded-full hover:shadow-sm transition-all duration-200 cursor-pointer"
                     >
                       {chip.label}
                     </button>
@@ -419,20 +419,20 @@ export default function AiMentor({
               mentorMessages.map((msg, idx) => (
                 <div 
                   key={idx} 
-                  className={`flex flex-col gap-1 max-w-[85%] ${
+                  className={`flex flex-col gap-1 max-w-85-pct ${
                     msg.sender === "user" ? "self-end items-end" : "self-start items-start"
                   }`}
                 >
-                  <span className={`text-[9px] font-black uppercase tracking-wider ${
-                    msg.sender === "user" ? "text-slate-450 dark:text-[#9CA3AF]" : "text-[#3B82F6]"
+                  <span className={`text-9 font-black uppercase tracking-wider ${
+                    msg.sender === "user" ? "text-muted-foreground dark:text-muted-foreground" : "text-blue-500"
                   }`}>
                     {msg.sender === "user" ? "You" : "Tush AI"}
                   </span>
                   <div 
                     className={`rounded-2xl p-3.5 text-xs leading-relaxed border ${
                       msg.sender === "user" 
-                        ? "bg-blue-50 dark:bg-blue-950/30 text-slate-900 dark:text-[#F9FAFB] border-blue-100 dark:border-blue-900/30 rounded-tr-sm shadow-sm" 
-                        : "bg-white dark:bg-[#1F2937] border-slate-200 dark:border-[#374151] text-slate-800 dark:text-[#F9FAFB] rounded-tl-sm shadow-sm"
+                        ? "bg-blue-50 dark:bg-blue-950/30 text-slate-900 dark:text-foreground border-blue-100 dark:border-blue-900/30 rounded-tr-sm shadow-sm" 
+                        : "bg-card border-border text-foreground dark:text-foreground rounded-tl-sm shadow-sm"
                     }`}
                   >
                     <p className="whitespace-pre-wrap">{msg.text}</p>
@@ -441,13 +441,13 @@ export default function AiMentor({
               ))
             )}
             {mentorLoading && (
-              <div className="bg-white dark:bg-[#1F2937] border border-slate-200 dark:border-[#374151] text-slate-800 dark:text-[#F9FAFB] self-start rounded-2xl rounded-tl-sm p-3.5 flex items-center gap-2 max-w-xs shadow-sm">
+              <div className="bg-card border border-border text-foreground dark:text-foreground self-start rounded-2xl rounded-tl-sm p-3.5 flex items-center gap-2 max-w-xs shadow-sm">
                 <div className="flex gap-1 shrink-0">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#3B82F6] animate-bounce [animation-delay:-0.3s]" />
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#3B82F6] animate-bounce [animation-delay:-0.15s]" />
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#3B82F6] animate-bounce" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce [animation-delay:-0.3s]" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce [animation-delay:-0.15s]" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce" />
                 </div>
-                <span className="text-[10px] font-bold text-slate-455 dark:text-[#9CA3AF]">Tush AI is typing...</span>
+                <span className="text-10 font-bold text-muted-foreground dark:text-muted-foreground">Tush AI is typing...</span>
               </div>
             )}
             <div ref={chatEndRef} />
@@ -455,17 +455,17 @@ export default function AiMentor({
 
           {/* Redesigned pill-shaped floating input box */}
           <div className="w-full shrink-0">
-            <div className="flex flex-col bg-white dark:bg-[#1F2937] border border-[#E5E7EB] dark:border-[#374151] rounded-[32px] p-2 pl-4 pr-3 shadow-[0_8px_30px_rgba(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.25)] hover:border-gray-300 dark:hover:border-slate-500 focus-within:border-blue-500/50 dark:focus-within:border-[#3B82F6] focus-within:shadow-[0_8px_30px_rgba(59,130,246,0.08)] transition-all duration-300 w-full">
+            <div className="flex flex-col flex flex-col bg-card border border-border rounded-32 p-2 pl-4 pr-3 shadow-custom-glass hover:border-border-hover dark:hover:border-border-hover focus-within:border-primary/50 dark:focus-within:border-primary focus-within:shadow-[0_8px_30px_rgba(59,130,246,0.08)] transition-all duration-300 w-full">
               
               {/* Attachment Preview Chips */}
               {attachments.length > 0 && (
-                <div className="flex flex-wrap gap-2 px-1 pt-2 pb-1.5 border-b border-gray-100 dark:border-[#374151] mb-2 w-full">
+                <div className="flex flex-wrap gap-2 px-1 pt-2 pb-1.5 border-b border-gray-100 dark:border-border mb-2 w-full">
                   {attachments.map((file, idx) => {
                     const isImage = file.type.startsWith("image/");
                     return (
                       <div 
                         key={idx} 
-                        className="flex items-center gap-1.5 pl-2 pr-1.5 py-1 rounded-lg bg-gray-50 dark:bg-[#111827] border border-gray-200 dark:border-[#374151] text-xs text-gray-700 dark:text-[#F9FAFB]"
+                        className="flex items-center gap-1.5 pl-2 pr-1.5 py-1 rounded-lg bg-gray-50 dark:bg-background border border-border dark:border-border text-xs text-gray-700 dark:text-foreground"
                       >
                         {isImage ? (
                           <span className="w-4.5 h-4.5 rounded overflow-hidden shrink-0 border border-gray-300 dark:border-zinc-600">
@@ -476,9 +476,9 @@ export default function AiMentor({
                             />
                           </span>
                         ) : (
-                          <FileText size={14} className="text-[#3B82F6]" />
+                          <FileText size={14} className="text-blue-500" />
                         )}
-                        <span className="max-w-[120px] truncate font-medium">{file.name}</span>
+                        <span className="max-w-120 truncate font-medium">{file.name}</span>
                         <button 
                           onClick={() => removeAttachment(idx)}
                           className="w-4 h-4 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-655 dark:hover:text-zinc-200 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
@@ -493,11 +493,11 @@ export default function AiMentor({
               )}
 
               {/* Main Pill Controls row */}
-              <div className="flex items-end gap-2 w-full min-h-[40px]">
+              <div className="flex items-end gap-2 w-full min-h-10">
                 {/* Left Side: Plus icon */}
                 <button 
                   onClick={handlePlusClick}
-                  className="flex items-center justify-center w-9 h-9 rounded-full text-gray-400 hover:text-gray-655 dark:text-[#9CA3AF] dark:hover:text-[#F9FAFB] hover:bg-gray-100 dark:hover:bg-[#111827] transition-colors shrink-0 mb-0.5" 
+                  className="flex items-center justify-center w-9 h-9 rounded-full text-gray-400 hover:text-gray-655 dark:text-muted-foreground dark:hover:text-foreground hover:bg-gray-100 dark:hover:bg-background transition-colors shrink-0 mb-0.5" 
                   title="Add attachment"
                 >
                   <Plus size={20} />
@@ -525,8 +525,7 @@ export default function AiMentor({
                       }
                     }}
                     placeholder="Ask Tush AI anything..."
-                    className="chat-input-textarea w-full bg-transparent resize-none border-none outline-none focus:ring-0 text-sm text-gray-900 dark:text-[#F9FAFB] placeholder-[#6B7280] dark:placeholder-[#9CA3AF] py-1 max-h-[200px]"
-                    style={{ height: '24px' }}
+                    className="chat-input-textarea w-full bg-transparent resize-none border-none outline-none focus:ring-0 text-sm text-foreground placeholder-muted-foreground py-1 max-h-200 h-6"
                   />
                 </div>
 
@@ -538,7 +537,7 @@ export default function AiMentor({
                     className={`flex items-center justify-center w-9 h-9 rounded-full transition-all duration-300 ${
                       isListening 
                         ? "bg-red-500 text-white animate-pulse shadow-[0_0_12px_rgba(239,68,68,0.5)]" 
-                        : "text-gray-400 hover:text-gray-655 dark:text-[#9CA3AF] dark:hover:text-[#F9FAFB] hover:bg-gray-100 dark:hover:bg-[#111827]"
+                        : "text-gray-400 hover:text-gray-655 dark:text-muted-foreground dark:hover:text-foreground hover:bg-gray-100 dark:hover:bg-background"
                     }`} 
                     title={isListening ? "Stop listening" : "Voice input"}
                   >
@@ -551,8 +550,8 @@ export default function AiMentor({
                     disabled={!mentorQuery.trim() && attachments.length === 0}
                     className={`flex items-center justify-center w-9 h-9 rounded-full transition-all duration-200 shrink-0 ${
                       mentorQuery.trim() || attachments.length > 0
-                        ? "bg-[#3B82F6] hover:bg-blue-600 text-white shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
-                        : "bg-slate-100 dark:bg-[#111827] text-slate-400 dark:text-[#9CA3AF] cursor-not-allowed"
+                        ? "bg-blue-500 hover:bg-blue-600 text-white shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
+                        : "bg-slate-100 dark:bg-background text-slate-400 dark:text-muted-foreground cursor-not-allowed"
                     }`}
                     title="Send message"
                   >
@@ -567,24 +566,24 @@ export default function AiMentor({
         {/* Backdrop for mobile/desktop drawer click-away */}
         {showSidebar && (
           <div 
-            className="absolute inset-0 bg-black/40 backdrop-blur-[2px] z-30 transition-opacity duration-300 rounded-2xl"
+            className="absolute inset-0 bg-slate-950/40 backdrop-blur-xs z-30 transition-opacity duration-300 rounded-2xl"
             onClick={() => setShowSidebar(false)}
           />
         )}
 
         {/* Collapsible Slide-over Drawer for Active Roadmaps */}
-        <div className={`absolute top-0 right-0 h-full w-80 bg-white dark:bg-[#111827] border border-slate-205 dark:border-[#374151] shadow-2xl z-40 flex flex-col transition-transform duration-300 rounded-2xl ${
+        <div className={`absolute top-0 right-0 h-full w-80 bg-white dark:bg-background border border-border dark:border-border shadow-2xl z-40 flex flex-col transition-transform duration-300 rounded-2xl ${
           showSidebar ? "translate-x-0" : "translate-x-full"
         }`}>
           {/* Drawer Header */}
-          <div className="flex justify-between items-center p-4 border-b border-slate-100 dark:border-[#374151] shrink-0">
+          <div className="flex justify-between items-center p-4 border-b border-slate-100 dark:border-border shrink-0">
             <div>
-              <h4 className="text-xs font-black text-slate-800 dark:text-[#F9FAFB] uppercase tracking-wider">Active Roadmaps</h4>
-              <p className="text-[10px] text-slate-450 dark:text-[#9CA3AF] mt-0.5 font-medium">Explore custom study check-lists</p>
+              <h4 className="text-xs font-black text-foreground dark:text-foreground uppercase tracking-wider">Active Roadmaps</h4>
+              <p className="text-10 text-muted-foreground dark:text-muted-foreground mt-0.5 font-medium">Explore custom study check-lists</p>
             </div>
             <button 
               onClick={() => setShowSidebar(false)}
-              className="p-1.5 hover:bg-slate-100 dark:hover:bg-[#1F2937] rounded-xl text-slate-450 dark:text-[#9CA3AF] transition-colors cursor-pointer"
+              className="p-1.5 hover:bg-slate-100 dark:hover:bg-muted rounded-xl text-muted-foreground dark:text-muted-foreground transition-colors cursor-pointer"
             >
               <X size={16} />
             </button>
@@ -596,16 +595,16 @@ export default function AiMentor({
               <div 
                 key={s.id}
                 onClick={() => setSelectedSessionDetails(s)}
-                className="p-2.5 bg-slate-50 dark:bg-[#1F2937] border border-slate-200 dark:border-[#374151] rounded-2xl hover:border-indigo-500/30 dark:hover:border-[#3B82F6] transition-all cursor-pointer flex flex-col gap-1.5 relative group"
+                className="p-2.5 bg-muted dark:bg-card border border-border dark:border-border rounded-2xl hover:border-indigo-500/30 dark:hover:border-blue-500 transition-all cursor-pointer flex flex-col gap-1.5 relative group"
               >
                 <div className="flex justify-between items-start">
-                  <h4 className="text-[11px] font-bold text-slate-855 dark:text-[#F9FAFB] leading-snug truncate pr-2 flex-1">{s.name}</h4>
-                  <span className="text-[10px] font-black text-emerald-500 shrink-0">{s.progress}%</span>
+                  <h4 className="text-11 font-bold text-foreground dark:text-foreground leading-snug truncate pr-2 flex-1">{s.name}</h4>
+                  <span className="text-10 font-black text-emerald-500 shrink-0">{s.progress}%</span>
                 </div>
                 
-                <div className="flex justify-between items-center text-[8px] font-bold text-slate-450 dark:text-[#9CA3AF] uppercase tracking-wider pt-1.5 border-t border-slate-200/10 dark:border-[#374151]">
+                <div className="flex justify-between items-center text-8 font-bold text-muted-foreground dark:text-muted-foreground uppercase tracking-wider pt-1.5 border-t border-border/10 dark:border-border">
                   <span>Simulated study path</span>
-                  <span className="text-indigo-650 dark:text-[#3B82F6] group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">Checklist →</span>
+                  <span className="text-indigo-600 dark:text-indigo-400 dark:text-blue-500 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">Checklist →</span>
                 </div>
               </div>
             ))}
@@ -616,15 +615,15 @@ export default function AiMentor({
       {/* Create Session Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#111827] border border-slate-250 dark:border-[#374151] rounded-3xl p-6 w-full max-w-md shadow-2xl flex flex-col gap-4">
-            <div className="flex justify-between items-center border-b border-slate-100 dark:border-[#374151] pb-3">
-              <h3 className="text-sm font-bold text-slate-800 dark:text-[#F9FAFB] flex items-center gap-1.5">
-                <GraduationCap size={16} className="text-[#3B82F6]" />
+          <div className="bg-white dark:bg-background border border-slate-250 dark:border-border rounded-3xl p-6 w-full max-w-md shadow-2xl flex flex-col gap-4">
+            <div className="flex justify-between items-center border-b border-slate-100 dark:border-border pb-3">
+              <h3 className="text-sm font-bold text-foreground dark:text-foreground flex items-center gap-1.5">
+                <GraduationCap size={16} className="text-blue-500" />
                 <span>Create New Study Session</span>
               </h3>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="text-slate-400 hover:text-slate-655 dark:text-[#9CA3AF] dark:hover:text-[#F9FAFB] cursor-pointer"
+                className="text-slate-400 hover:text-slate-655 dark:text-muted-foreground dark:hover:text-foreground cursor-pointer"
               >
                 <X size={16} />
               </button>
@@ -632,22 +631,22 @@ export default function AiMentor({
 
             <div className="space-y-4 py-2">
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-[#9CA3AF]">Roadmap Subject Name</label>
+                <label className="text-10 font-bold uppercase tracking-wider text-slate-400 dark:text-muted-foreground">Roadmap Subject Name</label>
                 <input
                   type="text"
                   placeholder="e.g. AI Prompt Engineering"
                   value={sessionName}
                   onChange={(e) => setSessionName(e.target.value)}
-                  className="bg-slate-50 dark:bg-[#000000] border border-slate-200 dark:border-[#374151] rounded-xl p-2.5 text-xs text-slate-855 dark:text-[#F9FAFB] focus:outline-none focus:border-indigo-500 dark:focus:border-[#3B82F6]"
+                  className="bg-slate-50 dark:bg-black border border-border dark:border-border rounded-xl p-2.5 text-xs text-foreground dark:text-foreground focus:outline-none focus:border-indigo-500 dark:focus:border-primary"
                 />
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-[#9CA3AF]">Target Stack Category</label>
+                <label className="text-10 font-bold uppercase tracking-wider text-slate-400 dark:text-muted-foreground">Target Stack Category</label>
                 <select
                   value={selectedSkill}
                   onChange={(e) => setSelectedSkill(e.target.value)}
-                  className="bg-slate-50 dark:bg-[#000000] border border-slate-200 dark:border-[#374151] rounded-xl p-2.5 text-xs text-slate-855 dark:text-[#F9FAFB] focus:outline-none focus:border-indigo-500 dark:focus:border-[#3B82F6] cursor-pointer font-medium"
+                  className="bg-slate-50 dark:bg-black border border-border dark:border-border rounded-xl p-2.5 text-xs text-foreground dark:text-foreground focus:outline-none focus:border-indigo-500 dark:focus:border-primary cursor-pointer font-medium"
                 >
                   <option value="Python Backend, FastAPI, SQL">Python Backend (FastAPI/SQL)</option>
                   <option value="NextJS Frontend, React, TypeScript">NextJS Frontend (React/TS)</option>
@@ -660,7 +659,7 @@ export default function AiMentor({
             <button
               onClick={handleCreateSession}
               disabled={!sessionName.trim()}
-              className="w-full py-2.5 bg-[#3B82F6] hover:bg-blue-600 dark:disabled:bg-[#1F2937] dark:disabled:text-[#9CA3AF] text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+              className="w-full py-2.5 bg-blue-500 hover:bg-blue-600 dark:disabled:bg-muted dark:disabled:text-muted-foreground text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
             >
               <span>Create Session (+100 XP)</span>
               <ArrowRight size={13} />
@@ -672,31 +671,31 @@ export default function AiMentor({
       {/* Curriculum Checklist details Modal */}
       {selectedSessionDetails && (
         <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#111827] border border-slate-250 dark:border-[#374151] rounded-3xl p-6 w-full max-w-lg shadow-2xl flex flex-col gap-4 max-h-[85vh] overflow-y-auto">
+          <div className="bg-white dark:bg-background border border-slate-250 dark:border-border rounded-3xl p-6 w-full max-w-lg shadow-2xl flex flex-col gap-4 max-h-[85vh] overflow-y-auto">
             
-            <div className="flex justify-between items-start border-b border-slate-100 dark:border-[#374151] pb-3">
+            <div className="flex justify-between items-start border-b border-slate-100 dark:border-border pb-3">
               <div>
-                <h3 className="text-sm font-bold text-slate-855 dark:text-[#F9FAFB] leading-tight">{selectedSessionDetails.name}</h3>
-                <span className="text-[10px] text-slate-400 dark:text-[#9CA3AF] mt-1 block">Curriculum details and modules checklist</span>
+                <h3 className="text-sm font-bold text-foreground dark:text-foreground leading-tight">{selectedSessionDetails.name}</h3>
+                <span className="text-10 text-slate-400 dark:text-muted-foreground mt-1 block">Curriculum details and modules checklist</span>
               </div>
               <button
                 onClick={() => setSelectedSessionDetails(null)}
-                className="text-slate-400 hover:text-slate-655 dark:text-[#9CA3AF] dark:hover:text-[#F9FAFB] p-1 hover:bg-slate-50 dark:hover:bg-slate-950 rounded-lg cursor-pointer"
+                className="text-slate-400 hover:text-slate-655 dark:text-muted-foreground dark:hover:text-foreground p-1 hover:bg-slate-50 dark:hover:bg-slate-950 rounded-lg cursor-pointer"
               >
                 <X size={16} />
               </button>
             </div>
 
             {/* Total progress statistics */}
-            <div className="bg-slate-50 dark:bg-[#000000] border border-slate-200 dark:border-[#374151] p-4 rounded-2xl flex justify-between items-center">
+            <div className="bg-slate-50 dark:bg-black border border-border dark:border-border p-4 rounded-2xl flex justify-between items-center">
               <div>
-                <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-[#9CA3AF]">Current Progress</span>
+                <span className="text-9 uppercase font-bold text-slate-400 dark:text-muted-foreground">Current Progress</span>
                 <span className="text-base font-extrabold text-emerald-500 block mt-0.5">{selectedSessionDetails.progress}% Complete</span>
               </div>
 
               <button
                 onClick={(e) => handleStudyIncrement(selectedSessionDetails.id, e)}
-                className="flex items-center gap-1.5 px-4.5 py-2.5 rounded-xl bg-[#3B82F6] hover:bg-blue-600 text-xs font-bold text-white transition-all cursor-pointer shadow-sm"
+                className="flex items-center gap-1.5 px-4.5 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-xs font-bold text-white transition-all cursor-pointer shadow-sm"
               >
                 <Play size={12} fill="white" />
                 <span>Simulate Study (+10%)</span>
@@ -705,28 +704,28 @@ export default function AiMentor({
 
             {/* Subtopics checklist */}
             <div className="space-y-3">
-              <h4 className="text-xs font-bold text-slate-855 dark:text-[#F9FAFB] flex items-center gap-1.5">
-                <CheckSquare size={14} className="text-[#3B82F6]" />
+              <h4 className="text-xs font-bold text-foreground dark:text-foreground flex items-center gap-1.5">
+                <CheckSquare size={14} className="text-blue-500" />
                 <span>Roadmap Modules Checklist</span>
               </h4>
 
-              <div className="divide-y divide-slate-100 dark:divide-[#374151] border border-slate-200 dark:border-[#374151] rounded-2xl bg-white dark:bg-[#1F2937] overflow-hidden">
+              <div className="divide-y divide-slate-100 dark:divide-[#374151] border border-border dark:border-border rounded-2xl bg-white dark:bg-card overflow-hidden">
                 {selectedSessionDetails.subTopics.map((st) => (
                   <label
                     key={st.id}
-                    className="flex items-center justify-between p-3.5 hover:bg-slate-50 dark:hover:bg-[#111827]/50 transition-colors cursor-pointer text-xs font-semibold text-slate-700 dark:text-[#F9FAFB]"
+                    className="flex items-center justify-between p-3.5 hover:bg-slate-50 dark:hover:bg-background/50 transition-colors cursor-pointer text-xs font-semibold text-foreground dark:text-foreground"
                   >
                     <div className="flex items-center gap-2.5">
                       <input
                         type="checkbox"
                         checked={st.isDone}
                         onChange={() => handleToggleSubtopic(selectedSessionDetails.id, st.id)}
-                        className="rounded text-[#3B82F6] focus:ring-[#3B82F6] border-slate-300 dark:border-[#374151] bg-white dark:bg-[#000000]"
+                        className="rounded text-blue-500 focus:ring-blue-500 border-border dark:border-border bg-white dark:bg-black"
                       />
                       <span className={st.isDone ? "line-through text-slate-400" : ""}>{st.name}</span>
                     </div>
                     {st.isDone && (
-                      <span className="text-[9px] font-bold text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded">
+                      <span className="text-9 font-bold text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded">
                         Completed
                       </span>
                     )}
@@ -735,8 +734,8 @@ export default function AiMentor({
               </div>
             </div>
 
-            <div className="p-3 bg-indigo-50/20 border border-indigo-100/50 dark:bg-[#1F2937]/50 dark:border-[#374151] rounded-2xl text-[10px] text-slate-500 dark:text-[#9CA3AF] flex items-start gap-2 mt-1 font-semibold leading-normal">
-              <Info size={14} className="text-[#3B82F6] shrink-0 mt-0.5" />
+            <div className="p-3 bg-indigo-50/10 border border-indigo-200/50 dark:bg-card/50 dark:border-border rounded-2xl text-10 text-slate-500 dark:text-muted-foreground flex items-start gap-2 mt-1 font-semibold leading-normal">
+              <Info size={14} className="text-blue-500 shrink-0 mt-0.5" />
               <p>
                 Checking off subtopics dynamically updates your roadmap progress statistics and increases earned XP! Complete all topics to earn your platform certificate.
               </p>

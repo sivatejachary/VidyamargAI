@@ -11,7 +11,7 @@ export default function CandidateDashboardRedirect() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#07070b] flex items-center justify-center">
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
       <div className="w-8 h-8 rounded-full border-4 border-t-purple-500 border-gray-200 dark:border-gray-800 animate-spin" />
     </div>
   );

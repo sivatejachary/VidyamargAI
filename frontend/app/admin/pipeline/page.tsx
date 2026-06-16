@@ -111,7 +111,7 @@ export default function AdminPipeline() {
       </div>
 
       {/* React Flow Box */}
-      <div className="flex-1 glass-panel rounded-2xl border border-gray-800 bg-[#07070b]/60 overflow-hidden relative">
+      <div className="flex-1 glass-panel rounded-2xl border border-gray-800 bg-background/60 overflow-hidden relative">
         <ReactFlow nodes={nodes} edges={edges} fitView>
           <Background color="#1f2937" gap={16} size={1} />
           <Controls className="bg-purple-900 border-purple-500 text-white rounded" />

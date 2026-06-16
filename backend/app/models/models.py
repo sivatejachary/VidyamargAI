@@ -19,6 +19,7 @@ class User(Base):
     candidate = relationship("Candidate", back_populates="user", uselist=False)
     notifications = relationship("Notification", back_populates="user")
     audit_logs = relationship("AuditLog", back_populates="user")
+    preferences = relationship("UserPreference", back_populates="user", uselist=False, cascade="all, delete-orphan")
 
 class Candidate(Base):
     __tablename__ = "candidates"
@@ -449,5 +450,16 @@ class TelegramSource(Base):
     channel_name = Column(String, unique=True, index=True, nullable=False)
     active = Column(Boolean, default=True)
     last_checked = Column(DateTime, nullable=True)
+
+
+class UserPreference(Base):
+    __tablename__ = "user_preferences"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
+    theme = Column(String, default="light")  # light, dark, system
+    
+    user = relationship("User", back_populates="preferences")
+
 
 

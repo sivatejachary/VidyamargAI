@@ -295,7 +295,7 @@ export default function CoursePlayer({
       <div className="flex justify-between items-center">
         <button 
           onClick={() => setActiveView("course-details")}
-          className="text-[10px] font-bold text-indigo-600 hover:underline flex items-center gap-1 cursor-pointer"
+          className="text-10 font-bold text-indigo-600 hover:underline flex items-center gap-1 cursor-pointer"
         >
           <span>← Back to Details</span>
         </button>
@@ -308,7 +308,7 @@ export default function CoursePlayer({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* PLAYER COLUMN: Renders Lesson Content */}
         <div className="lg:col-span-8 flex flex-col gap-6">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm min-h-[460px] flex flex-col justify-between">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm min-h-460 flex flex-col justify-between">
             {loadingCurriculum ? (
               <div className="flex-1 flex flex-col items-center justify-center gap-3">
                 <RefreshCw size={24} className="text-indigo-600 animate-spin" />
@@ -317,7 +317,7 @@ export default function CoursePlayer({
             ) : currentLesson.type === "video" ? (
               <div className="flex flex-col gap-4 flex-1">
                 <div>
-                  <span className="px-2 py-0.5 rounded text-[8px] font-bold font-mono bg-indigo-100 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400 uppercase tracking-wider">
+                  <span className="px-2 py-0.5 rounded text-8 font-bold font-mono bg-indigo-100 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400 uppercase tracking-wider">
                     Lesson Video
                   </span>
                   <h3 className="text-sm font-black text-slate-800 dark:text-white mt-2 leading-tight">{currentLesson.title}</h3>
@@ -345,18 +345,18 @@ export default function CoursePlayer({
             ) : currentLesson.type === "pdf" ? (
               <div className="flex flex-col gap-4 flex-1">
                 <div>
-                  <span className="px-2 py-0.5 rounded text-[8px] font-bold font-mono bg-indigo-100 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400 uppercase tracking-wider">
+                  <span className="px-2 py-0.5 rounded text-8 font-bold font-mono bg-indigo-100 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400 uppercase tracking-wider">
                     Course Handbook
                   </span>
                   <h3 className="text-sm font-black text-slate-800 dark:text-white mt-2 leading-tight">{currentLesson.title}</h3>
                 </div>
                 
-                <div className="flex-1 min-h-[350px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-2xl p-4 flex flex-col justify-between items-center mt-2 relative">
+                <div className="flex-1 min-h-350 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-2xl p-4 flex flex-col justify-between items-center mt-2 relative">
                   <div className="my-auto text-center flex flex-col items-center gap-3">
                     <BookOpen size={48} className="text-indigo-600/35" />
                     <div>
                       <h4 className="text-xs font-bold text-slate-800 dark:text-white">{currentLesson.title}</h4>
-                      <p className="text-[10px] text-slate-450 mt-1 max-w-xs leading-normal">
+                      <p className="text-10 text-slate-450 mt-1 max-w-xs leading-normal">
                         Click the download button or open the link below to view the module study handbook.
                       </p>
                     </div>
@@ -375,7 +375,7 @@ export default function CoursePlayer({
             ) : currentLesson.type === "quiz" && currentLesson.quiz ? (
               <div className="flex flex-col gap-4 flex-1">
                 <div>
-                  <span className="px-2 py-0.5 rounded text-[8px] font-bold font-mono bg-indigo-100 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400 uppercase tracking-wider">
+                  <span className="px-2 py-0.5 rounded text-8 font-bold font-mono bg-indigo-100 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400 uppercase tracking-wider">
                     Knowledge Quiz
                   </span>
                   <h3 className="text-sm font-black text-slate-800 dark:text-white mt-2 leading-tight">{currentLesson.quiz.title}</h3>
@@ -408,7 +408,7 @@ export default function CoursePlayer({
                   <div className="space-y-5 mt-2">
                     {currentLesson.quiz.questions.map((q: any, qIdx: number) => (
                       <div key={q.id} className="p-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-2xl flex flex-col gap-3">
-                        <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Question {qIdx + 1}</span>
+                        <span className="text-10 font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Question {qIdx + 1}</span>
                         <p className="text-xs font-bold text-slate-800 dark:text-white">{q.question}</p>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 mt-1">
@@ -463,7 +463,7 @@ export default function CoursePlayer({
             ) : currentLesson.type === "written_assessment" && currentLesson.written_assessment ? (
               <div className="flex flex-col gap-4 flex-1">
                 <div>
-                  <span className="px-2 py-0.5 rounded text-[8px] font-bold font-mono bg-indigo-100 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400 uppercase tracking-wider">
+                  <span className="px-2 py-0.5 rounded text-8 font-bold font-mono bg-indigo-100 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400 uppercase tracking-wider">
                     Written Assessment
                   </span>
                   <h3 className="text-sm font-black text-slate-800 dark:text-white mt-2 leading-tight">{currentLesson.written_assessment.title}</h3>
@@ -480,7 +480,7 @@ export default function CoursePlayer({
                         Best Score: <span className="font-extrabold text-emerald-500">{currentLesson.written_assessment.best_score}%</span>
                       </p>
                       {currentLesson.written_assessment.feedback && (
-                        <p className="text-[10px] text-slate-500 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-slate-850 mt-3 max-w-md mx-auto leading-relaxed">
+                        <p className="text-10 text-slate-500 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-slate-850 mt-3 max-w-md mx-auto leading-relaxed">
                           Feedback: {currentLesson.written_assessment.feedback}
                         </p>
                       )}
@@ -490,7 +490,7 @@ export default function CoursePlayer({
                   <div className="space-y-5 mt-2">
                     {currentLesson.written_assessment.questions.map((q: string, qIdx: number) => (
                       <div key={qIdx} className="p-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-2xl flex flex-col gap-3">
-                        <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Question {qIdx + 1}</span>
+                        <span className="text-10 font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Question {qIdx + 1}</span>
                         <p className="text-xs font-bold text-slate-800 dark:text-white">{q}</p>
                         
                         <textarea
@@ -528,7 +528,7 @@ export default function CoursePlayer({
             ) : currentLesson.type === "assignment" && currentLesson.assignment ? (
               <div className="flex flex-col gap-4 flex-1">
                 <div>
-                  <span className="text-[10px] font-mono font-bold text-indigo-600 uppercase tracking-widest">
+                  <span className="text-10 font-mono font-bold text-indigo-600 uppercase tracking-widest">
                     Practical Homework Project
                   </span>
                   <h3 className="text-xs font-bold text-slate-800 mt-1">{currentLesson.assignment.title}</h3>
@@ -543,7 +543,7 @@ export default function CoursePlayer({
                   <Upload className="text-indigo-600/60 shrink-0" size={24} />
                   <div>
                     <span className="text-xs font-bold text-slate-800 dark:text-white block">Submit Code Archive</span>
-                    <span className="text-[9px] text-slate-500 mt-1 block">Drag & drop your files, or click to upload (.py, .zip)</span>
+                    <span className="text-9 text-slate-500 mt-1 block">Drag & drop your files, or click to upload (.py, .zip)</span>
                   </div>
 
                   <input
@@ -561,13 +561,13 @@ export default function CoursePlayer({
 
                   <label
                     htmlFor="assignment-file"
-                    className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] font-bold rounded-xl cursor-pointer hover:bg-slate-50"
+                    className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-10 font-bold rounded-xl cursor-pointer hover:bg-slate-50"
                   >
                     {assignmentFilename ? "Replace File" : "Choose File"}
                   </label>
 
                   {assignmentFilename && (
-                    <span className="text-[10px] text-emerald-500 font-mono font-bold mt-1">Selected: {assignmentFilename}</span>
+                    <span className="text-10 text-emerald-500 font-mono font-bold mt-1">Selected: {assignmentFilename}</span>
                   )}
                 </div>
 
@@ -599,7 +599,7 @@ export default function CoursePlayer({
             ) : currentLesson.type === "project" && currentLesson.project ? (
               <div className="flex flex-col gap-4 flex-1">
                 <div>
-                  <span className="text-[10px] font-mono font-bold text-emerald-500 uppercase tracking-widest">
+                  <span className="text-10 font-mono font-bold text-emerald-500 uppercase tracking-widest">
                     Capstone Coding Project
                   </span>
                   <h3 className="text-xs font-bold text-slate-800 dark:text-white mt-1">{currentLesson.project.title}</h3>
@@ -614,7 +614,7 @@ export default function CoursePlayer({
                   <Upload className="text-indigo-650/60 shrink-0" size={24} />
                   <div>
                     <span className="text-xs font-bold text-slate-800 dark:text-white block">Submit Finished Project</span>
-                    <span className="text-[9px] text-slate-500 mt-1 block">Drag & drop your files, or click to upload (.zip)</span>
+                    <span className="text-9 text-slate-500 mt-1 block">Drag & drop your files, or click to upload (.zip)</span>
                   </div>
 
                   <input
@@ -632,13 +632,13 @@ export default function CoursePlayer({
 
                   <label
                     htmlFor="project-file"
-                    className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] font-bold rounded-xl cursor-pointer hover:bg-slate-50"
+                    className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-10 font-bold rounded-xl cursor-pointer hover:bg-slate-50"
                   >
                     {projectFilename ? "Replace File" : "Choose File"}
                   </label>
 
                   {projectFilename && (
-                    <span className="text-[10px] text-emerald-500 font-mono font-bold mt-1">Selected: {projectFilename}</span>
+                    <span className="text-10 text-emerald-500 font-mono font-bold mt-1">Selected: {projectFilename}</span>
                   )}
                 </div>
 
@@ -670,7 +670,7 @@ export default function CoursePlayer({
             ) : currentLesson.type === "ai_interview" && currentLesson.module_interview ? (
               <div className="flex flex-col gap-4 flex-1">
                 <div>
-                  <span className="px-2 py-0.5 rounded text-[8px] font-bold font-mono bg-indigo-100 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400 uppercase tracking-wider">
+                  <span className="px-2 py-0.5 rounded text-8 font-bold font-mono bg-indigo-100 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400 uppercase tracking-wider">
                     AI Interview Room
                   </span>
                   <h3 className="text-sm font-black text-slate-800 dark:text-white mt-2 leading-tight">{currentLesson.module_interview.title}</h3>
@@ -686,8 +686,8 @@ export default function CoursePlayer({
                       <p className="text-xs text-slate-450 mt-1">
                         Interview Score: <span className="font-extrabold text-emerald-500">{interviewResult.interview_score}%</span>
                       </p>
-                      <div className="text-left text-[10px] text-slate-500 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-850 mt-3 max-w-md mx-auto space-y-1 leading-normal">
-                        <span className="font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider block text-[8px]">Mentor feedback report:</span>
+                      <div className="text-left text-10 text-slate-500 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-850 mt-3 max-w-md mx-auto space-y-1 leading-normal">
+                        <span className="font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider block text-8">Mentor feedback report:</span>
                         <p>{interviewResult.feedback}</p>
                       </div>
                     </div>
@@ -699,7 +699,7 @@ export default function CoursePlayer({
                     </div>
                     <div>
                       <h4 className="text-xs font-bold text-slate-800 dark:text-white">Ready for your AI interview simulation?</h4>
-                      <p className="text-[10px] text-slate-450 mt-1 max-w-xs mx-auto leading-relaxed">
+                      <p className="text-10 text-slate-450 mt-1 max-w-xs mx-auto leading-relaxed">
                         TARA will evaluate your verbal explanations. This requires micro-phone permissions for speech-to-text.
                       </p>
                     </div>
@@ -721,17 +721,17 @@ export default function CoursePlayer({
                 ) : (
                   <div className="flex flex-col gap-4 flex-1">
                     {/* Transcript Pane */}
-                    <div className="flex-1 min-h-[200px] max-h-[250px] overflow-y-auto bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-slate-850 p-4 rounded-2xl flex flex-col gap-3.5 scrollbar-thin">
+                    <div className="flex-1 min-h-200 max-h-250 overflow-y-auto bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-slate-850 p-4 rounded-2xl flex flex-col gap-3.5 scrollbar-thin">
                       {interviewTranscript.map((msg, idx) => (
                         <div
                           key={idx}
-                          className={`max-w-[80%] rounded-2xl p-3 text-xs leading-relaxed ${
+                          className={`max-w-80-pct rounded-2xl p-3 text-xs leading-relaxed ${
                             msg.role === "candidate"
                               ? "bg-indigo-600 text-white self-end rounded-tr-none"
                               : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 self-start rounded-tl-none"
                           }`}
                         >
-                          <span className="text-[8px] font-black uppercase opacity-75 block mb-0.5">
+                          <span className="text-8 font-black uppercase opacity-75 block mb-0.5">
                             {msg.role === "candidate" ? "You" : "TARA AI Assessor"}
                           </span>
                           <p className="font-semibold">{msg.text}</p>
@@ -742,11 +742,11 @@ export default function CoursePlayer({
                     {/* Microphone status and controls */}
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl flex flex-col gap-3">
                       <div className="flex justify-between items-center">
-                        <span className="text-[9px] font-black text-slate-450 uppercase tracking-wider">
+                        <span className="text-9 font-black text-slate-450 uppercase tracking-wider">
                           Question {currentInterviewQuestionIdx + 1} of {currentLesson.module_interview.questions.length}
                         </span>
 
-                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500">
+                        <div className="flex items-center gap-1.5 text-10 font-bold text-slate-500">
                           <Clock size={12} />
                           <span>{Math.floor(interviewTimeRemaining / 60)}:{(interviewTimeRemaining % 60).toString().padStart(2, '0')}</span>
                         </div>
@@ -792,7 +792,7 @@ export default function CoursePlayer({
                       <div className="flex justify-between items-center border-t border-slate-100 dark:border-slate-800/40 pt-3">
                         <button
                           onClick={() => setInterviewInputMode(interviewInputMode === "voice" ? "type" : "voice")}
-                          className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold hover:underline cursor-pointer"
+                          className="text-10 text-indigo-600 dark:text-indigo-400 font-bold hover:underline cursor-pointer"
                         >
                           Switch to {interviewInputMode === "voice" ? "Keyboard Typing" : "Voice Assessment"}
                         </button>
@@ -908,7 +908,7 @@ export default function CoursePlayer({
                 <p>
                   This session forms part of the training for {selectedCourse.title}. Completion of videos, handbooks, and assessments is required to qualify for the official credential.
                 </p>
-                <div className="flex gap-4.5 text-[10px] text-slate-450 border-t border-slate-100 dark:border-slate-800/40 pt-3.5 mt-3 w-full">
+                <div className="flex gap-4.5 text-10 text-slate-450 border-t border-slate-100 dark:border-slate-800/40 pt-3.5 mt-3 w-full">
                   <span>Rating: {selectedCourse.rating} ★</span>
                   <span>Duration: {selectedCourse.duration}</span>
                   <span>Category: {selectedCourse.category}</span>
@@ -927,7 +927,7 @@ export default function CoursePlayer({
                 />
                 
                 <div className="flex justify-between items-center">
-                  <span className="text-[10px] text-slate-450 font-bold">Saved Notes: {savedNotes.length}</span>
+                  <span className="text-10 text-slate-450 font-bold">Saved Notes: {savedNotes.length}</span>
                   <button
                     onClick={handleSaveNotes}
                     className="px-4.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl cursor-pointer shadow-sm"
@@ -965,9 +965,9 @@ export default function CoursePlayer({
                     forumPosts.map((post) => (
                       <div key={post.id} className="p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-2xl text-xs">
                         <h5 className="font-extrabold text-slate-800 dark:text-white leading-tight">{post.title}</h5>
-                        <p className="text-slate-600 dark:text-slate-400 mt-1 text-[11px] font-semibold leading-relaxed">{post.content}</p>
+                        <p className="text-slate-600 dark:text-slate-400 mt-1 text-11 font-semibold leading-relaxed">{post.content}</p>
                         
-                        <div className="flex justify-between items-center text-[10px] text-slate-450 mt-3 border-t border-slate-100 dark:border-slate-800/40 pt-2 font-bold">
+                        <div className="flex justify-between items-center text-10 text-slate-450 mt-3 border-t border-slate-100 dark:border-slate-800/40 pt-2 font-bold">
                           <span>By {post.author} • {post.date}</span>
                           <span>{post.repliesCount} replies</span>
                         </div>
@@ -1016,7 +1016,7 @@ export default function CoursePlayer({
             <div className="flex flex-col gap-3.5 mt-2">
               {curriculum?.sections?.map((section: any, secIdx: number) => (
                 <div key={section.id} className="space-y-2.5">
-                  <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 block border-b border-slate-100 dark:border-slate-800/40 pb-1.5 uppercase tracking-wide">
+                  <span className="text-10 font-black text-indigo-600 dark:text-indigo-400 block border-b border-slate-100 dark:border-slate-800/40 pb-1.5 uppercase tracking-wide">
                     {section.title}
                   </span>
 
@@ -1054,7 +1054,7 @@ export default function CoursePlayer({
                             <span className="truncate font-semibold">{less.title}</span>
                           </div>
 
-                          <span className="text-[9px] font-mono text-slate-450 shrink-0 uppercase tracking-wider font-bold">
+                          <span className="text-9 font-mono text-slate-450 shrink-0 uppercase tracking-wider font-bold">
                             {less.type === "video" ? "Video" : less.type === "pdf" ? "PDF" : less.type === "quiz" ? "Quiz" : less.type === "written_assessment" ? "Test" : less.type === "ai_interview" ? "AI Room" : less.type}
                           </span>
                         </button>

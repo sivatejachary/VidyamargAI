@@ -423,23 +423,23 @@ export default function SkillLab() {
 
   return (
     <div className={`w-full bg-slate-50 text-slate-800 p-6 font-sans transition-colors duration-300 relative overflow-hidden flex flex-col ${
-      isAiMentor ? "h-screen pb-4 gap-4 dark:bg-[#000000] dark:text-[#F9FAFB]" : "min-h-screen gap-6 dark:bg-slate-950 dark:text-slate-100"
+      isAiMentor ? "h-screen pb-4 gap-4 dark:bg-black dark:text-foreground" : "min-h-screen gap-6 dark:bg-slate-950 dark:text-slate-100"
     }`}>
       
       {/* Ambient glow decoration */}
-      <div className="absolute top-[-10%] right-[10%] w-[35%] h-[35%] bg-indigo-500/10 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute bottom-[10%] left-[10%] w-[35%] h-[35%] bg-teal-500/5 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute top-minus-10-pct right-10-pct w-35-pct h-35-pct bg-indigo-500/10 rounded-full blur-140 pointer-events-none" />
+      <div className="absolute bottom-10-pct left-10-pct w-35-pct h-35-pct bg-teal-500/5 rounded-full blur-120 pointer-events-none" />
 
       {/* Header title */}
       <div className="relative z-10 w-full pb-2 flex flex-col md:flex-row md:items-end md:justify-between gap-4 shrink-0">
         <div>
-          <h1 className="text-4xl md:text-[48px] font-black tracking-tight text-slate-900 dark:text-white leading-tight">Skills Lab</h1>
+          <h1 className="text-4xl md:text-5xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">Skills Lab</h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-semibold tracking-wide uppercase">LEARN • TEST • AI INTERVIEW • GET CERTIFIED</p>
         </div>
       </div>
 
       {/* Persistent Navigation Tabs Directly Under Heading */}
-      <div className="relative z-10 flex items-center gap-7 border-b border-slate-200 dark:border-slate-800/80 w-full shrink-0">
+      <div className="relative z-10 flex items-center gap-7 border-b border-slate-200 dark:border-border/80 w-full shrink-0">
         {[
           { id: "explore", label: "Explore Courses" },
           { id: "my-learning", label: "My Learning" },
@@ -493,7 +493,7 @@ export default function SkillLab() {
                       setShowAllCourses(true);
                     }
                   }}
-                  className="w-full bg-white dark:bg-[#111111] border border-slate-200 dark:border-slate-800/80 rounded-xl pl-11 pr-5 py-3.5 text-xs focus:outline-none focus:border-indigo-500 text-slate-900 dark:text-white shadow-sm transition-all animate-fade-in"
+                  className="w-full bg-white dark:bg-card border border-slate-200 dark:border-border/80 rounded-xl pl-11 pr-5 py-3.5 text-xs focus:outline-none focus:border-indigo-500 text-slate-900 dark:text-white shadow-sm transition-all animate-fade-in"
                 />
               </div>
               <div className="flex gap-2 w-full sm:w-auto shrink-0">
@@ -515,7 +515,7 @@ export default function SkillLab() {
                       setShowAllCourses(true);
                     }
                   }}
-                  className="px-4 py-3.5 bg-white dark:bg-[#111111] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-350 font-semibold text-xs rounded-xl hover:bg-slate-50 dark:hover:bg-[#171717] transition-all cursor-pointer shadow-sm flex items-center justify-center gap-1.5"
+                  className="px-4 py-3.5 bg-white dark:bg-card border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-muted-foreground font-semibold text-xs rounded-xl hover:bg-slate-50 dark:hover:bg-muted transition-all cursor-pointer shadow-sm flex items-center justify-center gap-1.5"
                 >
                   <span>Filter</span>
                 </button>

@@ -43,10 +43,10 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     // All sizes meet or exceed 44×44px touch target (Apple HIG / Material Design)
     const sizes = {
-      xs: "h-8 min-w-[44px] px-3 text-xs rounded-lg gap-1",          // visual xs, pad to 44px wide
-      sm: "h-11 min-w-[44px] px-3.5 text-xs rounded-lg gap-1.5",     // 44px height
-      md: "h-12 min-w-[44px] px-5 text-sm rounded-xl gap-2",         // 48px height
-      lg: "h-14 min-w-[44px] px-8 text-base rounded-2xl gap-2.5",    // 56px height
+      xs: "h-8 min-w-11 px-3 text-xs rounded-lg gap-1",          // visual xs, pad to 44px wide
+      sm: "h-11 min-w-11 px-3.5 text-xs rounded-lg gap-1.5",     // 44px height
+      md: "h-12 min-w-11 px-5 text-sm rounded-xl gap-2",         // 48px height
+      lg: "h-14 min-w-11 px-8 text-base rounded-2xl gap-2.5",    // 56px height
     };
 
     return (

@@ -721,6 +721,61 @@ def reset_password(req: schemas.ResetPasswordRequest, db: Session = Depends(get_
     return {"message": "Password updated successfully"}
 
 
+@router.get("/users/me/preferences", response_model=schemas.UserPreferenceSchema)
+def get_user_preferences(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    from app.models.models import UserPreference
+    prefs = db.query(UserPreference).filter(UserPreference.user_id == current_user.id).first()
+    if not prefs:
+        prefs = UserPreference(user_id=current_user.id, theme="light")
+        db.add(prefs)
+        db.commit()
+        db.refresh(prefs)
+    return prefs
+
+
+@router.put("/users/me/preferences", response_model=schemas.UserPreferenceSchema)
+def update_user_preferences(
+    req: schemas.UserPreferenceUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    from app.models.models import UserPreference
+    prefs = db.query(UserPreference).filter(UserPreference.user_id == current_user.id).first()
+    if not prefs:
+        prefs = UserPreference(user_id=current_user.id, theme=req.theme)
+        db.add(prefs)
+    else:
+        prefs.theme = req.theme
+    
+    db.commit()
+    db.refresh(prefs)
+
+    # 1. Update Redis Cache & publish to Pub/Sub sync channel
+    from app.services.job_cache import get_redis_client
+    redis_client = get_redis_client()
+    if redis_client is not None:
+        try:
+            redis_client.set(f"user:preferences:{current_user.id}", json.dumps({"theme": req.theme}))
+            
+            sync_payload = {
+                "room": f"user:{current_user.id}",
+                "event": "theme:sync",
+                "payload": {"theme": req.theme},
+                "senderId": current_user.id
+            }
+            redis_client.publish("cache_events:sync", json.dumps(sync_payload))
+        except Exception as e:
+            logger.error(f"Error publishing theme sync event: {e}")
+
+    return prefs
+
+
+
+
+
 
 # ----------------- JOBS -----------------
 

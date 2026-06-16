@@ -49,6 +49,13 @@ export function ProgressRing({
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (clampedValue / 100) * circumference;
 
+  const sizeClasses: Record<number, string> = {
+    72: "w-72-px h-72-px",
+    80: "w-80-px h-80-px",
+    96: "w-96-px h-96-px",
+  };
+  const sizeClass = sizeClasses[size] || "w-80-px h-80-px";
+
   return (
     <div
       className={`flex flex-col items-center justify-center text-center ${className}`}
@@ -59,8 +66,7 @@ export function ProgressRing({
       aria-label={label ?? statusText ?? "Progress"}
     >
       <div
-        className="relative flex items-center justify-center shrink-0"
-        style={{ width: size, height: size }}
+        className={`relative flex items-center justify-center shrink-0 ${sizeClass}`}
         aria-hidden="true"
       >
         <svg width={size} height={size} className="transform -rotate-90">
@@ -93,7 +99,7 @@ export function ProgressRing({
         </div>
       </div>
       {statusText && (
-        <span className="text-[10px] font-black text-success mt-2 block uppercase tracking-wider">
+        <span className="text-10 font-black text-success mt-2 block uppercase tracking-wider">
           {statusText}
         </span>
       )}

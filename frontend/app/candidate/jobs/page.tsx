@@ -376,7 +376,7 @@ export default function CandidateJobs() {
                       className="bg-card text-card-foreground border border-border rounded-3xl p-6 shadow-xs hover:border-muted-foreground/30 hover:shadow-md transition-all duration-200 relative overflow-hidden flex flex-col justify-between"
                     >
                       {/* Match ribbon */}
-                      <div className={`absolute top-0 right-0 px-2.5 py-1 rounded-bl-lg border-l border-b border-border text-[10px] font-extrabold flex items-center gap-1 ${styles.bg} ${styles.text}`}>
+                      <div className={`absolute top-0 right-0 px-2.5 py-1 rounded-bl-lg border-l border-b border-border text-10 font-extrabold flex items-center gap-1 ${styles.bg} ${styles.text}`}>
                         <span className={`w-1 h-1 rounded-full ${styles.dot}`} />
                         {job.match_score}%
                       </div>
@@ -389,10 +389,10 @@ export default function CandidateJobs() {
                               {job.company.charAt(0).toUpperCase()}
                             </div>
                             <div className="min-w-0 pr-6">
-                              <h3 className="font-bold text-slate-800 text-sm leading-snug line-clamp-2 min-h-[40px] flex items-center">
+                              <h3 className="font-bold text-slate-800 text-sm leading-snug line-clamp-2 min-h-10 flex items-center">
                                 {job.title}
                               </h3>
-                              <p className="text-slate-500 font-semibold text-[11px] mt-0.5 truncate">
+                              <p className="text-slate-500 font-semibold text-11 mt-0.5 truncate">
                                 {job.company}
                               </p>
                             </div>
@@ -411,7 +411,7 @@ export default function CandidateJobs() {
                         </div>
 
                         {/* Source & Verification Badges */}
-                        <div className="flex flex-wrap items-center gap-1.5 mb-2.5 text-[9px] font-bold">
+                        <div className="flex flex-wrap items-center gap-1.5 mb-2.5 text-9 font-bold">
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 border rounded-md uppercase tracking-wider ${getSourceBadgeStyles(job.source)}`}>
                             {job.source.toLowerCase().includes("telegram") ? "📢" : "💼"} {job.source}
                           </span>
@@ -422,7 +422,7 @@ export default function CandidateJobs() {
                         </div>
 
                         {/* Meta details */}
-                        <div className="flex flex-wrap items-center gap-1.5 mb-3 text-[10px] text-slate-500 font-medium">
+                        <div className="flex flex-wrap items-center gap-1.5 mb-3 text-10 text-slate-500 font-medium">
                           <span className="inline-flex items-center gap-0.5 px-2 py-0.5 bg-slate-50 border border-slate-100 rounded-md">
                             <MapPin className="w-3 h-3 text-slate-400" /> {job.location.split(",")[0]}
                           </span>
@@ -438,13 +438,13 @@ export default function CandidateJobs() {
                         <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100/70 mb-3 flex items-start gap-2">
                           <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
                           <div>
-                            <h4 className="text-[10px] font-bold text-slate-700">Why It Matches</h4>
-                            <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed line-clamp-2">{job.reasoning}</p>
+                            <h4 className="text-10 font-bold text-slate-700">Why It Matches</h4>
+                            <p className="text-11 text-slate-600 mt-0.5 leading-relaxed line-clamp-2">{job.reasoning}</p>
                           </div>
                         </div>
 
                         {/* Skills badges */}
-                        <div className="space-y-1.5 text-[10px]">
+                        <div className="space-y-1.5 text-10">
                           {job.matched_skills.length > 0 && (
                             <div className="flex flex-wrap items-center gap-1">
                               <span className="font-bold text-emerald-600 uppercase tracking-wider mr-1">Matched:</span>
@@ -570,19 +570,19 @@ export default function CandidateJobs() {
                           <div>
                             <div className="flex items-start justify-between gap-3 mb-3">
                               <div className="min-w-0">
-                                <h4 className="font-bold text-slate-800 text-sm leading-snug line-clamp-2 min-h-[40px] flex items-center">
+                                <h4 className="font-bold text-slate-800 text-sm leading-snug line-clamp-2 min-h-10 flex items-center">
                                   {job.title}
                                 </h4>
                                 <p className="text-slate-500 font-semibold text-xs mt-0.5 truncate">
                                   {job.company}
                                 </p>
                               </div>
-                              <span className={`px-2 py-0.5 border rounded-lg text-[10px] font-extrabold shrink-0 flex items-center gap-1 ${styles.bg} ${styles.text}`}>
+                              <span className={`px-2 py-0.5 border rounded-lg text-10 font-extrabold shrink-0 flex items-center gap-1 ${styles.bg} ${styles.text}`}>
                                 {job.match_score}%
                               </span>
                             </div>
 
-                            <div className="flex flex-wrap gap-1.5 mb-4 text-[11px] text-slate-500 font-medium">
+                            <div className="flex flex-wrap gap-1.5 mb-4 text-11 text-slate-500 font-medium">
                               <span className="flex items-center gap-0.5"><MapPin className="w-3 h-3" /> {job.location}</span>
                               <span>•</span>
                               <span className="flex items-center gap-0.5"><Briefcase className="w-3 h-3" /> {job.experience}</span>
@@ -590,12 +590,12 @@ export default function CandidateJobs() {
 
                             <div className="flex flex-wrap gap-1 mb-4">
                               {job.skills.slice(0, 3).map(skill => (
-                                <span key={skill} className="px-1.5 py-0.5 bg-blue-50/60 text-blue-700 border border-blue-100/50 rounded-md text-[10px] font-semibold">
+                                <span key={skill} className="px-1.5 py-0.5 bg-blue-50/60 text-blue-700 border border-blue-100/50 rounded-md text-10 font-semibold">
                                   {skill}
                                 </span>
                               ))}
                               {job.skills.length > 3 && (
-                                <span className="px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded-md text-[10px] font-semibold">
+                                <span className="px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded-md text-10 font-semibold">
                                   +{job.skills.length - 3}
                                 </span>
                               )}
@@ -603,7 +603,7 @@ export default function CandidateJobs() {
                           </div>
 
                           <div className="flex items-center justify-between pt-3 border-t border-slate-100/80">
-                            <div className="flex flex-wrap items-center gap-1.5 text-[9px] font-bold">
+                            <div className="flex flex-wrap items-center gap-1.5 text-9 font-bold">
                               <span className={`px-2 py-0.5 border rounded-full uppercase tracking-wider ${getSourceBadgeStyles(job.source)}`}>
                                 {job.source.toLowerCase().includes("telegram") ? "📢" : "💼"} {job.source}
                               </span>
@@ -701,14 +701,14 @@ export default function CandidateJobs() {
               {/* Source & Verification Badges in Modal */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-muted/20 rounded-xl p-3.5 border border-border flex flex-col gap-1.5">
-                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Source Platform</span>
-                  <span className={`text-[11px] font-bold inline-flex items-center gap-1.5 px-3 py-1 border rounded-lg w-max ${getSourceBadgeStyles(selectedJob.source)}`}>
+                  <span className="text-10 text-muted-foreground font-bold uppercase tracking-wider">Source Platform</span>
+                  <span className={`text-11 font-bold inline-flex items-center gap-1.5 px-3 py-1 border rounded-lg w-max ${getSourceBadgeStyles(selectedJob.source)}`}>
                     {selectedJob.source.toLowerCase().includes("telegram") ? "📢" : "💼"} {selectedJob.source}
                   </span>
                 </div>
                 <div className="bg-muted/20 rounded-xl p-3.5 border border-border flex flex-col gap-1.5">
-                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Landed Page Consistency</span>
-                  <span className={`text-[11px] font-bold inline-flex items-center gap-1.5 px-3 py-1 border rounded-lg w-max ${getVerificationBadge(selectedJob.verification_score || 100, selectedJob.verification_status || "Fully Verified").bg}`}>
+                  <span className="text-10 text-muted-foreground font-bold uppercase tracking-wider">Landed Page Consistency</span>
+                  <span className={`text-11 font-bold inline-flex items-center gap-1.5 px-3 py-1 border rounded-lg w-max ${getVerificationBadge(selectedJob.verification_score || 100, selectedJob.verification_status || "Fully Verified").bg}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${getVerificationBadge(selectedJob.verification_score || 100, selectedJob.verification_status || "Fully Verified").dot}`} />
                     {getVerificationBadge(selectedJob.verification_score || 100, selectedJob.verification_status || "Fully Verified").text} ({selectedJob.verification_score || 100}%)
                   </span>

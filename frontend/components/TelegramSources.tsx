@@ -87,10 +87,10 @@ export default function TelegramSources() {
   return (
     <div className="flex flex-col gap-6 w-full">
       {/* Add source form */}
-      <div className="glass-panel p-6 rounded-2xl border border-gray-800 bg-[#0c0d14]/40 flex flex-col gap-4">
+      <div className="glass-panel p-6 rounded-2xl border border-gray-800 bg-card/40 flex flex-col gap-4">
         <div>
           <h2 className="text-sm font-bold text-white">Add Monitored Telegram Source</h2>
-          <p className="text-[11px] text-gray-400 mt-1">
+          <p className="text-11 text-gray-400 mt-1">
             Specify public Telegram channels or groups to monitor for fresh job listing aggregation.
           </p>
         </div>
@@ -104,7 +104,7 @@ export default function TelegramSources() {
               value={newChannel}
               onChange={(e) => setNewChannel(e.target.value)}
               disabled={actionLoading}
-              className="w-full bg-[#08090e] border border-gray-800 focus:border-purple-500/80 rounded-xl py-2.5 pl-8 pr-4 text-xs text-white placeholder-gray-600 focus:outline-none transition-all"
+              className="w-full bg-background border border-gray-800 focus:border-purple-500/80 rounded-xl py-2.5 pl-8 pr-4 text-xs text-white placeholder-gray-600 focus:outline-none transition-all"
             />
           </div>
           <button
@@ -133,7 +133,7 @@ export default function TelegramSources() {
       </div>
 
       {/* Sources list */}
-      <div className="glass-panel p-6 rounded-2xl border border-gray-800 bg-[#0c0d14]/40 flex flex-col gap-4">
+      <div className="glass-panel p-6 rounded-2xl border border-gray-800 bg-card/40 flex flex-col gap-4">
         <div className="flex justify-between items-center border-b border-gray-800 pb-3">
           <h2 className="text-sm font-bold text-white">Monitored Channel Sources</h2>
           <button
@@ -159,11 +159,11 @@ export default function TelegramSources() {
             {sources.map((src) => (
               <div
                 key={src.id}
-                className="flex items-center justify-between p-3.5 rounded-xl border border-gray-800/40 bg-[#0d0e15]/40 hover:border-gray-850 hover:bg-[#0d0e15]/60 transition-all"
+                className="flex items-center justify-between p-3.5 rounded-xl border border-gray-800/40 bg-muted/40 hover:border-gray-850 hover:bg-muted/60 transition-all"
               >
                 <div className="flex flex-col gap-1">
                   <span className="text-xs font-bold text-white">@{src.channel_name}</span>
-                  <span className="text-[9px] text-gray-500">
+                  <span className="text-9 text-gray-500">
                     Last checked:{" "}
                     {src.last_checked
                       ? new Date(src.last_checked).toLocaleString()
@@ -179,12 +179,12 @@ export default function TelegramSources() {
                     className="text-gray-400 hover:text-white transition-colors cursor-pointer"
                   >
                     {src.active ? (
-                      <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-bold bg-emerald-950/20 border border-emerald-900/40 px-2.5 py-1 rounded-lg">
+                      <div className="flex items-center gap-1.5 text-10 text-emerald-400 font-bold bg-emerald-950/20 border border-emerald-900/40 px-2.5 py-1 rounded-lg">
                         <ToggleRight size={14} className="text-emerald-400" />
                         <span>Active</span>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1.5 text-[10px] text-gray-500 font-bold bg-gray-900/30 border border-gray-800 px-2.5 py-1 rounded-lg">
+                      <div className="flex items-center gap-1.5 text-10 text-gray-500 font-bold bg-gray-900/30 border border-gray-800 px-2.5 py-1 rounded-lg">
                         <ToggleLeft size={14} className="text-gray-600" />
                         <span>Disabled</span>
                       </div>

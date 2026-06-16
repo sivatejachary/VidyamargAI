@@ -72,7 +72,7 @@ function formatLastPreview(chat: ChatListItem, msg: MessageItem | undefined): st
 function ChatAvatar({ chat, size = "md" }: { chat: ChatListItem | undefined; size?: "sm" | "md" }) {
   if (!chat) return null;
   const dim = size === "sm" ? "w-8 h-8" : "w-10 h-10";
-  const textSize = size === "sm" ? "text-[10px]" : "text-xs";
+  const textSize = size === "sm" ? "text-10" : "text-xs";
 
   // Mentor Rahul → real photo
   if (chat.name.includes("Rahul") && chat.category === "mentors") {
@@ -89,11 +89,11 @@ function ChatAvatar({ chat, size = "md" }: { chat: ChatListItem | undefined; siz
   if (chat.name.includes("Microsoft")) {
     return (
       <div className={`${dim} rounded-full bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 flex items-center justify-center shrink-0 shadow-sm`}>
-        <div className="grid grid-cols-2 gap-[2px]">
-          <div className="w-[9px] h-[9px] bg-[#F25022] rounded-[1px]" />
-          <div className="w-[9px] h-[9px] bg-[#7FBA00] rounded-[1px]" />
-          <div className="w-[9px] h-[9px] bg-[#00A4EF] rounded-[1px]" />
-          <div className="w-[9px] h-[9px] bg-[#FFB900] rounded-[1px]" />
+        <div className="grid grid-cols-2 gap-0.5">
+          <div className="w-9-px h-9-px bg-teams-orange rounded-1" />
+          <div className="w-9-px h-9-px bg-teams-green rounded-1" />
+          <div className="w-9-px h-9-px bg-teams-blue rounded-1" />
+          <div className="w-9-px h-9-px bg-teams-yellow rounded-1" />
         </div>
       </div>
     );
@@ -102,8 +102,8 @@ function ChatAvatar({ chat, size = "md" }: { chat: ChatListItem | undefined; siz
   // Amazon black logo
   if (chat.name.includes("Amazon")) {
     return (
-      <div className={`${dim} rounded-full bg-[#131921] flex items-center justify-center shrink-0`}>
-        <span className="text-[#FF9900] font-extrabold text-sm font-sans leading-none">a</span>
+      <div className={`${dim} rounded-full bg-amazon-dark flex items-center justify-center shrink-0`}>
+        <span className="text-amazon-orange font-extrabold text-sm font-sans leading-none">a</span>
       </div>
     );
   }
@@ -179,7 +179,7 @@ export default function Messages() {
           name: teamName,
           avatar: "TA",
           category: "teams",
-          iconBg: "bg-[#2563EB]",
+          iconBg: "bg-blue-600",
           iconText: "text-white",
         });
       }
@@ -327,14 +327,14 @@ export default function Messages() {
   /* ═══════════════════════════════════════════════════════════════════ */
 
   return (
-    <div className="w-full h-full flex flex-col font-sans text-slate-800 dark:text-slate-100 bg-[#F4F6F8] dark:bg-black transition-colors duration-300">
+    <div className="w-full h-full flex flex-col font-sans text-slate-800 dark:text-slate-100 bg-background dark:bg-black transition-colors duration-300">
 
       {/* ── Page Header ───────────────────────────────────────────── */}
       <div className={`px-7 pt-6 pb-4 shrink-0 ${!showMobileChatList ? "hidden md:block" : "block"}`}>
         <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
           Messages
         </h1>
-        <p className="text-[11px] text-slate-500 dark:text-slate-500 mt-0.5 font-medium tracking-wide">
+        <p className="text-11 text-slate-500 dark:text-slate-500 mt-0.5 font-medium tracking-wide">
           Mentors • Teams • Hiring Updates • Support
         </p>
       </div>
@@ -343,7 +343,7 @@ export default function Messages() {
       <div className="flex-1 flex gap-0 md:gap-4 px-0 pb-0 md:px-7 md:pb-6 min-h-0">
 
         {/* ━━━━━━━━━━━━━ LEFT: Conversation List ━━━━━━━━━━━━━━━━━━━ */}
-        <div className={`w-full md:w-[35%] md:min-w-[280px] bg-white dark:bg-[#0A0A0A] border-0 md:border border-slate-200/70 dark:border-neutral-800 rounded-none md:rounded-2xl flex flex-col shrink-0 overflow-hidden ${
+        <div className={`w-full md:w-35-pct md:min-w-280 bg-white dark:bg-background border-0 md:border border-slate-200/70 dark:border-neutral-800 rounded-none md:rounded-2xl flex flex-col shrink-0 overflow-hidden ${
           !showMobileChatList ? "hidden md:flex" : "flex"
         }`}>
 
@@ -357,7 +357,7 @@ export default function Messages() {
                   placeholder="Search conversations..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-neutral-500 focus:outline-none focus:border-[#2563EB] dark:focus:border-[#2563EB] transition-colors"
+                  className="w-full bg-slate-50 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-neutral-500 focus:outline-none focus:border-blue-600 dark:focus:border-blue-600 transition-colors"
                 />
               </div>
               <button className="w-9 h-9 rounded-xl border border-slate-200 dark:border-neutral-800 flex items-center justify-center text-slate-400 dark:text-neutral-500 hover:bg-slate-50 dark:hover:bg-neutral-900 transition-colors shrink-0 cursor-pointer">
@@ -378,9 +378,9 @@ export default function Messages() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`h-[32px] px-3.5 rounded-full text-[11px] font-semibold flex items-center justify-center transition-all shrink-0 cursor-pointer ${
+                className={`h-8 px-3.5 rounded-full text-11 font-semibold flex items-center justify-center transition-all shrink-0 cursor-pointer ${
                   activeTab === tab.id
-                    ? "bg-[#2563EB] text-white shadow-sm"
+                    ? "bg-blue-600 text-white shadow-sm"
                     : "bg-slate-100 dark:bg-neutral-900 text-slate-500 dark:text-neutral-400 hover:bg-slate-200 dark:hover:bg-neutral-800"
                 }`}
               >
@@ -415,7 +415,7 @@ export default function Messages() {
                     }}
                     className={`px-4 py-3 mx-2 my-0.5 rounded-xl flex items-center gap-3 cursor-pointer transition-all ${
                       active
-                        ? "bg-[#EBF2FF] dark:bg-[#2563EB]/10 border border-[#2563EB]/20 dark:border-[#2563EB]/20"
+                        ? "bg-blue-50 dark:bg-blue-600/10 border border-blue-600/20 dark:border-blue-600/20"
                         : "border border-transparent hover:bg-slate-50 dark:hover:bg-neutral-900/60"
                     }`}
                   >
@@ -423,21 +423,21 @@ export default function Messages() {
 
                     <div className="flex-1 min-w-0 overflow-hidden">
                       <div className="flex justify-between items-center">
-                        <h3 className={`text-[13px] font-semibold truncate leading-tight ${
-                          active ? "text-[#2563EB] dark:text-[#60A5FA]" : "text-slate-900 dark:text-white"
+                        <h3 className={`text-13 font-semibold truncate leading-tight ${
+                          active ? "text-blue-600 dark:text-blue-400" : "text-slate-900 dark:text-white"
                         }`}>
                           {chat.name}
                         </h3>
-                        <span className="text-[10px] text-slate-400 dark:text-neutral-500 shrink-0 ml-2 font-medium">
+                        <span className="text-10 text-slate-400 dark:text-neutral-500 shrink-0 ml-2 font-medium">
                           {lastMsg ? formatLastMessageTime(lastMsg.sent_at) : ""}
                         </span>
                       </div>
                       <div className="flex justify-between items-center mt-1 gap-2">
-                        <p className="text-[11px] text-slate-500 dark:text-neutral-500 truncate leading-tight">
+                        <p className="text-11 text-slate-500 dark:text-neutral-500 truncate leading-tight">
                           {formatLastPreview(chat, lastMsg)}
                         </p>
                         {unreadCount > 0 && (
-                          <span className="min-w-[18px] h-[18px] px-1 bg-[#2563EB] text-white text-[9px] font-bold rounded-full flex items-center justify-center shrink-0">
+                          <span className="min-w-18 h-18 px-1 bg-blue-600 text-white text-9 font-bold rounded-full flex items-center justify-center shrink-0">
                             {unreadCount}
                           </span>
                         )}
@@ -451,13 +451,13 @@ export default function Messages() {
         </div>
 
         {/* ━━━━━━━━━━━━━ RIGHT: Active Conversation ━━━━━━━━━━━━━━━━ */}
-        <div className={`flex-1 bg-white dark:bg-[#0A0A0A] border-0 md:border border-slate-200/70 dark:border-neutral-800 rounded-none md:rounded-2xl flex flex-col min-h-0 overflow-hidden ${
+        <div className={`flex-1 bg-white dark:bg-background border-0 md:border border-slate-200/70 dark:border-neutral-800 rounded-none md:rounded-2xl flex flex-col min-h-0 overflow-hidden ${
           showMobileChatList ? "hidden md:flex" : "flex"
         }`}>
 
           {/* Chat header */}
           {currentChat && (
-            <div className="px-5 py-3.5 border-b border-slate-100 dark:border-neutral-800 bg-white dark:bg-[#0A0A0A] flex items-center justify-between shrink-0">
+            <div className="px-5 py-3.5 border-b border-slate-100 dark:border-neutral-800 bg-white dark:bg-background flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
                 {/* Back button on mobile */}
                 <button
@@ -474,7 +474,7 @@ export default function Messages() {
                   </h3>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                    <span className="text-[10px] text-slate-500 dark:text-neutral-500 font-medium">
+                    <span className="text-10 text-slate-500 dark:text-neutral-500 font-medium">
                       {currentChat.id.startsWith("team_") ? "5 members • 3 online" : "Active now"}
                     </span>
                   </div>
@@ -492,11 +492,11 @@ export default function Messages() {
           )}
 
           {/* Messages thread */}
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 bg-[#FAFBFC] dark:bg-[#050505] scrollbar-none">
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 bg-slate-50 dark:bg-black scrollbar-none">
 
             {/* Date badge */}
             <div className="flex justify-center py-1">
-              <span className="px-3 py-1 bg-white dark:bg-neutral-900 border border-slate-200/60 dark:border-neutral-800 text-slate-400 dark:text-neutral-500 rounded-full text-[10px] font-semibold">
+              <span className="px-3 py-1 bg-white dark:bg-neutral-900 border border-slate-200/60 dark:border-neutral-800 text-slate-400 dark:text-neutral-500 rounded-full text-10 font-semibold">
                 Today
               </span>
             </div>
@@ -518,7 +518,7 @@ export default function Messages() {
                 return (
                   <div className="h-full flex items-center justify-center text-center">
                     <div className="max-w-xs flex flex-col items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-[#2563EB]/10 flex items-center justify-center text-[#2563EB]">
+                      <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-600/10 flex items-center justify-center text-blue-600">
                         <MessageSquare size={20} />
                       </div>
                       <p className="text-slate-400 dark:text-neutral-500 text-xs leading-relaxed">{placeholderText}</p>
@@ -536,16 +536,16 @@ export default function Messages() {
                   >
                     {!isUser && <SenderAvatar senderName={msg.sender_name} />}
 
-                    <div className={`max-w-[65%] flex flex-col gap-0.5 ${isUser ? "items-end" : "items-start"}`}>
-                      <span className={`text-[10px] text-slate-400 dark:text-neutral-500 font-medium px-1 ${isUser ? "text-right" : "text-left"}`}>
+                    <div className={`max-w-65-pct flex flex-col gap-0.5 ${isUser ? "items-end" : "items-start"}`}>
+                      <span className={`text-10 text-slate-400 dark:text-neutral-500 font-medium px-1 ${isUser ? "text-right" : "text-left"}`}>
                         {isUser
                           ? `You • ${new Date(msg.sent_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
                           : `${msg.sender_name} • ${new Date(msg.sent_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
                       </span>
                       <div
-                        className={`px-3.5 py-2.5 text-[13px] leading-relaxed ${
+                        className={`px-3.5 py-2.5 text-13 leading-relaxed ${
                           isUser
-                            ? "bg-[#2563EB] text-white rounded-2xl rounded-br-md"
+                            ? "bg-blue-600 text-white rounded-2xl rounded-br-md"
                             : "bg-white dark:bg-neutral-900 text-slate-800 dark:text-slate-200 border border-slate-200/60 dark:border-neutral-800 rounded-2xl rounded-bl-md"
                         }`}
                       >
@@ -560,7 +560,7 @@ export default function Messages() {
           </div>
 
           {/* Input bar */}
-          <div className="px-5 py-3 bg-white dark:bg-[#0A0A0A] border-t border-slate-100 dark:border-neutral-800 shrink-0">
+          <div className="px-5 py-3 bg-white dark:bg-background border-t border-slate-100 dark:border-neutral-800 shrink-0">
             <div className="flex items-center gap-2 bg-slate-50 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-full px-1.5 py-1">
               <button className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 dark:text-neutral-500 hover:text-slate-600 dark:hover:text-neutral-300 transition-colors cursor-pointer shrink-0">
                 <Paperclip size={15} />
@@ -571,12 +571,12 @@ export default function Messages() {
                 value={inputVal}
                 onChange={(e) => setInputVal(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
-                className="flex-1 bg-transparent border-none outline-none focus:ring-0 px-1 py-1.5 text-[13px] text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-neutral-500"
+                className="flex-1 bg-transparent border-none outline-none focus:ring-0 px-1 py-1.5 text-13 text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-neutral-500"
               />
               <button
                 onClick={handleSend}
                 disabled={!inputVal.trim()}
-                className="w-8 h-8 bg-[#2563EB] text-white rounded-full flex items-center justify-center hover:bg-[#1D4ED8] disabled:opacity-40 transition-all cursor-pointer shrink-0"
+                className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 disabled:opacity-40 transition-all cursor-pointer shrink-0"
               >
                 <Send size={14} />
               </button>

@@ -13,7 +13,7 @@ export function Badge({
   ...props
 }: BadgeProps) {
   const baseStyle =
-    "inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border tracking-wide select-none";
+    "inline-flex items-center px-2.5 py-0.5 rounded-full text-10 font-bold border tracking-wide select-none";
 
   const variants = {
     primary: "bg-primary/10 border-primary/20 text-primary",

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
+import { apiService } from "@/services/api";
 import { 
   Sparkles, Briefcase, FileText, Compass, Trophy, MessageSquare, 
   Bell, Moon, Sun, LogOut, LayoutDashboard, Users, 
@@ -23,6 +24,30 @@ export default function Sidebar({ portal }: SidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
+    const fetchPreferences = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+        const prefs = await apiService.getPreferences();
+        if (prefs && prefs.theme) {
+          const fetchedTheme = prefs.theme as "dark" | "light";
+          setTheme(fetchedTheme);
+          localStorage.setItem("theme", fetchedTheme);
+          if (fetchedTheme === "light") {
+            document.documentElement.classList.add("light-theme");
+            document.documentElement.classList.remove("dark");
+          } else {
+            document.documentElement.classList.remove("light-theme");
+            document.documentElement.classList.add("dark");
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch user preferences:", err);
+      }
+    };
+
+    fetchPreferences();
+
     const savedTheme = localStorage.getItem("theme") as "dark" | "light" | null;
     if (savedTheme) {
       setTimeout(() => {
@@ -50,7 +75,7 @@ export default function Sidebar({ portal }: SidebarProps) {
     }
   }, []);
 
-  const toggleTheme = () => {
+  const toggleTheme = async () => {
     const nextTheme = theme === "dark" ? "light" : "dark";
     setTheme(nextTheme);
     localStorage.setItem("theme", nextTheme);
@@ -60,6 +85,15 @@ export default function Sidebar({ portal }: SidebarProps) {
     } else {
       document.documentElement.classList.remove("light-theme");
       document.documentElement.classList.add("dark");
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      if (token) {
+        await apiService.updatePreferences(nextTheme);
+      }
+    } catch (err) {
+      console.error("Failed to save user theme preference:", err);
     }
   };
 
@@ -110,7 +144,7 @@ export default function Sidebar({ portal }: SidebarProps) {
       <header className="md:hidden flex items-center px-4 py-3 bg-app-surface border-b border-app-border fixed top-0 left-0 right-0 z-40 h-16 w-full font-sans">
         <button 
           onClick={() => setMobileOpen(true)}
-          className="text-app-text-muted hover:text-app-text p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-app-bg transition-colors z-10"
+          className="text-app-text-muted hover:text-app-text p-2 min-w-11 min-h-11 flex items-center justify-center rounded-lg hover:bg-app-bg transition-colors z-10"
           title="Open Menu"
         >
           <Menu size={20} />
@@ -136,7 +170,7 @@ export default function Sidebar({ portal }: SidebarProps) {
 
         <button 
           onClick={toggleTheme}
-          className="ml-auto text-app-text-muted hover:text-app-text p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-app-bg transition-colors z-10"
+          className="ml-auto text-app-text-muted hover:text-app-text p-2 min-w-11 min-h-11 flex items-center justify-center rounded-lg hover:bg-app-bg transition-colors z-10"
           title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
         >
           {theme === "dark" ? <Moon size={20} className="text-slate-400" /> : <Sun size={20} className="text-amber-500" />}
@@ -173,7 +207,7 @@ export default function Sidebar({ portal }: SidebarProps) {
 
                 <button 
                   onClick={() => setMobileOpen(false)}
-                  className="text-app-text-muted hover:text-app-text p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-app-bg transition-colors"
+                  className="text-app-text-muted hover:text-app-text p-2 min-w-11 min-h-11 flex items-center justify-center rounded-lg hover:bg-app-bg transition-colors"
                   title="Close Menu"
                 >
                   <X size={20} />
@@ -230,7 +264,7 @@ export default function Sidebar({ portal }: SidebarProps) {
                 </div>
                 <div className="flex-1 min-w-0 overflow-hidden cursor-pointer" onClick={() => { setMobileOpen(false); handleProfileClick(); }}>
                   <h2 className="text-xs font-bold text-app-text truncate leading-tight">{displayName}</h2>
-                  <span className="text-[10px] text-app-text-muted truncate block leading-tight">{displayEmail}</span>
+                  <span className="text-10 text-app-text-muted truncate block leading-tight">{displayEmail}</span>
                 </div>
                 <button
                   onClick={handleLogout}
@@ -246,7 +280,7 @@ export default function Sidebar({ portal }: SidebarProps) {
       )}
 
       {/* Desktop Sidebar (hidden on mobile) */}
-      <aside className={`hidden md:flex ${collapsed ? "w-[72px]" : "w-64"} h-screen border-r border-app-border bg-app-surface flex flex-col justify-between shrink-0 font-sans transition-all duration-300 overflow-y-auto overflow-x-hidden`}>
+      <aside className={`hidden md:flex ${collapsed ? "w-18" : "w-64"} h-screen border-r border-app-border bg-app-surface flex flex-col justify-between shrink-0 font-sans transition-all duration-300 overflow-y-auto overflow-x-hidden`}>
         <div className={`flex flex-col gap-6 ${collapsed ? "p-3" : "p-5"}`}>
           {/* Header Logo — VidyamargAI */}
           <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"}`}>
@@ -268,7 +302,7 @@ export default function Sidebar({ portal }: SidebarProps) {
             )}
             <button 
               onClick={toggleCollapsed}
-              className="text-app-text-muted hover:text-app-text p-1.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-app-bg transition-colors"
+              className="text-app-text-muted hover:text-app-text p-1.5 min-w-11 min-h-11 flex items-center justify-center rounded-lg hover:bg-app-bg transition-colors"
               title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
@@ -353,7 +387,7 @@ export default function Sidebar({ portal }: SidebarProps) {
               {/* Name + Email */}
               <div className="flex-1 min-w-0 overflow-hidden cursor-pointer" onClick={handleProfileClick}>
                 <h2 className="text-xs font-bold text-app-text truncate leading-tight">{displayName}</h2>
-                <span className="text-[10px] text-app-text-muted truncate block leading-tight">{displayEmail}</span>
+                <span className="text-10 text-app-text-muted truncate block leading-tight">{displayEmail}</span>
               </div>
               {/* Logout icon */}
               <button
@@ -392,7 +426,7 @@ export default function Sidebar({ portal }: SidebarProps) {
                 }`}
               >
                 <Icon size={20} className="mb-0.5 shrink-0" />
-                <span className="text-[10px] font-semibold tracking-tight leading-none">{tab.name}</span>
+                <span className="text-10 font-semibold tracking-tight leading-none">{tab.name}</span>
               </Link>
             );
           })}

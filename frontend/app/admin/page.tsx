@@ -103,9 +103,9 @@ export default function AdminDashboard() {
         ].map((c, i) => {
           const Icon = c.icon;
           return (
-            <div key={i} className="glass-panel p-4 rounded-xl border border-gray-800 flex flex-col justify-between gap-3 bg-[#0c0d14]/40">
+            <div key={i} className="glass-panel p-4 rounded-xl border border-gray-800 flex flex-col justify-between gap-3 bg-card/40">
               <div className="flex justify-between items-center">
-                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{c.label}</span>
+                <span className="text-10 text-gray-400 font-bold uppercase tracking-wider">{c.label}</span>
                 <Icon size={14} className={c.color} />
               </div>
               <span className="text-xl font-bold text-white">{c.value}</span>
@@ -118,7 +118,7 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Funnel Chart */}
-        <div className="lg:col-span-2 glass-panel p-6 rounded-2xl border border-gray-800 flex flex-col gap-4 bg-[#0c0d14]/40">
+        <div className="lg:col-span-2 glass-panel p-6 rounded-2xl border border-gray-800 flex flex-col gap-4 bg-card/40">
           <h2 className="text-sm font-bold text-white">Recruitment Funnel Conversion</h2>
           <div className="h-64 mt-2">
             <ResponsiveContainer width="100%" height="100%">
@@ -142,14 +142,14 @@ export default function AdminDashboard() {
         </div>
 
         {/* Fraud Trends Panel */}
-        <div className="glass-panel p-6 rounded-2xl border border-gray-800 bg-[#0d0e15]/40 flex flex-col gap-4">
+        <div className="glass-panel p-6 rounded-2xl border border-gray-800 bg-muted/40 flex flex-col gap-4">
           <h2 className="text-sm font-bold text-white">AI Proctoring Flags</h2>
           <div className="flex-1 flex flex-col justify-center gap-3">
             {fraudTrends.length === 0 ? (
               <div className="text-center py-12 text-gray-500 text-xs">No fraud logs registered.</div>
             ) : (
               fraudTrends.map((t, i) => (
-                <div key={i} className="flex justify-between items-center text-xs p-3 rounded-xl border border-gray-800/40 bg-[#0d0e15]/40">
+                <div key={i} className="flex justify-between items-center text-xs p-3 rounded-xl border border-gray-800/40 bg-muted/40">
                   <span className="text-gray-400 capitalize">{t.event.replace("_", " ")}</span>
                   <span className="font-bold text-red-400 bg-red-950/20 px-2 py-0.5 rounded border border-red-900/30">
                     {t.count} flags
@@ -163,13 +163,13 @@ export default function AdminDashboard() {
       </div>
 
       {/* Live Logs Terminal */}
-      <div className="glass-panel p-6 rounded-2xl border border-gray-800 bg-[#0c0d14]/40 flex flex-col gap-4">
+      <div className="glass-panel p-6 rounded-2xl border border-gray-800 bg-card/40 flex flex-col gap-4">
         <h2 className="text-sm font-bold text-white flex items-center gap-2">
           <Terminal size={16} className="text-purple-400" />
           <span>Live Orchestration execution logs</span>
         </h2>
         
-        <div className="h-52 overflow-y-auto bg-[#08090e] border border-gray-800 rounded-xl p-4 font-mono text-[11px] flex flex-col gap-2.5">
+        <div className="h-52 overflow-y-auto bg-background border border-gray-800 rounded-xl p-4 font-mono text-11 flex flex-col gap-2.5">
           {logs.length === 0 ? (
             <span className="text-gray-600 italic">Logs stream starting... Waiting for agent triggers.</span>
           ) : (

@@ -17,7 +17,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1
           transition-all placeholder:text-muted-foreground
           disabled:cursor-not-allowed disabled:opacity-50
-          min-h-[44px]
+          min-h-44
           ${
             error
               ? "border-destructive focus:ring-destructive"

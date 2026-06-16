@@ -248,7 +248,7 @@ export default function TushAIChat() {
 
           {/* Search Input */}
           <div className="w-full max-w-2xl mb-12">
-            <div className="flex flex-col bg-white dark:bg-[#1A1A1A] border border-[#E5E7EB] dark:border-[#2A2A2A] rounded-[32px] p-2 pl-4 pr-3 shadow-[0_8px_30px_rgba(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.25)] hover:border-gray-300 dark:hover:border-zinc-700 focus-within:border-blue-500/50 dark:focus-within:border-blue-400/40 focus-within:shadow-[0_8px_30px_rgba(59,130,246,0.08)] transition-all duration-300 w-full">
+            <div className="flex flex-col flex flex-col bg-card border border-border rounded-32 p-2 pl-4 pr-3 shadow-custom-glass hover:border-border-hover dark:hover:border-neutral-700 focus-within:border-primary/50 dark:focus-within:border-primary/40 focus-within:shadow-[0_8px_30px_rgba(59,130,246,0.08)] transition-all duration-300 w-full">
               
               {/* Attachment Preview Chips */}
               {attachments.length > 0 && (
@@ -271,7 +271,7 @@ export default function TushAIChat() {
                         ) : (
                           <FileText size={14} className="text-blue-500" />
                         )}
-                        <span className="max-w-[120px] truncate font-medium">{file.name}</span>
+                        <span className="max-w-120 truncate font-medium">{file.name}</span>
                         <button 
                           onClick={() => removeAttachment(idx)}
                           className="w-4 h-4 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-zinc-200 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
@@ -286,7 +286,7 @@ export default function TushAIChat() {
               )}
 
               {/* Main Pill Controls row */}
-              <div className="flex items-end gap-2 w-full min-h-[40px]">
+              <div className="flex items-end gap-2 w-full min-h-10">
                 {/* Left Side: Plus icon */}
                 <button 
                   onClick={() => handlePlusClick(true)}
@@ -318,8 +318,7 @@ export default function TushAIChat() {
                       }
                     }}
                     placeholder="Ask Tush AI anything..."
-                    className="chat-input-textarea w-full bg-transparent resize-none border-none outline-none focus:ring-0 text-sm text-gray-900 dark:text-zinc-100 placeholder-[#6B7280] dark:placeholder-[#A1A1AA] py-1 max-h-[200px]"
-                    style={{ height: '24px' }}
+                    className="chat-input-textarea w-full bg-transparent resize-none border-none outline-none focus:ring-0 text-sm text-foreground placeholder-muted-foreground py-1 max-h-200 h-6"
                   />
                 </div>
 
@@ -393,7 +392,7 @@ export default function TushAIChat() {
               </div>
               <div>
                 <h2 className="text-sm font-bold text-app-text">Tush AI</h2>
-                <span className="text-[10px] text-emerald-500 font-medium flex items-center gap-1">
+                <span className="text-10 text-emerald-500 font-medium flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
                   Active Session
                 </span>
@@ -415,7 +414,7 @@ export default function TushAIChat() {
             {messages.map((msg, idx) => (
               <div 
                 key={idx} 
-                className={`flex gap-3 max-w-[85%] ${
+                className={`flex gap-3 max-w-85-pct ${
                   msg.sender === "user" ? "ml-auto flex-row-reverse" : "mr-auto"
                 }`}
               >
@@ -471,7 +470,7 @@ export default function TushAIChat() {
 
           {/* Footer input */}
           <div className="pt-2 pb-2">
-            <div className="flex flex-col bg-white dark:bg-[#1A1A1A] border border-[#E5E7EB] dark:border-[#2A2A2A] rounded-[32px] p-2 pl-4 pr-3 shadow-[0_8px_30px_rgba(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.25)] hover:border-gray-300 dark:hover:border-zinc-700 focus-within:border-blue-500/50 dark:focus-within:border-blue-400/40 focus-within:shadow-[0_8px_30px_rgba(59,130,246,0.08)] transition-all duration-300 w-full">
+            <div className="flex flex-col flex flex-col bg-card border border-border rounded-32 p-2 pl-4 pr-3 shadow-custom-glass hover:border-border-hover dark:hover:border-neutral-700 focus-within:border-primary/50 dark:focus-within:border-primary/40 focus-within:shadow-[0_8px_30px_rgba(59,130,246,0.08)] transition-all duration-300 w-full">
               
               {/* Attachment Preview Chips */}
               {attachments.length > 0 && (
@@ -494,7 +493,7 @@ export default function TushAIChat() {
                         ) : (
                           <FileText size={14} className="text-blue-500" />
                         )}
-                        <span className="max-w-[120px] truncate font-medium">{file.name}</span>
+                        <span className="max-w-120 truncate font-medium">{file.name}</span>
                         <button 
                           onClick={() => removeAttachment(idx)}
                           className="w-4 h-4 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-zinc-200 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
@@ -509,7 +508,7 @@ export default function TushAIChat() {
               )}
 
               {/* Main Pill Controls row */}
-              <div className="flex items-end gap-2 w-full min-h-[40px]">
+              <div className="flex items-end gap-2 w-full min-h-10">
                 {/* Left Side: Plus icon */}
                 <button 
                   onClick={() => handlePlusClick(false)}
@@ -541,8 +540,7 @@ export default function TushAIChat() {
                       }
                     }}
                     placeholder="Ask Tush AI anything..."
-                    className="chat-input-textarea w-full bg-transparent resize-none border-none outline-none focus:ring-0 text-sm text-gray-900 dark:text-zinc-100 placeholder-[#6B7280] dark:placeholder-[#A1A1AA] py-1 max-h-[200px]"
-                    style={{ height: '24px' }}
+                    className="chat-input-textarea w-full bg-transparent resize-none border-none outline-none focus:ring-0 text-sm text-foreground placeholder-muted-foreground py-1 max-h-200 h-6"
                   />
                 </div>
 
@@ -578,7 +576,7 @@ export default function TushAIChat() {
               </div>
             </div>
             
-            <p className="text-[10px] text-app-text-muted text-center mt-2.5">
+            <p className="text-10 text-app-text-muted text-center mt-2.5">
               Tush AI provides personalized career guidance powered by advanced intelligence.
             </p>
           </div>

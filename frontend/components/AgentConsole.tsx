@@ -143,22 +143,22 @@ export default function AgentConsole({
         {agentStatus === "running" ? (
           <div className="flex items-center gap-2 bg-blue-950/50 border border-blue-900/50 px-2.5 py-1 rounded-lg">
             <RefreshCw className="w-3 h-3 text-blue-400 animate-spin" />
-            <span className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">Active</span>
+            <span className="text-10 text-blue-400 font-bold uppercase tracking-wider">Active</span>
           </div>
         ) : agentStatus === "completed" ? (
           <div className="flex items-center gap-2 bg-emerald-950/50 border border-emerald-900/50 px-2.5 py-1 rounded-lg">
             <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-            <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Ready</span>
+            <span className="text-10 text-emerald-400 font-bold uppercase tracking-wider">Ready</span>
           </div>
         ) : agentStatus === "failed" ? (
           <div className="flex items-center gap-2 bg-red-950/50 border border-red-900/50 px-2.5 py-1 rounded-lg">
             <XCircle className="w-3 h-3 text-red-400" />
-            <span className="text-[10px] text-red-400 font-bold uppercase tracking-wider">Failed</span>
+            <span className="text-10 text-red-400 font-bold uppercase tracking-wider">Failed</span>
           </div>
         ) : (
           <div className="flex items-center gap-2 bg-slate-950/50 border border-slate-800 px-2.5 py-1 rounded-lg">
             <span className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-pulse" />
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Idle</span>
+            <span className="text-10 text-slate-400 font-bold uppercase tracking-wider">Idle</span>
           </div>
         )}
       </div>

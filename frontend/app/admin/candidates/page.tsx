@@ -288,7 +288,7 @@ export default function AdminCandidates() {
       {/* Header */}
       <div>
         <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">Recruitment Pipeline Scoreboard</h1>
-        <p className="text-sm text-gray-400 mt-1">
+        <p className="text-sm text-muted-foreground mt-1">
           Detailed breakdown of candidate final composite rankings, assessment evaluations, and proctor details.
         </p>
       </div>
@@ -297,10 +297,10 @@ export default function AdminCandidates() {
         
         {/* Candidates Table List */}
         <div className="lg:col-span-2 flex flex-col gap-4">
-          <Card className="overflow-hidden p-0 bg-[#0c0d14]/40">
+          <Card className="overflow-hidden p-0 bg-card/40">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-gray-400 border-collapse">
-                <thead className="bg-[#0f1019] text-gray-300 font-bold border-b border-gray-800 text-[10px] uppercase tracking-wider">
+              <table className="w-full text-left text-xs text-muted-foreground border-collapse">
+                <thead className="bg-muted text-muted-foreground font-bold border-b border-border text-10 uppercase tracking-wider">
                   <tr>
                     <th className="p-4">Rank</th>
                     <th className="p-4">Name</th>
@@ -315,26 +315,26 @@ export default function AdminCandidates() {
                 <tbody className="divide-y divide-gray-800/60 font-medium">
                   {loading ? (
                     <tr>
-                      <td colSpan={8} className="p-8 text-center text-gray-500">Loading scoreboard details...</td>
+                      <td colSpan={8} className="p-8 text-center text-muted-foreground">Loading scoreboard details...</td>
                     </tr>
                   ) : rankings.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="p-8 text-center text-gray-500">No candidate ranks calculated yet.</td>
+                      <td colSpan={8} className="p-8 text-center text-muted-foreground">No candidate ranks calculated yet.</td>
                     </tr>
                   ) : (
                     rankings.map((r) => (
                       <tr 
                         key={r.id} 
                         onClick={() => selectCandidate(r)}
-                        className={`hover:bg-gray-800/20 cursor-pointer transition-colors ${
+                        className={`hover:bg-muted/20 cursor-pointer transition-colors ${
                           selectedRank?.id === r.id ? "bg-purple-900/10 text-purple-300 border-l-2 border-purple-500" : ""
                         }`}
                       >
-                        <td className="p-4 font-mono font-bold text-gray-500">#{r.rank}</td>
-                        <td className="p-4 font-semibold text-white truncate max-w-[120px]">
+                        <td className="p-4 font-mono font-bold text-muted-foreground">#{r.rank}</td>
+                        <td className="p-4 font-semibold text-white truncate max-w-120">
                           {r.application?.candidate_name}
                         </td>
-                        <td className="p-4 truncate max-w-[120px]">{r.application?.job_title}</td>
+                        <td className="p-4 truncate max-w-120">{r.application?.job_title}</td>
                         <td className="p-4 text-center">{r.resume_score.toFixed(0)}</td>
                         <td className="p-4 text-center">{r.assessment_score.toFixed(0)}</td>
                         <td className="p-4 text-center">{r.interview_score.toFixed(0)}</td>
@@ -354,14 +354,14 @@ export default function AdminCandidates() {
         {/* Detailed scorecard panel */}
         <div className="flex flex-col gap-6">
           {selectedRank ? (
-            <Card className="flex flex-col gap-6 max-h-[85vh] overflow-y-auto bg-[#0d0e15]/40">
+            <Card className="flex flex-col gap-6 max-h-85-vh overflow-y-auto bg-card/40">
               
-              <div className="flex justify-between items-start border-b border-gray-800 pb-4">
+              <div className="flex justify-between items-start border-b border-border pb-4">
                 <div>
                   <h2 className="text-base font-extrabold text-white">
                     {selectedRank.application?.candidate_name}
                   </h2>
-                  <p className="text-xs text-purple-400 mt-1">
+                  <p className="text-xs text-purple-500 mt-1">
                     Applied: {selectedRank.application?.job_title}
                   </p>
                 </div>
@@ -370,7 +370,7 @@ export default function AdminCandidates() {
                     setSelectedRank(null);
                     setSelectedApplication(null);
                   }}
-                  className="p-1 rounded-lg hover:bg-gray-800 text-gray-500 hover:text-white transition-colors"
+                  className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-white transition-colors"
                 >
                   <X size={16} />
                 </button>
@@ -378,31 +378,31 @@ export default function AdminCandidates() {
 
               {/* Status */}
               <div className="flex justify-between items-center text-xs">
-                <span className="text-gray-400">Recruitment Status:</span>
+                <span className="text-muted-foreground">Recruitment Status:</span>
                 {getStatusBadge(selectedRank.application?.status || "")}
               </div>
 
               {/* Score breakdown */}
               <div className="flex flex-col gap-3 border-b border-gray-850 pb-4">
                 <h3 className="text-xs font-bold text-white flex items-center gap-2">
-                  <Award size={14} className="text-purple-400" />
+                  <Award size={14} className="text-purple-500" />
                   <span>Metrics scorecard</span>
                 </h3>
                 <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="p-3 bg-[#0c0d14]/40 border border-gray-800/40 rounded-xl">
-                    <span className="text-[10px] text-gray-500 block">Resume Screen</span>
+                  <div className="p-3 bg-card/40 border border-border/40 rounded-xl">
+                    <span className="text-10 text-muted-foreground block">Resume Screen</span>
                     <span className="text-sm font-bold text-white mt-1 block">{selectedRank.resume_score.toFixed(0)}%</span>
                   </div>
-                  <div className="p-3 bg-[#0c0d14]/40 border border-gray-800/40 rounded-xl">
-                    <span className="text-[10px] text-gray-500 block">AI Test score</span>
+                  <div className="p-3 bg-card/40 border border-border/40 rounded-xl">
+                    <span className="text-10 text-muted-foreground block">AI Test score</span>
                     <span className="text-sm font-bold text-white mt-1 block">{selectedRank.assessment_score.toFixed(0)}%</span>
                   </div>
-                  <div className="p-3 bg-[#0c0d14]/40 border border-gray-800/40 rounded-xl">
-                    <span className="text-[10px] text-gray-500 block">Tara Interview</span>
+                  <div className="p-3 bg-card/40 border border-border/40 rounded-xl">
+                    <span className="text-10 text-muted-foreground block">Tara Interview</span>
                     <span className="text-sm font-bold text-white mt-1 block">{selectedRank.interview_score.toFixed(0)}%</span>
                   </div>
                   <div className="p-3 bg-red-950/5 border border-red-900/10 rounded-xl">
-                    <span className="text-[10px] text-red-500/70 block">Proctor Flags</span>
+                    <span className="text-10 text-red-500/70 block">Proctor Flags</span>
                     <span className="text-sm font-bold text-red-400 mt-1 block">{selectedRank.fraud_penalty.toFixed(0)} flags</span>
                   </div>
                 </div>
@@ -412,10 +412,10 @@ export default function AdminCandidates() {
               {screening && (
                 <div className="flex flex-col gap-2 border-b border-gray-850 pb-4 text-xs">
                   <h3 className="text-xs font-bold text-white flex items-center gap-2">
-                    <FileText size={14} className="text-blue-400" />
+                    <FileText size={14} className="text-blue-500" />
                     <span>Screening Alignment Notes</span>
                   </h3>
-                  <p className="text-gray-400 leading-relaxed bg-[#0c0d14]/40 p-3 rounded-xl border border-gray-800/40 italic">
+                  <p className="text-muted-foreground leading-relaxed bg-card/40 p-3 rounded-xl border border-border/40 italic">
                     "{screening.raw_reasoning}"
                   </p>
                 </div>
@@ -428,11 +428,11 @@ export default function AdminCandidates() {
                     <MessageSquare size={14} className="text-indigo-400" />
                     <span>Conversation Dialogues</span>
                   </h3>
-                  <div className="max-h-40 overflow-y-auto bg-[#08090e] border border-gray-800 rounded-xl p-3 font-mono text-[10px] flex flex-col gap-2">
+                  <div className="max-h-40 overflow-y-auto bg-background border border-border rounded-xl p-3 font-mono text-10 flex flex-col gap-2">
                     {JSON.parse(interview.transcript || "[]").map((dia: any, idx: number) => (
                       <div key={idx} className="leading-relaxed">
-                        <span className="text-purple-400 font-bold">{dia.role}: </span>
-                        <span className="text-gray-400">{dia.text}</span>
+                        <span className="text-purple-500 font-bold">{dia.role}: </span>
+                        <span className="text-muted-foreground">{dia.text}</span>
                       </div>
                     ))}
                   </div>
@@ -442,17 +442,17 @@ export default function AdminCandidates() {
               {/* Resume & Profile Details */}
               <div className="flex flex-col gap-3 text-xs border-b border-gray-850 pb-4">
                 <h3 className="text-xs font-bold text-white flex items-center gap-2">
-                  <FileText size={14} className="text-blue-400" />
+                  <FileText size={14} className="text-blue-500" />
                   <span>Resume & Profile</span>
                 </h3>
 
                 {selectedApplication?.resume && (
-                  <div className="flex items-center justify-between bg-[#0c0d14]/40 border border-gray-800/40 rounded-xl p-3">
+                  <div className="flex items-center justify-between bg-card/40 border border-border/40 rounded-xl p-3">
                     <div className="flex items-center gap-2">
                       <FileText size={14} className="text-red-400" />
                       <div>
-                        <span className="text-[10px] text-gray-500 block">Uploaded Resume</span>
-                        <span className="text-xs font-semibold text-white truncate max-w-[150px] block">
+                        <span className="text-10 text-muted-foreground block">Uploaded Resume</span>
+                        <span className="text-xs font-semibold text-white truncate max-w-150 block">
                           {selectedApplication.resume.resume_url.split("/").pop()}
                         </span>
                       </div>
@@ -461,7 +461,7 @@ export default function AdminCandidates() {
                       href={`${typeof window !== "undefined" && window.location.hostname === "localhost" ? "http://127.0.0.1:8000" : `http://${window.location.hostname}:8000`}${selectedApplication.resume.resume_url}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-xs font-bold text-white transition-colors flex items-center gap-1.5"
+                      className="px-3 py-1.5 rounded-lg bg-muted hover:bg-gray-700 text-xs font-bold text-white transition-colors flex items-center gap-1.5"
                     >
                       <span>Download</span>
                     </a>
@@ -469,21 +469,21 @@ export default function AdminCandidates() {
                 )}
 
                 {selectedApplication?.candidate?.summary && (
-                  <div className="bg-[#0c0d14]/40 border border-gray-800/40 rounded-xl p-3 text-xs">
-                    <span className="text-[9px] text-gray-500 uppercase font-bold tracking-wider block mb-1">Professional Summary</span>
-                    <p className="text-gray-300 leading-relaxed font-semibold">{selectedApplication.candidate.summary}</p>
+                  <div className="bg-card/40 border border-border/40 rounded-xl p-3 text-xs">
+                    <span className="text-9 text-muted-foreground uppercase font-bold tracking-wider block mb-1">Professional Summary</span>
+                    <p className="text-muted-foreground leading-relaxed font-semibold">{selectedApplication.candidate.summary}</p>
                   </div>
                 )}
 
                 {selectedApplication?.candidate?.skills && (
-                  <div className="bg-[#0c0d14]/40 border border-gray-800/40 rounded-xl p-3 text-xs">
-                    <span className="text-[9px] text-gray-500 uppercase font-bold tracking-wider block mb-2">Skills (Tag Cloud)</span>
+                  <div className="bg-card/40 border border-border/40 rounded-xl p-3 text-xs">
+                    <span className="text-9 text-muted-foreground uppercase font-bold tracking-wider block mb-2">Skills (Tag Cloud)</span>
                     <div className="flex flex-wrap gap-1.5">
                       {selectedApplication.candidate.skills.split(",").map((s: string, idx: number) => {
                         const clean = s.trim();
                         if (!clean) return null;
                         return (
-                          <span key={idx} className="px-2 py-0.5 rounded bg-gray-800 text-[10px] font-bold text-gray-300">
+                          <span key={idx} className="px-2 py-0.5 rounded bg-muted text-10 font-bold text-muted-foreground">
                             {clean}
                           </span>
                         );
@@ -499,18 +499,18 @@ export default function AdminCandidates() {
                     const list = JSON.parse(expListStr);
                     if (list.length === 0) return null;
                     return (
-                      <div className="bg-[#0c0d14]/40 border border-gray-800/40 rounded-xl p-3 text-xs">
-                        <span className="text-[9px] text-gray-500 uppercase font-bold tracking-wider block mb-2">Extracted Experience</span>
+                      <div className="bg-card/40 border border-border/40 rounded-xl p-3 text-xs">
+                        <span className="text-9 text-muted-foreground uppercase font-bold tracking-wider block mb-2">Extracted Experience</span>
                         <div className="space-y-2.5">
                           {list.map((exp: any, idx: number) => (
                             <div key={idx} className="border-l border-purple-500 pl-2.5 py-0.5 space-y-0.5">
                               <div className="flex justify-between items-start">
-                                <span className="font-bold text-white text-[11px]">{exp.role}</span>
-                                <span className="text-[9px] text-gray-505">{exp.years}</span>
+                                <span className="font-bold text-white text-11">{exp.role}</span>
+                                <span className="text-9 text-muted-foreground">{exp.years}</span>
                               </div>
-                              <div className="text-[10px] text-purple-400 font-semibold">{exp.company}</div>
+                              <div className="text-10 text-purple-500 font-semibold">{exp.company}</div>
                               {exp.description && (
-                                <p className="text-[10px] text-gray-400 leading-normal mt-1">{exp.description}</p>
+                                <p className="text-10 text-muted-foreground leading-normal mt-1">{exp.description}</p>
                               )}
                             </div>
                           ))}
@@ -529,16 +529,16 @@ export default function AdminCandidates() {
                     const list = JSON.parse(eduListStr);
                     if (list.length === 0) return null;
                     return (
-                      <div className="bg-[#0c0d14]/40 border border-gray-800/40 rounded-xl p-3 text-xs">
-                        <span className="text-[9px] text-gray-500 uppercase font-bold tracking-wider block mb-2">Extracted Education</span>
+                      <div className="bg-card/40 border border-border/40 rounded-xl p-3 text-xs">
+                        <span className="text-9 text-muted-foreground uppercase font-bold tracking-wider block mb-2">Extracted Education</span>
                         <div className="space-y-2">
                           {list.map((edu: any, idx: number) => (
                             <div key={idx} className="border-l border-blue-500 pl-2.5 py-0.5">
                               <div className="flex justify-between items-start">
-                                <span className="font-bold text-white text-[11px]">{edu.degree}</span>
-                                <span className="text-[9px] text-gray-505">{edu.year}</span>
+                                <span className="font-bold text-white text-11">{edu.degree}</span>
+                                <span className="text-9 text-muted-foreground">{edu.year}</span>
                               </div>
-                              <div className="text-[10px] text-blue-400 font-semibold">{edu.school}</div>
+                              <div className="text-10 text-blue-500 font-semibold">{edu.school}</div>
                             </div>
                           ))}
                         </div>
@@ -556,19 +556,19 @@ export default function AdminCandidates() {
                     const list = JSON.parse(projListStr);
                     if (list.length === 0) return null;
                     return (
-                      <div className="bg-[#0c0d14]/40 border border-gray-800/40 rounded-xl p-3 text-xs">
-                        <span className="text-[9px] text-gray-500 uppercase font-bold tracking-wider block mb-2">Extracted Projects</span>
+                      <div className="bg-card/40 border border-border/40 rounded-xl p-3 text-xs">
+                        <span className="text-9 text-muted-foreground uppercase font-bold tracking-wider block mb-2">Extracted Projects</span>
                         <div className="space-y-2.5">
                           {list.map((proj: any, idx: number) => (
                             <div key={idx} className="border-l border-emerald-500 pl-2.5 py-0.5 space-y-0.5">
-                              <span className="font-bold text-white text-[11px] block">{proj.name}</span>
+                              <span className="font-bold text-white text-11 block">{proj.name}</span>
                               {proj.description && (
-                                <p className="text-[10px] text-gray-400 leading-normal">{proj.description}</p>
+                                <p className="text-10 text-muted-foreground leading-normal">{proj.description}</p>
                               )}
                               {proj.technologies && (
                                 <div className="flex flex-wrap gap-1 mt-1">
                                   {proj.technologies.split(",").map((tech: string, tIdx: number) => (
-                                    <span key={tIdx} className="px-1.5 py-0.5 rounded bg-emerald-955/40 border border-emerald-900/30 text-[9px] text-emerald-400">
+                                    <span key={tIdx} className="px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-9 text-emerald-400">
                                       {tech.trim()}
                                     </span>
                                   ))}
@@ -585,14 +585,14 @@ export default function AdminCandidates() {
                 })()}
 
                 {selectedApplication?.candidate?.certifications && (
-                  <div className="bg-[#0c0d14]/40 border border-gray-800/40 rounded-xl p-3 text-xs">
-                    <span className="text-[9px] text-gray-500 uppercase font-bold tracking-wider block mb-2">Certifications</span>
+                  <div className="bg-card/40 border border-border/40 rounded-xl p-3 text-xs">
+                    <span className="text-9 text-muted-foreground uppercase font-bold tracking-wider block mb-2">Certifications</span>
                     <div className="flex flex-wrap gap-1">
                       {selectedApplication.candidate.certifications.split(",").map((cert: string, idx: number) => {
                         const clean = cert.trim();
                         if (!clean) return null;
                         return (
-                          <span key={idx} className="px-2 py-0.5 rounded bg-gray-800 text-[10px] font-bold text-gray-300">
+                          <span key={idx} className="px-2 py-0.5 rounded bg-muted text-10 font-bold text-muted-foreground">
                             {clean}
                           </span>
                         );
@@ -611,11 +611,11 @@ export default function AdminCandidates() {
                 {candidateFiles.length > 0 ? (
                   <div className="space-y-2">
                     {candidateFiles.map((file, idx) => (
-                      <div key={idx} className="flex items-center justify-between bg-[#0c0d14]/40 border border-gray-800/40 rounded-xl p-3">
+                      <div key={idx} className="flex items-center justify-between bg-card/40 border border-border/40 rounded-xl p-3">
                         <div className="flex items-center gap-2 min-w-0">
                           <FileText size={14} className="text-amber-505 shrink-0" />
                           <div className="min-w-0">
-                            <span className="text-[10px] text-gray-500 block uppercase font-bold tracking-wider">{file.category}</span>
+                            <span className="text-10 text-muted-foreground block uppercase font-bold tracking-wider">{file.category}</span>
                             <span className="text-xs font-semibold text-white truncate block" title={file.name}>
                               {file.name}
                             </span>
@@ -625,7 +625,7 @@ export default function AdminCandidates() {
                           href={`${typeof window !== "undefined" && window.location.hostname === "localhost" ? "http://127.0.0.1:8000" : `http://${window.location.hostname}:8000`}${file.url}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-xs font-bold text-white transition-colors flex items-center gap-1.5 shrink-0"
+                          className="px-3 py-1.5 rounded-lg bg-muted hover:bg-gray-700 text-xs font-bold text-white transition-colors flex items-center gap-1.5 shrink-0"
                         >
                           <span>Open</span>
                         </a>
@@ -633,7 +633,7 @@ export default function AdminCandidates() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-4 text-xs text-gray-500 italic bg-[#0c0d14]/20 border border-dashed border-gray-800 rounded-xl font-semibold">
+                  <div className="text-center py-4 text-xs text-muted-foreground italic bg-card/20 border border-dashed border-border rounded-xl font-semibold">
                     No storage files found for this candidate yet.
                   </div>
                 )}
@@ -642,13 +642,13 @@ export default function AdminCandidates() {
               {/* Hackathon Team & Mentor Assignment */}
               <div className="flex flex-col gap-3 text-xs">
                 <h3 className="text-xs font-bold text-white flex items-center gap-2">
-                  <Award size={14} className="text-purple-400" />
+                  <Award size={14} className="text-purple-500" />
                   <span>Hackathon Assignment</span>
                 </h3>
                 
-                <div className="flex flex-col gap-3 bg-[#0c0d14]/40 p-4 rounded-xl border border-gray-800/40">
+                <div className="flex flex-col gap-3 bg-card/40 p-4 rounded-xl border border-border/40">
                   <div>
-                    <label className="text-[9px] text-gray-500 uppercase font-bold tracking-wider block mb-1">Team Name</label>
+                    <label className="text-9 text-muted-foreground uppercase font-bold tracking-wider block mb-1">Team Name</label>
                     <Input 
                       type="text" 
                       placeholder="e.g. Team Alpha"
@@ -658,7 +658,7 @@ export default function AdminCandidates() {
                   </div>
 
                   <div>
-                    <label className="text-[9px] text-gray-500 uppercase font-bold tracking-wider block mb-1">Mentor Name</label>
+                    <label className="text-9 text-muted-foreground uppercase font-bold tracking-wider block mb-1">Mentor Name</label>
                     <Input 
                       type="text" 
                       placeholder="e.g. Dr. Amit Sharma"
@@ -668,7 +668,7 @@ export default function AdminCandidates() {
                   </div>
 
                   <div>
-                    <label className="text-[9px] text-gray-500 uppercase font-bold tracking-wider block mb-1">Assigned Problem</label>
+                    <label className="text-9 text-muted-foreground uppercase font-bold tracking-wider block mb-1">Assigned Problem</label>
                     <Select
                       value={assignProblemId}
                       onChange={(e) => setAssignProblemId(e.target.value)}
@@ -682,12 +682,12 @@ export default function AdminCandidates() {
                   </div>
 
                   <div>
-                    <label className="text-[9px] text-gray-500 uppercase font-bold tracking-wider block mb-1">Team Members (comma separated)</label>
+                    <label className="text-9 text-muted-foreground uppercase font-bold tracking-wider block mb-1">Team Members (comma separated)</label>
                     <Textarea 
                       placeholder="e.g. Jane Doe, John Smith"
                       value={assignMembers}
                       onChange={(e) => setAssignMembers(e.target.value)}
-                      className="min-h-[50px]"
+                      className="min-h-50"
                     />
                   </div>
 
@@ -709,13 +709,13 @@ export default function AdminCandidates() {
               {/* Live Chat with Candidate Section */}
               <div className="flex flex-col gap-3 text-xs border-t border-gray-850 pt-5 mt-2">
                 <h3 className="text-xs font-bold text-white flex items-center gap-2">
-                  <MessageSquare size={14} className="text-purple-400" />
+                  <MessageSquare size={14} className="text-purple-500" />
                   <span>Live Chat with Candidate</span>
                 </h3>
                 
-                <div className="flex flex-col gap-2 bg-[#0c0d14]/40 p-4 rounded-xl border border-gray-800/40">
+                <div className="flex flex-col gap-2 bg-card/40 p-4 rounded-xl border border-border/40">
                   {/* Chat Sender selector tabs */}
-                  <div className="flex bg-[#08090e] p-1 rounded-lg border border-gray-800">
+                  <div className="flex bg-background p-1 rounded-lg border border-border">
                     {[
                       { id: "support", label: "Support" },
                       { id: "recruiter", label: "Hiring Team" },
@@ -725,10 +725,10 @@ export default function AdminCandidates() {
                         key={tab.id}
                         type="button"
                         onClick={() => setActiveChatTab(tab.id)}
-                        className={`flex-1 py-1 rounded text-[9px] font-bold transition-all cursor-pointer ${
+                        className={`flex-1 py-1 rounded text-9 font-bold transition-all cursor-pointer ${
                           activeChatTab === tab.id 
                             ? "bg-purple-600 text-white" 
-                            : "text-gray-400 hover:text-white"
+                            : "text-muted-foreground hover:text-white"
                         }`}
                       >
                         {tab.label}
@@ -737,7 +737,7 @@ export default function AdminCandidates() {
                   </div>
 
                   {/* Messages list for selected tab */}
-                  <div className="h-40 overflow-y-auto bg-[#08090e] border border-gray-800 rounded-lg p-3 flex flex-col gap-2.5">
+                  <div className="h-40 overflow-y-auto bg-background border border-border rounded-lg p-3 flex flex-col gap-2.5">
                     {(() => {
                       const appId = selectedRank.application_id;
                       const mentorNameClean = assignMentorName.replace(/\s+/g, "_").toLowerCase();
@@ -752,7 +752,7 @@ export default function AdminCandidates() {
                       const filtered = chatMessages.filter((m) => m.chat_id === activeChatId);
                       if (filtered.length === 0) {
                         return (
-                          <div className="h-full flex items-center justify-center text-[10px] text-gray-500 italic">
+                          <div className="h-full flex items-center justify-center text-10 text-muted-foreground italic">
                             No messages in this chat.
                           </div>
                         );
@@ -761,17 +761,17 @@ export default function AdminCandidates() {
                       return filtered.map((m) => {
                         const isCandidate = m.sender === "user";
                         return (
-                          <div key={m.id} className={`flex flex-col max-w-[85%] ${isCandidate ? "mr-auto" : "ml-auto"}`}>
-                            <span className="text-[8px] text-gray-500 font-bold mb-0.5">
+                          <div key={m.id} className={`flex flex-col max-w-85-pct ${isCandidate ? "mr-auto" : "ml-auto"}`}>
+                            <span className="text-8 text-muted-foreground font-bold mb-0.5">
                               {isCandidate ? selectedRank.application?.candidate_name : m.sender_name}
                             </span>
-                            <div className={`p-2 rounded-lg text-[10px] leading-relaxed border ${
+                            <div className={`p-2 rounded-lg text-10 leading-relaxed border ${
                               isCandidate 
-                                ? "bg-gray-800 text-white border-transparent"
+                                ? "bg-muted text-white border-transparent"
                                 : "bg-purple-900/20 text-purple-300 border-purple-800/40"
                             }`}>
                               <p className="whitespace-pre-wrap">{m.text}</p>
-                              <span className="text-[7px] text-gray-500 block text-right mt-1">
+                              <span className="text-7 text-muted-foreground block text-right mt-1">
                                 {new Date(m.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </span>
                             </div>
@@ -805,7 +805,7 @@ export default function AdminCandidates() {
               </div>
             </Card>
           ) : (
-            <Card className="text-center text-gray-500 h-64 flex items-center justify-center bg-[#0d0e15]/40">
+            <Card className="text-center text-muted-foreground h-64 flex items-center justify-center bg-card/40">
               Select a candidate from the ranking list to load their full diagnostic report files.
             </Card>
           )}

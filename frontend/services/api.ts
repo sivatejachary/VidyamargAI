@@ -608,5 +608,23 @@ export const apiService = {
     });
     if (!res.ok) throw new Error("Failed to delete Telegram source");
     return res.json();
+  },
+
+  async getPreferences() {
+    const res = await customFetch(`${getBaseUrl()}/users/me/preferences`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to fetch preferences");
+    return res.json();
+  },
+
+  async updatePreferences(theme: string) {
+    const res = await customFetch(`${getBaseUrl()}/users/me/preferences`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...getHeaders() },
+      body: JSON.stringify({ theme }),
+    });
+    if (!res.ok) throw new Error("Failed to update preferences");
+    return res.json();
   }
 };
