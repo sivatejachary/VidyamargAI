@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { apiService } from "@/services/api";
 import { useAuthStore } from "@/store/authStore";
+import Link from "next/link";
 import { 
   Download, Trash2, Edit, Eye, RotateCcw, Upload, Plus, 
   Sparkles, CheckCircle2, Loader2, FileText, ChevronRight, 
@@ -496,6 +497,25 @@ export default function ResumeBuilder() {
 
   // Keywords found
   const keywordsList = skillsList.slice(0, 10);
+
+  // High-demand skills list for comparison
+  const highDemandSkills = ["React", "Next.js", "TypeScript", "Node.js", "Python", "FastAPI", "Docker", "AWS", "SQL", "System Design", "Git", "Flutter"];
+  const missingSkills = highDemandSkills.filter(s => !skillsList.some((cs: string) => cs.toLowerCase().includes(s.toLowerCase())));
+
+  const courseMappings = [
+    { title: "React & Next.js App Router", skills: ["React", "Next.js", "TypeScript"], id: "react-nextjs-app-router" },
+    { title: "FastAPI Backend Development", skills: ["FastAPI", "Node.js"], id: "fastapi-backend-development" },
+    { title: "Python Complete Bootcamp", skills: ["Python"], id: "python-complete-bootcamp" },
+    { title: "SQL Masterclass", skills: ["SQL"], id: "sql-masterclass" },
+    { title: "System Design & Scalability", skills: ["System Design"], id: "system-design-scalability" },
+    { title: "AWS Cloud Practitioner", skills: ["AWS", "Docker"], id: "aws-cloud-practitioner" },
+    { title: "Flutter Development Masterclass", skills: ["Flutter"], id: "flutter-development-masterclass" },
+    { title: "Machine Learning Fundamentals", skills: ["Machine Learning", "Data Science"], id: "machine-learning-fundamentals" },
+  ];
+
+  const recommendedCourses = courseMappings.filter(course => 
+    course.skills.some(skill => missingSkills.includes(skill))
+  ).slice(0, 3);
 
   // Dynamic missing fields based on empty candidate fields
   const missingItems: string[] = [];
@@ -1149,6 +1169,69 @@ export default function ResumeBuilder() {
                     {keywordsList.length === 0 && (
                       <span className="col-span-2 text-xs text-slate-400 italic">No keywords extracted.</span>
                     )}
+                  </div>
+                </div>
+              </Card>
+
+              {/* AI Skills Gap & Course Recommendations */}
+              <Card className="space-y-4">
+                <div className="flex items-center gap-3 border-b border-border pb-3 mb-4 shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
+                    <Sparkles size={18} className="animate-pulse" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-foreground">AI Skill Gap & Recommendations</h3>
+                    <p className="text-xs text-muted-foreground">Personalized upskilling insights based on your resume profile</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Left Column: Missing Skills */}
+                  <div className="space-y-3">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Identified Missing Skills</span>
+                    {skillsList.length === 0 ? (
+                      <p className="text-xs text-muted-foreground italic">Upload your resume to analyze missing skills.</p>
+                    ) : missingSkills.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {missingSkills.map((skill, idx) => (
+                          <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-destructive/10 dark:bg-destructive/20 border border-destructive/20 text-destructive text-[11px] font-bold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-3 rounded-xl bg-success/10 border border-success/20 text-xs text-success font-bold flex items-center gap-2">
+                        <CheckCircle2 size={16} />
+                        Your skills match the high-demand market trends!
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Column: Recommended Courses */}
+                  <div className="space-y-3">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Recommended Upskill Courses</span>
+                    <div className="space-y-2.5">
+                      {skillsList.length === 0 ? (
+                        <p className="text-xs text-muted-foreground italic">No recommendations available.</p>
+                      ) : recommendedCourses.length > 0 ? (
+                        recommendedCourses.map((course, idx) => (
+                          <div key={idx} className="p-3 rounded-2xl border border-border bg-muted/20 dark:bg-muted/10 flex items-center justify-between gap-3 hover:bg-muted/30 transition-all">
+                            <div>
+                              <span className="text-xs font-bold text-foreground block">{course.title}</span>
+                              <span className="text-[10px] text-muted-foreground mt-0.5 block font-semibold">Upskill in: {course.skills.join(", ")}</span>
+                            </div>
+                            <Link href="/candidate/skill-lab">
+                              <Button size="xs" variant="outline" className="text-[10px] py-1 h-auto font-bold">
+                                Learn
+                              </Button>
+                            </Link>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic">All caught up! Check out Skill Lab for general learning.</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </Card>

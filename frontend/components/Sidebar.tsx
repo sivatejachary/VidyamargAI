@@ -372,7 +372,7 @@ export default function Sidebar({ portal }: SidebarProps) {
       {portal === "candidate" && (
         <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-app-surface border-t border-app-border flex justify-around items-center h-16 px-2 w-full font-sans shadow-[0_-2px_10px_rgba(0,0,0,0.05)] dark:shadow-[0_-2px_10px_rgba(0,0,0,0.2)]">
           {[
-            { name: "Home", href: "/candidate/resume", icon: FileText },
+            { name: "Resume", href: "/candidate/resume", icon: FileText },
             { name: "Jobs", href: "/candidate/jobs", icon: Briefcase },
             { name: "Skill Lab", href: "/candidate/skill-lab", icon: Compass },
             { name: "Ask Tush AI", href: "/candidate/chat", icon: Sparkles },
