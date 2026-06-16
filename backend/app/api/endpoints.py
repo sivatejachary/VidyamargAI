@@ -3607,6 +3607,255 @@ def get_courses(db: Session = Depends(get_db)):
     return courses
 
 
+from pydantic import BaseModel
+class CourseGenerateRequest(BaseModel):
+    topic: str
+    category: str
+    level: str
+    description: Optional[str] = None
+
+class CourseCreateRequest(BaseModel):
+    title: str
+    instructor: str
+    category: str
+    level: str
+    description: str
+    duration: str = "12 Hours"
+
+@router.post("/courses/generate")
+def generate_course(req: CourseGenerateRequest, db: Session = Depends(get_db), current_admin: User = Depends(get_current_admin)):
+    import json
+    import uuid
+    from sqlalchemy import text
+    from app.services.orchestrator import call_nvidia
+    from app.core.config import settings
+
+    if not settings.NVIDIA_API_KEY:
+        raise HTTPException(status_code=400, detail="AI API key not configured on backend.")
+
+    prompt = f"""
+    You are an expert technical curriculum designer. Generate a complete, detailed course curriculum about the topic: "{req.topic}".
+    Category: "{req.category}"
+    Difficulty Level: "{req.level}"
+    {f"Description details: {req.description}" if req.description else ""}
+
+    The course should have exactly 3 modules. Each module must have a video lesson, a PDF reading material, a 5-question Quiz, a 3-question Written Assessment, and a 3-question AI Interview.
+
+    Format the response as a single valid JSON object following this JSON schema exactly:
+    {{
+      "title": "Course Title",
+      "description": "Short summary of the course",
+      "category": "{req.category}",
+      "level": "{req.level}",
+      "duration": "12 Hours",
+      "modules": [
+        {{
+          "moduleNo": 1,
+          "title": "Module Title",
+          "video": {{
+            "title": "Video Lesson Title",
+            "youtubeUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            "duration": "15 min"
+          }},
+          "pdf": {{
+            "title": "PDF Reading Title",
+            "pdfUrl": "https://en.wikipedia.org/wiki/Special:Search?search={req.topic.replace(' ', '+')}"
+          }},
+          "quiz": {{
+            "title": "Module Quiz Title",
+            "passPercentage": 80,
+            "questions": [
+              {{
+                "question": "Question 1 text?",
+                "options": ["Option A", "Option B", "Option C", "Option D"],
+                "correct_option": "Option A"
+              }}
+            ]
+          }},
+          "writtenAssessment": {{
+            "title": "Module Written Assessment Title",
+            "passPercentage": 70,
+            "questions": [
+              "Written question 1?",
+              "Written question 2?",
+              "Written question 3?"
+            ]
+          }},
+          "aiInterview": {{
+            "title": "Module AI Interview Title",
+            "passPercentage": 60,
+            "questions": [
+              "Interview question 1?",
+              "Interview question 2?",
+              "Interview question 3?"
+            ]
+          }}
+        }}
+      ]
+    }}
+
+    IMPORTANT: Do not return any other text, markdown blocks (like ```json), or explanations. Return ONLY the JSON object. Ensure all quotes are escaped properly and it is valid JSON.
+    """
+
+    messages = [{"role": "user", "content": prompt}]
+    ai_res = call_nvidia(messages)
+    if not ai_res:
+        raise HTTPException(status_code=500, detail="Failed to get a response from NVIDIA LLM.")
+
+    try:
+        cleaned = ai_res.strip()
+        if cleaned.startswith("```"):
+            cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned[3:]
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+        cleaned = cleaned.strip()
+        if cleaned.startswith("json"):
+            cleaned = cleaned[4:].strip()
+
+        course_data = json.loads(cleaned)
+    except Exception as e:
+        logger.error(f"Error parsing generated course JSON: {e}, Raw: {ai_res}")
+        raise HTTPException(status_code=500, detail=f"LLM returned invalid JSON: {str(e)}")
+
+    course_id = "course_" + str(uuid.uuid4())[:8]
+    title = course_data.get("title", req.topic)
+    description = course_data.get("description", "AI-Generated learning path.")
+    duration = course_data.get("duration", "12 Hours")
+    total_modules = len(course_data.get("modules", []))
+
+    try:
+        db.execute(
+            text("INSERT INTO courses (id, title, instructor, rating, reviews, duration, thumbnail, description, category, \"totalModules\", level, status) VALUES (:id, :title, 'AI Generator', 4.8, '100+', :duration, 'ai_generated.jpg', :description, :category, :totalModules, :level, 'published')"),
+            {
+                "id": course_id,
+                "title": title,
+                "duration": duration,
+                "description": description,
+                "category": req.category,
+                "totalModules": total_modules,
+                "level": req.level
+            }
+        )
+
+        for mod_idx, mod in enumerate(course_data.get("modules", [])):
+            mod_no = mod.get("moduleNo", mod_idx + 1)
+            mod_title = mod.get("title", f"Module {mod_no}")
+            mod_id = f"module_{course_id}_{mod_no}"
+
+            db.execute(
+                text("INSERT INTO modules (id, \"courseId\", title, \"moduleNo\", \"unlockOrder\") VALUES (:id, :courseId, :title, :moduleNo, :unlockOrder)"),
+                {
+                    "id": mod_id,
+                    "courseId": course_id,
+                    "title": mod_title,
+                    "moduleNo": mod_no,
+                    "unlockOrder": mod_no
+                }
+            )
+
+            # Insert video lesson
+            video = mod.get("video", {})
+            lesson_id = f"lesson_{mod_id}"
+            db.execute(
+                text("INSERT INTO lessons (id, \"moduleId\", title, \"youtubeUrl\", duration) VALUES (:id, :mod_id, :title, :youtubeUrl, :duration)"),
+                {
+                    "id": lesson_id,
+                    "mod_id": mod_id,
+                    "title": video.get("title", "Video Lesson"),
+                    "youtubeUrl": video.get("youtubeUrl", "https://www.youtube.com/embed/dQw4w9WgXcQ"),
+                    "duration": video.get("duration", "15 min")
+                }
+            )
+
+            # Insert pdf
+            pdf = mod.get("pdf", {})
+            pdf_id = f"pdf_{mod_id}"
+            db.execute(
+                text("INSERT INTO pdfs (id, \"moduleId\", title, \"pdfUrl\") VALUES (:id, :mod_id, :title, :pdfUrl)"),
+                {
+                    "id": pdf_id,
+                    "mod_id": mod_id,
+                    "title": pdf.get("title", "Reading Material"),
+                    "pdfUrl": pdf.get("pdfUrl", "https://en.wikipedia.org")
+                }
+            )
+
+            # Insert quiz
+            quiz = mod.get("quiz", {})
+            quiz_id = f"quiz_{mod_id}"
+            db.execute(
+                text("INSERT INTO quizzes (id, \"moduleId\", title, \"passPercentage\", questions_json) VALUES (:id, :mod_id, :title, :passPercentage, :questions_json)"),
+                {
+                    "id": quiz_id,
+                    "mod_id": mod_id,
+                    "title": quiz.get("title", "Module Quiz"),
+                    "passPercentage": quiz.get("passPercentage", 80),
+                    "questions_json": json.dumps(quiz.get("questions", []))
+                }
+            )
+
+            # Insert written assessment
+            written = mod.get("writtenAssessment", {})
+            written_id = f"written_{mod_id}"
+            db.execute(
+                text("INSERT INTO written_assessments (id, \"moduleId\", title, \"passPercentage\", questions_json) VALUES (:id, :mod_id, :title, :passPercentage, :questions_json)"),
+                {
+                    "id": written_id,
+                    "mod_id": mod_id,
+                    "title": written.get("title", "Written Assessment"),
+                    "passPercentage": written.get("passPercentage", 70),
+                    "questions_json": json.dumps(written.get("questions", []))
+                }
+            )
+
+            # Insert AI interview
+            ai_int = mod.get("aiInterview", {})
+            ai_int_id = f"interview_{mod_id}"
+            db.execute(
+                text("INSERT INTO ai_interviews (id, \"moduleId\", title, \"passPercentage\", questions_json) VALUES (:id, :mod_id, :title, :passPercentage, :questions_json)"),
+                {
+                    "id": ai_int_id,
+                    "mod_id": mod_id,
+                    "title": ai_int.get("title", "AI Interview"),
+                    "passPercentage": ai_int.get("passPercentage", 60),
+                    "questions_json": json.dumps(ai_int.get("questions", []))
+                }
+            )
+
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to insert generated course: {e}")
+        raise HTTPException(status_code=500, detail=f"Database insertion error: {str(e)}")
+
+    return {"status": "success", "course_id": course_id, "title": title}
+
+@router.post("/courses/create")
+def create_course(req: CourseCreateRequest, db: Session = Depends(get_db), current_admin: User = Depends(get_current_admin)):
+    import uuid
+    from sqlalchemy import text
+    course_id = "course_" + str(uuid.uuid4())[:8]
+    try:
+        db.execute(
+            text("INSERT INTO courses (id, title, instructor, rating, reviews, duration, thumbnail, description, category, \"totalModules\", level, status) VALUES (:id, :title, :instructor, 4.5, '0', :duration, 'default.jpg', :description, :category, 0, :level, 'published')"),
+            {
+                "id": course_id,
+                "title": req.title,
+                "instructor": req.instructor,
+                "duration": req.duration,
+                "description": req.description,
+                "category": req.category,
+                "level": req.level
+            }
+        )
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to create course: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"status": "success", "course_id": course_id, "title": req.title}
+
+
 @router.get("/courses/{course_id}/curriculum")
 def get_course_curriculum(course_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     # Check if course exists

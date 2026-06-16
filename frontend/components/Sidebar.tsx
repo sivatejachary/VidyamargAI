@@ -8,7 +8,7 @@ import { apiService } from "@/services/api";
 import { 
   Sparkles, Briefcase, FileText, Compass, Trophy, MessageSquare, 
   Bell, Moon, Sun, LogOut, LayoutDashboard, Users, 
-  GitFork, Cpu, PanelLeftClose, PanelLeftOpen, Menu, X
+  GitFork, Cpu, PanelLeftClose, PanelLeftOpen, Menu, X, BookOpen
 } from "lucide-react";
 
 interface SidebarProps {
@@ -129,7 +129,8 @@ export default function Sidebar({ portal }: SidebarProps) {
     { name: "Job Management", href: "/admin/jobs", icon: Briefcase },
     { name: "Candidates", href: "/admin/candidates", icon: Users },
     { name: "Pipeline Flow", href: "/admin/pipeline", icon: GitFork },
-    { name: "AI Agent Orchestrator", href: "/admin/agents", icon: Cpu }
+    { name: "AI Agent Orchestrator", href: "/admin/agents", icon: Cpu },
+    { name: "Course Management", href: "/admin/courses", icon: BookOpen }
   ];
 
   const activeLinks = portal === "candidate" ? candidateLinks : adminLinks;
