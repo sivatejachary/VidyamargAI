@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiService } from "@/services/api";
-import { Award, FileText, X, MessageSquare } from "lucide-react";
+import { Award, FileText, X, MessageSquare, Folder, Download } from "lucide-react";
 import { useWebSockets } from "@/hooks/useWebSockets";
 
 export default function AdminCandidates() {
@@ -15,6 +15,7 @@ export default function AdminCandidates() {
   const [attempt, setAttempt] = useState<any>(null);
   const [interview, setInterview] = useState<any>(null);
   const [offer, setOffer] = useState<any>(null);
+  const [candidateFiles, setCandidateFiles] = useState<any[]>([]);
 
   // Hackathon Assignment state
   const [assignTeamName, setAssignTeamName] = useState("");
@@ -71,6 +72,7 @@ export default function AdminCandidates() {
     setAttempt(null);
     setInterview(null);
     setOffer(null);
+    setCandidateFiles([]);
     setAssignSuccess(false);
     setChatMessages([]);
     setAdminReplyText("");
@@ -87,6 +89,14 @@ export default function AdminCandidates() {
         const email = thisApp.candidate.user.email;
         setCurrentCandidateEmail(email);
         setCurrentCandidateId(thisApp.candidate.id);
+
+        // Fetch candidate folder files list
+        try {
+          const files = await apiService.getCandidateFiles(thisApp.candidate.id);
+          setCandidateFiles(files || []);
+        } catch (filesErr) {
+          console.error("Failed to load candidate files:", filesErr);
+        }
         
         // Load existing assignment from database candidate profile
         if (thisApp.candidate.hackathon_team) {
@@ -579,6 +589,43 @@ export default function AdminCandidates() {
                         );
                       })}
                     </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Candidate Storage Assets */}
+              <div className="flex flex-col gap-3 text-xs border-b border-gray-850 pb-4">
+                <h3 className="text-xs font-bold text-white flex items-center gap-2">
+                  <Folder size={14} className="text-amber-400" />
+                  <span>Candidate Storage Assets</span>
+                </h3>
+                {candidateFiles.length > 0 ? (
+                  <div className="space-y-2">
+                    {candidateFiles.map((file, idx) => (
+                      <div key={idx} className="flex items-center justify-between bg-[#0c0d14]/40 border border-gray-800/40 rounded-xl p-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileText size={14} className="text-amber-505 shrink-0" />
+                          <div className="min-w-0">
+                            <span className="text-[10px] text-gray-500 block uppercase font-bold tracking-wider">{file.category}</span>
+                            <span className="text-xs font-semibold text-white truncate block" title={file.name}>
+                              {file.name}
+                            </span>
+                          </div>
+                        </div>
+                        <a 
+                          href={`${typeof window !== "undefined" && window.location.hostname === "localhost" ? "http://127.0.0.1:8000" : `http://${window.location.hostname}:8000`}${file.url}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-xs font-bold text-white transition-colors flex items-center gap-1.5 shrink-0"
+                        >
+                          <span>Open</span>
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-xs text-gray-500 italic bg-[#0c0d14]/20 border border-dashed border-gray-800 rounded-xl font-semibold">
+                    No storage files found for this candidate yet.
                   </div>
                 )}
               </div>

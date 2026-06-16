@@ -2753,20 +2753,77 @@ def read_candidate_email(email_id: int, current_user: User = Depends(get_current
     return {"status": "updated"}
 
 
-# ----------------- STORAGE SERVING -----------------
+# ----------------- STORAGE SERVING & LISTING -----------------
 
-@router.get("/storage/{folder}/{filename}")
-def serve_storage_file(folder: str, filename: str):
+@router.get("/storage/{path:path}")
+def serve_storage_file(path: str):
+    parts = path.split("/")
+    if len(parts) > 1:
+        folder = "/".join(parts[:-1])
+        filename = parts[-1]
+    else:
+        folder = ""
+        filename = path
+        
     content = storage_service.get_file_content(folder, filename)
     if not content:
         raise HTTPException(status_code=404, detail="File not found")
         
-    media_type = "application/pdf" if filename.endswith(".pdf") else "text/markdown"
+    # Determine media type
+    if filename.endswith(".pdf"):
+        media_type = "application/pdf"
+    elif filename.endswith(".md") or filename.endswith(".txt"):
+        media_type = "text/markdown"
+    elif filename.endswith(".mp4"):
+        media_type = "video/mp4"
+    elif filename.endswith(".webm"):
+        media_type = "video/webm"
+    elif filename.endswith(".wav"):
+        media_type = "audio/wav"
+    elif filename.endswith(".png"):
+        media_type = "image/png"
+    elif filename.endswith(".jpg") or filename.endswith(".jpeg"):
+        media_type = "image/jpeg"
+    else:
+        media_type = "application/octet-stream"
+        
     return Response(
         content=content,
         media_type=media_type,
         headers={"Content-Disposition": f"inline; filename={filename}"}
     )
+
+@router.get("/admin/candidates/{candidate_id}/files")
+def get_candidate_files(candidate_id: int, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate profile not found")
+        
+    user = candidate.user
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    from app.services.storage import get_user_folder_name, STORAGE_DIR
+    user_folder = get_user_folder_name(user)
+    user_dir = STORAGE_DIR / "users" / user_folder
+    
+    files = []
+    if user_dir.exists() and user_dir.is_dir():
+        for p in user_dir.rglob("*"):
+            if p.is_file():
+                rel_path = p.relative_to(STORAGE_DIR).as_posix()
+                category = p.parent.name
+                files.append({
+                    "name": p.name,
+                    "url": f"/api/v1/storage/{rel_path}",
+                    "category": category,
+                    "size_bytes": p.stat().st_size,
+                    "uploaded_at": datetime.fromtimestamp(p.stat().st_mtime).isoformat()
+                })
+                
+    files.sort(key=lambda x: (x["category"], x["name"]))
+    return files
+
 
 # ----------------- AI CAREER COPILOT (NVIDIA/GEMINI) -----------------
 

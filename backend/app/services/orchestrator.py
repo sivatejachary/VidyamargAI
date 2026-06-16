@@ -11,7 +11,7 @@ from app.models.models import (
     Assessment, AssessmentAttempt, FraudLog, Interview, InterviewResult,
     CandidateRanking, Offer, Notification, AuditLog, EmailNotification
 )
-from app.services.storage import storage_service
+from app.services.storage import storage_service, get_user_folder_name
 
 logger = logging.getLogger(__name__)
 
@@ -219,7 +219,8 @@ class AgentOrchestrator:
             raise Exception("Candidate not found")
             
         # Upload resume to storage
-        resume_url = storage_service.upload_file("resumes", f"{candidate_id}_{filename}", file_content)
+        user_folder = get_user_folder_name(candidate.user)
+        resume_url = storage_service.upload_file(f"users/{user_folder}/resumes", f"{candidate_id}_{filename}", file_content)
         
         # Record in DB
         resume = CandidateResume(
@@ -951,7 +952,8 @@ class AgentOrchestrator:
             f"## Summary Analysis\n{summary}"
         ).encode("utf-8")
         
-        report_url = storage_service.upload_file("reports", report_filename, report_content)
+        user_folder = get_user_folder_name(app.candidate.user)
+        report_url = storage_service.upload_file(f"users/{user_folder}/reports", report_filename, report_content)
         
         app.status = "offer"
         app.candidate.status = f"Interview Success - Recommended: {rec}"
@@ -1024,7 +1026,8 @@ class AgentOrchestrator:
             f"Tara AI, Recruitment Director"
         ).encode("utf-8")
         
-        offer_url = storage_service.upload_file("offer-letters", offer_filename, offer_content)
+        user_folder = get_user_folder_name(app.candidate.user)
+        offer_url = storage_service.upload_file(f"users/{user_folder}/offer-letters", offer_filename, offer_content)
         
         offer = Offer(
             application_id=application_id,

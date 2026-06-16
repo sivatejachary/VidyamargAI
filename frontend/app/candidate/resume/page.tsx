@@ -675,10 +675,10 @@ export default function ResumeBuilder() {
                   
                   <div className="space-y-0.5">
                     <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 block">
-                      {completionScore >= 75 ? "Good Progress!" : (completionScore > 0 ? "Started" : "No Resume Uploaded")}
+                      {completionScore >= 75 ? "Good Progress!" : (completionScore > 0 ? "Started" : (resumeVersions.length > 0 ? "Resume Uploaded" : "No Resume Uploaded"))}
                     </span>
                     <p className="text-[9px] text-slate-505 dark:text-slate-400 leading-normal max-w-[130px] mx-auto">
-                      {completionScore > 0 
+                      {resumeVersions.length > 0 
                         ? "Improve details to get better job matches." 
                         : "Upload your resume to improve your profile completion."}
                     </p>
@@ -822,7 +822,7 @@ export default function ResumeBuilder() {
                     <div className="absolute text-lg font-black text-slate-900 dark:text-white">{completionScore}%</div>
                   </div>
                   <span className="text-[10px] font-bold text-emerald-500 dark:text-emerald-400">
-                    {completionScore >= 75 ? "Good Progress!" : (completionScore > 0 ? "Started" : "No Resume Uploaded")}
+                    {completionScore >= 75 ? "Good Progress!" : (completionScore > 0 ? "Started" : (resumeVersions.length > 0 ? "Resume Uploaded" : "No Resume Uploaded"))}
                   </span>
                 </div>
 
@@ -1664,7 +1664,7 @@ export default function ResumeBuilder() {
 
           </div>
         </div>
-      )}\n
+      )}
       {/* 4. PDF Preview Modal */}
       {showPreviewModal && previewUrl && (
         <div className="fixed inset-0 z-50 bg-black/50 dark:bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">

@@ -11,6 +11,22 @@ STORAGE_DIR.mkdir(exist_ok=True)
 (STORAGE_DIR / "offer-letters").mkdir(exist_ok=True)
 (STORAGE_DIR / "reports").mkdir(exist_ok=True)
 
+def get_user_folder_name(user) -> str:
+    full_name = getattr(user, "full_name", None)
+    email = getattr(user, "email", None)
+    user_id = getattr(user, "id", None)
+    
+    name = full_name or (email.split("@")[0] if email else None)
+    if not name:
+        name = f"user_{user_id or 'unknown'}"
+        
+    sanitized = "".join(c if c.isalnum() or c in (" ", "_", "-") else "" for c in name).strip()
+    sanitized = sanitized.replace(" ", "_")
+    if not sanitized:
+        sanitized = f"user_{user_id or 'unknown'}"
+    return f"{sanitized}_{user_id or 'unknown'}"
+
+
 class StorageService:
     def __init__(self):
         self.use_minio = False
@@ -61,7 +77,9 @@ class StorageService:
                 pass
                 
         # Local Storage Fallback
-        target_path = STORAGE_DIR / folder / filename
+        target_dir = STORAGE_DIR / folder
+        target_dir.mkdir(parents=True, exist_ok=True)
+        target_path = target_dir / filename
         with open(target_path, "wb") as f:
             f.write(content)
         # Return path that can be retrieved via static route or api
@@ -86,3 +104,4 @@ class StorageService:
             return f.read()
 
 storage_service = StorageService()
+

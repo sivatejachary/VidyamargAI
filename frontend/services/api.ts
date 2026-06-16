@@ -539,6 +539,15 @@ export const apiService = {
     return res.json();
   },
 
+  async getCandidateFiles(candidateId: number) {
+    const res = await customFetch(`${getBaseUrl()}/admin/candidates/${candidateId}/files`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) return [];
+    return res.json();
+  },
+
+
   async startAgentRun() {
     const res = await customFetch(`${getBaseUrl()}/candidate/agent/run`, {
       method: "POST",
