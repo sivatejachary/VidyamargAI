@@ -603,71 +603,86 @@ export default function ResumeBuilder() {
           <div className="lg:col-span-2 space-y-6">
             
             {/* MOBILE ONLY VERSION OF THE PROFILE CARD (Shown on screens < md) */}
-            <div className="block md:hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 p-6 shadow-sm">
-              <div className="flex flex-col gap-6">
+            <div className="block md:hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 p-4 shadow-sm">
+              <div className="grid grid-cols-2 gap-2 relative">
                 
-                {/* Bio Column */}
-                <div className="flex flex-col items-center gap-4">
-                  <div className="relative shrink-0">
-                    <div className="w-24 h-24 rounded-full overflow-hidden border border-slate-200/60 dark:border-slate-800 shadow-sm bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-800 dark:text-slate-200 text-3xl font-black">
-                      {avatarLetter}
-                    </div>
-                    <button 
-                      onClick={triggerUpload}
-                      disabled={uploading}
-                      className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-350 flex items-center justify-center border border-slate-200 dark:border-slate-700 hover:bg-slate-55 dark:hover:bg-slate-750 transition-all shadow-sm cursor-pointer"
-                      title="Upload Resume to Update Profile"
-                    >
-                      {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
-                    </button>
-                  </div>
+                {/* Profile Details Column */}
+                <div className="space-y-3 pr-2 border-r border-slate-200/60 dark:border-slate-800/80">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-405 dark:text-slate-500 block">
+                    Profile Details
+                  </span>
                   
-                  <div className="space-y-2 text-center min-w-0 w-full">
-                    <div className="flex items-center justify-center gap-2">
-                      <h2 className="text-xl font-black text-slate-900 dark:text-white truncate max-w-[200px]" title={displayName || undefined}>
-                        {displayName}
-                      </h2>
-                      <span className="inline-flex px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/40">
-                        Verified Profile
-                      </span>
+                  <div className="flex flex-row items-center gap-2">
+                    <div className="relative shrink-0">
+                      <div className="w-12 h-12 rounded-full overflow-hidden border border-slate-200/60 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-800 dark:text-slate-200 text-lg font-black shadow-sm">
+                        {avatarLetter}
+                      </div>
+                      <button 
+                        onClick={triggerUpload}
+                        disabled={uploading}
+                        className="absolute bottom-0 right-0 w-5 h-5 rounded-full bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-350 flex items-center justify-center border border-slate-200 dark:border-slate-700 hover:bg-slate-50 transition-all shadow-sm cursor-pointer"
+                        title="Upload Resume to Update Profile"
+                      >
+                        {uploading ? <Loader2 size={9} className="animate-spin" /> : <Upload size={9} />}
+                      </button>
                     </div>
                     
-                    <div className="space-y-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 inline-block text-left">
-                      <div className="flex items-center gap-2">
-                        <User size={14} className="text-slate-400 shrink-0" />
-                        <span className="truncate">{getFirstRole() || "Not specified"}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-col items-start gap-0.5">
+                        <h2 className="text-xs font-black text-slate-900 dark:text-white truncate max-w-[80px]" title={displayName || undefined}>
+                          {displayName}
+                        </h2>
+                        <span className="inline-flex px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-[8px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/40">
+                          Verified
+                        </span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <MapPin size={14} className="text-slate-400 shrink-0" />
-                        <span className="truncate">{profile?.address || "Not specified"}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Mail size={14} className="text-slate-400 shrink-0" />
-                        <span className="truncate">{displayEmail}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Phone size={14} className="text-slate-400 shrink-0" />
-                        <span>{profile?.phone || "Not specified"}</span>
-                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 text-[9px] font-semibold text-slate-655 dark:text-slate-400">
+                    <div className="flex items-center gap-1.5">
+                      <User size={11} className="text-slate-400 shrink-0" />
+                      <span className="truncate max-w-[130px]">{getFirstRole() || "Not specified"}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <MapPin size={11} className="text-slate-400 shrink-0" />
+                      <span className="truncate max-w-[130px]">{profile?.address || "Not specified"}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Mail size={11} className="text-slate-400 shrink-0" />
+                      <span className="truncate max-w-[130px]" title={displayEmail}>{displayEmail}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Phone size={11} className="text-slate-400 shrink-0" />
+                      <span className="truncate max-w-[130px]">{profile?.phone || "Not specified"}</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Completion Column */}
-                <div className="flex flex-col items-center justify-center w-full">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3">Profile Completion</span>
+                {/* Profile Completion Column */}
+                <div className="space-y-3 pl-2 flex flex-col items-center justify-start text-center">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-405 dark:text-slate-500 self-start block text-left w-full">
+                    Profile Completion
+                  </span>
                   
-                  <div className="relative flex items-center justify-center my-1">
-                    <svg width="100" height="100" className="transform -rotate-90">
-                      <circle cx="50" cy="50" r="43" fill="none" strokeWidth="8" className="text-slate-100 dark:text-slate-800" stroke="currentColor" />
-                      <circle cx="50" cy="50" r="43" fill="none" strokeWidth="8" strokeDasharray={2 * Math.PI * 43} strokeDashoffset={2 * Math.PI * 43 - (completionScore / 100) * (2 * Math.PI * 43)} strokeLinecap="round" stroke="#10b981" className="transition-all duration-700 ease-out" />
+                  <div className="relative flex items-center justify-center my-1 shrink-0">
+                    <svg width="76" height="76" className="transform -rotate-90">
+                      <circle cx="38" cy="38" r="32" fill="none" strokeWidth="5" className="text-slate-100 dark:text-slate-800" stroke="currentColor" />
+                      <circle cx="38" cy="38" r="32" fill="none" strokeWidth="5" strokeDasharray={2 * Math.PI * 32} strokeDashoffset={2 * Math.PI * 32 - (completionScore / 100) * (2 * Math.PI * 32)} strokeLinecap="round" stroke="#10b981" className="transition-all duration-700 ease-out" />
                     </svg>
-                    <div className="absolute text-2xl font-black text-slate-900 dark:text-white">{completionScore}%</div>
+                    <div className="absolute text-base font-black text-slate-900 dark:text-white">{completionScore}%</div>
                   </div>
                   
-                  <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 mt-3">
-                    {completionScore >= 75 ? "Good Progress!" : (completionScore > 0 ? "Started" : "No Resume Uploaded")}
-                  </span>
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 block">
+                      {completionScore >= 75 ? "Good Progress!" : (completionScore > 0 ? "Started" : "No Resume Uploaded")}
+                    </span>
+                    <p className="text-[9px] text-slate-505 dark:text-slate-400 leading-normal max-w-[130px] mx-auto">
+                      {completionScore > 0 
+                        ? "Improve details to get better job matches." 
+                        : "Upload your resume to improve your profile completion."}
+                    </p>
+                  </div>
                 </div>
 
               </div>
