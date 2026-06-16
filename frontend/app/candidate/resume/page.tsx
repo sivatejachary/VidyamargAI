@@ -37,11 +37,41 @@ interface ProfileSectionItem {
 }
 
 export default function ResumeBuilder() {
+  // Caching helper functions
+  const getCachedValue = (key: string, fallback: any) => {
+    if (typeof window !== "undefined") {
+      const cached = sessionStorage.getItem(key);
+      if (cached) {
+        try { return JSON.parse(cached); } catch { return fallback; }
+      }
+    }
+    return fallback;
+  };
+
+  const setCachedValue = (key: string, val: any) => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(key, JSON.stringify(val));
+    }
+  };
+
+  const clearCache = () => {
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("resume_profile");
+      sessionStorage.removeItem("resume_versions");
+      sessionStorage.removeItem("resume_analysis");
+    }
+  };
+
   const { fullName, email } = useAuthStore();
-  const [profile, setProfile] = useState<any>(null);
-  const [resumeVersions, setResumeVersions] = useState<ResumeVersion[]>([]);
-  const [analysisData, setAnalysisData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<any>(() => getCachedValue("resume_profile", null));
+  const [resumeVersions, setResumeVersions] = useState<ResumeVersion[]>(() => getCachedValue("resume_versions", []));
+  const [analysisData, setAnalysisData] = useState<any>(() => getCachedValue("resume_analysis", null));
+  const [loading, setLoading] = useState(() => {
+    if (typeof window !== "undefined") {
+      return !sessionStorage.getItem("resume_profile");
+    }
+    return true;
+  });
   const [uploading, setUploading] = useState(false);
   const [uploadStep, setUploadStep] = useState(0);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -77,10 +107,20 @@ export default function ResumeBuilder() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load all dashboard data
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (forceRefresh = false) => {
+    const hasCache = typeof window !== "undefined" && 
+                     sessionStorage.getItem("resume_profile") && 
+                     sessionStorage.getItem("resume_versions") && 
+                     sessionStorage.getItem("resume_analysis");
+
+    if (!hasCache || forceRefresh) {
+      setLoading(true);
+    }
+
     try {
       const prof = await apiService.getProfile();
       setProfile(prof);
+      setCachedValue("resume_profile", prof);
 
       // Initialize Edit Form values
       let parsedEdu = [];
@@ -114,10 +154,11 @@ export default function ResumeBuilder() {
       });
 
       // Load resume versions
+      let formattedResumes: ResumeVersion[] = [];
       try {
         const resumes = await apiService.getResumes();
         if (resumes && Array.isArray(resumes)) {
-          const formattedResumes = resumes.map((res: any, idx: number) => {
+          formattedResumes = resumes.map((res: any, idx: number) => {
             const rawDate = typeof res.uploaded_at === "string" ? res.uploaded_at.replace(" ", "T") : res.uploaded_at;
             const dateObj = new Date(rawDate);
             const dateStr = isNaN(dateObj.getTime())
@@ -139,17 +180,21 @@ export default function ResumeBuilder() {
             };
           });
           setResumeVersions(formattedResumes);
+          setCachedValue("resume_versions", formattedResumes);
         }
       } catch (err) {
         console.error("Failed to load resume versions:", err);
       }
 
       // Load AI analysis
-      setAnalysisLoading(true);
+      if (!hasCache || forceRefresh) {
+        setAnalysisLoading(true);
+      }
       try {
         const analysis = await apiService.analyzeResume();
         if (analysis) {
           setAnalysisData(analysis);
+          setCachedValue("resume_analysis", analysis);
         }
       } catch (err) {
         console.error("Failed to load AI analysis:", err);
@@ -215,7 +260,7 @@ export default function ResumeBuilder() {
       
       setSuccessMsg("Resume uploaded and parsed successfully! AI scores are updating...");
       setTimeout(() => setSuccessMsg(""), 5000);
-      await loadDashboardData();
+      await loadDashboardData(true);
     } catch (err: any) {
       clearInterval(progressInterval);
       setErrorMsg(err.message || "Resume upload failed.");
@@ -233,7 +278,14 @@ export default function ResumeBuilder() {
       await apiService.deleteResumeVersion(id);
       setSuccessMsg("Resume version deleted successfully.");
       setTimeout(() => setSuccessMsg(""), 3000);
-      await loadDashboardData();
+      
+      // Clear cache and reset state ("if delete remove everything")
+      clearCache();
+      setProfile(null);
+      setResumeVersions([]);
+      setAnalysisData(null);
+      
+      await loadDashboardData(true);
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to delete resume version.");
       setTimeout(() => setErrorMsg(""), 3000);
@@ -393,7 +445,7 @@ export default function ResumeBuilder() {
       setSuccessMsg("Profile saved and updated successfully!");
       setIsEditOpen(false);
       setTimeout(() => setSuccessMsg(""), 3000);
-      await loadDashboardData();
+      await loadDashboardData(true);
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to update profile.");
       setTimeout(() => setErrorMsg(""), 3000);

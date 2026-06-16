@@ -74,6 +74,8 @@ def init_db_safely():
         return [r[0] for r in rows]
 
     serial = "SERIAL PRIMARY KEY"
+    try:
+        with engine.begin() as conn:
             conn.execute(text(f"""
                 CREATE TABLE IF NOT EXISTS courses (
                     id VARCHAR PRIMARY KEY,
