@@ -3835,7 +3835,7 @@ def generate_course(req: CourseGenerateRequest, db: Session = Depends(get_db), c
             mod_id = f"module_{course_id}_{mod_no}"
 
             db.execute(
-                text("INSERT INTO modules (id, \"courseId\", title, \"moduleNo\", \"unlockOrder\") VALUES (:id, :courseId, :title, :moduleNo, :unlockOrder)"),
+                text("INSERT INTO modules (id, courseid, title, moduleno, unlockorder) VALUES (:id, :courseId, :title, :moduleNo, :unlockOrder)"),
                 {
                     "id": mod_id,
                     "courseId": course_id,
@@ -3849,14 +3849,15 @@ def generate_course(req: CourseGenerateRequest, db: Session = Depends(get_db), c
             for topic_idx, topic in enumerate(mod.get("topics", [])):
                 topic_id = f"topic_{mod_id}_{topic_idx + 1}"
                 db.execute(
-                    text("INSERT INTO topics (id, \"moduleId\", title, description, duration, \"learningOutcome\") VALUES (:id, :mod_id, :title, :desc, :dur, :outcome)"),
+                    text("INSERT INTO topics (id, moduleid, topicno, title, description, estimatedduration, orderno) VALUES (:id, :mod_id, :topic_no, :title, :desc, :estimated_duration, :order_no)"),
                     {
                         "id": topic_id,
                         "mod_id": mod_id,
+                        "topic_no": topic_idx + 1,
                         "title": topic.get("title", f"Topic {topic_idx + 1}"),
-                        "desc": topic.get("description", ""),
-                        "dur": topic.get("duration", "2 hours"),
-                        "outcome": topic.get("learningOutcome", "")
+                        "desc": f"{topic.get('description', '')} (Outcome: {topic.get('learningOutcome', '')})".strip(),
+                        "estimated_duration": topic.get("duration", "2 hours"),
+                        "order_no": topic_idx + 1
                     }
                 )
 
@@ -3864,10 +3865,10 @@ def generate_course(req: CourseGenerateRequest, db: Session = Depends(get_db), c
                 video = topic.get("video", {})
                 lesson_id = f"lesson_{topic_id}"
                 db.execute(
-                    text("INSERT INTO lessons (id, \"moduleId\", title, \"youtubeUrl\", duration) VALUES (:id, :mod_id, :title, :youtubeUrl, :duration)"),
+                    text("INSERT INTO lessons (id, topicid, title, youtubeurl, duration) VALUES (:id, :topic_id, :title, :youtubeUrl, :duration)"),
                     {
                         "id": lesson_id,
-                        "mod_id": mod_id,
+                        "topic_id": topic_id,
                         "title": video.get("title", "Topic Video Lesson"),
                         "youtubeUrl": video.get("youtubeUrl", "https://www.youtube.com/embed/dQw4w9WgXcQ"),
                         "duration": video.get("duration", "15 min")
@@ -3878,10 +3879,10 @@ def generate_course(req: CourseGenerateRequest, db: Session = Depends(get_db), c
                 pdf = topic.get("pdf", {})
                 pdf_id = f"pdf_{topic_id}"
                 db.execute(
-                    text("INSERT INTO pdfs (id, \"moduleId\", title, \"pdfUrl\") VALUES (:id, :mod_id, :title, :pdfUrl)"),
+                    text("INSERT INTO pdfs (id, topicid, title, pdfurl) VALUES (:id, :topic_id, :title, :pdfUrl)"),
                     {
                         "id": pdf_id,
-                        "mod_id": mod_id,
+                        "topic_id": topic_id,
                         "title": pdf.get("title", "Topic Summary Sheet"),
                         "pdfUrl": pdf.get("pdfUrl", "https://en.wikipedia.org")
                     }
@@ -3905,7 +3906,7 @@ def generate_course(req: CourseGenerateRequest, db: Session = Depends(get_db), c
             written = mod.get("writtenAssessment", {})
             written_id = f"written_{mod_id}"
             db.execute(
-                text("INSERT INTO written_assessments (id, \"moduleId\", title, \"passPercentage\", questions_json) VALUES (:id, :mod_id, :title, :passPercentage, :questions_json)"),
+                text("INSERT INTO written_assessments (id, moduleid, title, passpercentage, questions_json) VALUES (:id, :mod_id, :title, :passPercentage, :questions_json)"),
                 {
                     "id": written_id,
                     "mod_id": mod_id,
@@ -3919,7 +3920,7 @@ def generate_course(req: CourseGenerateRequest, db: Session = Depends(get_db), c
             ai_int = mod.get("aiInterview", {})
             ai_int_id = f"interview_{mod_id}"
             db.execute(
-                text("INSERT INTO ai_interviews (id, \"moduleId\", title, \"passPercentage\", questions_json) VALUES (:id, :mod_id, :title, :passPercentage, :questions_json)"),
+                text("INSERT INTO ai_interviews (id, moduleid, title, passpercentage, questions_json) VALUES (:id, :mod_id, :title, :passPercentage, :questions_json)"),
                 {
                     "id": ai_int_id,
                     "mod_id": mod_id,
@@ -3933,15 +3934,18 @@ def generate_course(req: CourseGenerateRequest, db: Session = Depends(get_db), c
         proj = course_data.get("project", {})
         proj_id = f"project_{course_id}"
         db.execute(
-            text("INSERT INTO projects (id, \"courseId\", title, objective, requirements, \"acceptanceCriteria\", \"evaluationRubric\") VALUES (:id, :course_id, :title, :obj, :reqs, :criteria, :rubric)"),
+            text("INSERT INTO projects (id, courseid, title, description, difficulty) VALUES (:id, :course_id, :title, :desc, :difficulty)"),
             {
                 "id": proj_id,
                 "course_id": course_id,
                 "title": proj.get("title", "Capstone Hands-on Project"),
-                "obj": proj.get("objective", ""),
-                "reqs": proj.get("requirements", ""),
-                "criteria": proj.get("acceptanceCriteria", ""),
-                "rubric": proj.get("evaluationRubric", "")
+                "desc": (
+                    f"**Objective**:\n{proj.get('objective', '')}\n\n"
+                    f"**Requirements**:\n{proj.get('requirements', '')}\n\n"
+                    f"**Acceptance Criteria**:\n{proj.get('acceptanceCriteria', '')}\n\n"
+                    f"**Evaluation Rubric**:\n{proj.get('evaluationRubric', '')}"
+                ).strip(),
+                "difficulty": req.level
             }
         )
 
@@ -3949,7 +3953,7 @@ def generate_course(req: CourseGenerateRequest, db: Session = Depends(get_db), c
         final_ass = course_data.get("finalAssessment", {})
         final_ass_id = f"final_ass_{course_id}"
         db.execute(
-            text("INSERT INTO final_assessments (id, \"courseId\", title, \"passPercentage\", questions_json) VALUES (:id, :course_id, :title, :passPercentage, :questions_json)"),
+            text("INSERT INTO final_assessments (id, courseid, title, passpercentage, questions_json) VALUES (:id, :course_id, :title, :passPercentage, :questions_json)"),
             {
                 "id": final_ass_id,
                 "course_id": course_id,
@@ -3963,27 +3967,13 @@ def generate_course(req: CourseGenerateRequest, db: Session = Depends(get_db), c
         final_int = course_data.get("finalAiInterview", {})
         final_int_id = f"final_interview_{course_id}"
         db.execute(
-            text("INSERT INTO final_ai_interviews (id, \"courseId\", title, \"passPercentage\", questions_json) VALUES (:id, :course_id, :title, :passPercentage, :questions_json)"),
+            text("INSERT INTO final_ai_interviews (id, courseid, title, passpercentage, questions_json) VALUES (:id, :course_id, :title, :passPercentage, :questions_json)"),
             {
                 "id": final_int_id,
                 "course_id": course_id,
                 "title": final_int.get("title", "Comprehensive Job-Readiness Board Interview"),
                 "passPercentage": final_int.get("passPercentage", 75),
                 "questions_json": json.dumps(final_int.get("questions", []))
-              }
-        )
-
-        # 6. Insert Readiness Weights
-        weights = course_data.get("readinessWeights", {})
-        db.execute(
-            text("INSERT INTO readiness_scores (id, \"courseId\", \"quizWeight\", \"writtenWeight\", \"interviewWeight\", \"projectWeight\") VALUES (:id, :course_id, :qw, :ww, :iw, :pw)"),
-            {
-                "id": f"readiness_{course_id}",
-                "course_id": course_id,
-                "qw": weights.get("quizWeight", 25.0),
-                "ww": weights.get("writtenWeight", 20.0),
-                "iw": weights.get("interviewWeight", 25.0),
-                "pw": weights.get("projectWeight", 30.0)
             }
         )
 
