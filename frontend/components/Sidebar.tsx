@@ -187,35 +187,35 @@ export default function Sidebar({ portal }: SidebarProps) {
           />
 
           {/* Drawer Menu Panel */}
-          <aside className="relative flex flex-col w-64 max-w-xs h-full bg-app-surface border-r border-app-border p-5 justify-between transition-transform duration-300 ease-in-out z-50 overflow-y-auto">
-            <div className="flex flex-col gap-6">
-              {/* Header with Close */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 cursor-pointer" onClick={() => { setMobileOpen(false); router.push(portal === "candidate" ? "/candidate/chat" : "/admin"); }}>
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-md shrink-0">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="white" opacity="0.9"/>
-                      <path d="M2 17L12 22L22 17" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </div>
-                  <div className="flex items-baseline gap-0">
-                    <span className="text-app-text font-extrabold text-base tracking-tight">Vidyamarg</span>
-                    <span className="text-blue-600 dark:text-blue-400 font-extrabold text-base tracking-tight italic">AI</span>
-                  </div>
+          <aside className="relative flex flex-col w-64 max-w-xs h-full bg-app-surface border-r border-app-border transition-transform duration-300 ease-in-out z-50">
+            {/* Header with Close */}
+            <div className="flex-shrink-0 p-5 flex items-center justify-between">
+              <div className="flex items-center gap-2 cursor-pointer" onClick={() => { setMobileOpen(false); router.push(portal === "candidate" ? "/candidate/chat" : "/admin"); }}>
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-md shrink-0">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="white" opacity="0.9"/>
+                    <path d="M2 17L12 22L22 17" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
                 </div>
-
-                <button 
-                  onClick={() => setMobileOpen(false)}
-                  className="text-app-text-muted hover:text-app-text p-2 min-w-11 min-h-11 flex items-center justify-center rounded-lg hover:bg-app-bg transition-colors"
-                  title="Close Menu"
-                >
-                  <X size={20} />
-                </button>
+                <div className="flex items-baseline gap-0">
+                  <span className="text-app-text font-extrabold text-base tracking-tight">Vidyamarg</span>
+                  <span className="text-blue-600 dark:text-blue-400 font-extrabold text-base tracking-tight italic">AI</span>
+                </div>
               </div>
 
-              {/* Navigation Links */}
-              <nav className="flex flex-col gap-1.5 mt-2">
+              <button 
+                onClick={() => setMobileOpen(false)}
+                className="text-app-text-muted hover:text-app-text p-2 min-w-11 min-h-11 flex items-center justify-center rounded-lg hover:bg-app-bg transition-colors"
+                title="Close Menu"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Scrollable Navigation Area */}
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-5 py-2">
+              <nav className="flex flex-col gap-1.5">
                 {activeLinks.map((link) => {
                   const Icon = link.icon;
                   const isActive = pathname === link.href || (link.href !== "/candidate/chat" && pathname.startsWith(link.href));
@@ -240,7 +240,7 @@ export default function Sidebar({ portal }: SidebarProps) {
             </div>
 
             {/* Footer */}
-            <div className="flex flex-col gap-3 border-t border-app-border bg-app-surface pt-4 mt-6">
+            <div className="flex-shrink-0 flex flex-col gap-3 p-5 border-t border-app-border bg-app-surface">
               {/* Theme Toggle */}
               <button 
                 onClick={toggleTheme}
@@ -280,9 +280,9 @@ export default function Sidebar({ portal }: SidebarProps) {
       )}
 
       {/* Desktop Sidebar (hidden on mobile) */}
-      <aside className={`hidden md:flex ${collapsed ? "w-18" : "w-64"} h-screen border-r border-app-border bg-app-surface flex flex-col justify-between shrink-0 font-sans transition-all duration-300 overflow-y-auto overflow-x-hidden`}>
-        <div className={`flex flex-col gap-6 ${collapsed ? "p-3" : "p-5"}`}>
-          {/* Header Logo — VidyamargAI */}
+      <aside className={`hidden md:flex ${collapsed ? "w-18" : "w-64"} h-screen border-r border-app-border bg-app-surface flex flex-col shrink-0 font-sans transition-all duration-300`}>
+        {/* Header Logo — VidyamargAI */}
+        <div className={`flex-shrink-0 flex flex-col gap-6 ${collapsed ? "p-3" : "p-5"}`}>
           <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"}`}>
             {!collapsed && (
               <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.push(portal === "candidate" ? "/candidate/chat" : "/admin")}>
@@ -308,9 +308,11 @@ export default function Sidebar({ portal }: SidebarProps) {
               {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
             </button>
           </div>
+        </div>
 
-          {/* Sidebar Nav Links */}
-          <nav className="flex flex-col gap-1.5 mt-2">
+        {/* Scrollable Navigation Area */}
+        <div className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden ${collapsed ? "px-3" : "px-5"} py-2`}>
+          <nav className="flex flex-col gap-1.5">
             {activeLinks.map((link) => {
               const Icon = link.icon;
               const isActive = pathname === link.href || (link.href !== "/candidate/chat" && pathname.startsWith(link.href));
@@ -335,7 +337,7 @@ export default function Sidebar({ portal }: SidebarProps) {
         </div>
 
         {/* Sidebar Footer */}
-        <div className={`flex flex-col gap-3 ${collapsed ? "p-3" : "p-5"} border-t border-app-border bg-app-surface`}>
+        <div className={`flex-shrink-0 flex flex-col gap-3 ${collapsed ? "p-3" : "p-5"} border-t border-app-border bg-app-surface`}>
 
           {/* Theme Toggle */}
           <button 
