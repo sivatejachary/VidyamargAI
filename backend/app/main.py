@@ -87,7 +87,7 @@ def init_db_safely():
                     thumbnail VARCHAR,
                     description TEXT,
                     category VARCHAR DEFAULT 'Technology',
-                    "totalModules" INTEGER DEFAULT 0,
+                    totalmodules INTEGER DEFAULT 0,
                     level VARCHAR DEFAULT 'Beginner',
                     status VARCHAR DEFAULT 'published',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -96,10 +96,10 @@ def init_db_safely():
             conn.execute(text(f"""
                 CREATE TABLE IF NOT EXISTS modules (
                     id VARCHAR PRIMARY KEY,
-                    "courseId" VARCHAR,
+                    courseid VARCHAR,
                     title VARCHAR NOT NULL,
-                    "moduleNo" INTEGER DEFAULT 1,
-                    "unlockOrder" INTEGER DEFAULT 1,
+                    moduleno INTEGER DEFAULT 1,
+                    unlockorder INTEGER DEFAULT 1,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """))
@@ -137,9 +137,9 @@ def init_db_safely():
             conn.execute(text(f"""
                 CREATE TABLE IF NOT EXISTS lessons (
                     id VARCHAR PRIMARY KEY,
-                    "moduleId" VARCHAR NOT NULL,
+                    topicid VARCHAR NOT NULL,
                     title VARCHAR NOT NULL,
-                    "youtubeUrl" VARCHAR,
+                    youtubeurl VARCHAR,
                     duration VARCHAR
                 )
             """))
@@ -147,9 +147,9 @@ def init_db_safely():
             conn.execute(text(f"""
                 CREATE TABLE IF NOT EXISTS pdfs (
                     id VARCHAR PRIMARY KEY,
-                    "moduleId" VARCHAR NOT NULL,
+                    topicid VARCHAR NOT NULL,
                     title VARCHAR NOT NULL,
-                    "pdfUrl" VARCHAR NOT NULL
+                    pdfurl VARCHAR NOT NULL
                 )
             """))
             # quizzes table
@@ -166,9 +166,9 @@ def init_db_safely():
             conn.execute(text(f"""
                 CREATE TABLE IF NOT EXISTS written_assessments (
                     id VARCHAR PRIMARY KEY,
-                    "moduleId" VARCHAR NOT NULL,
+                    moduleid VARCHAR NOT NULL,
                     title VARCHAR NOT NULL,
-                    "passPercentage" INTEGER,
+                    passpercentage INTEGER,
                     questions_json TEXT NOT NULL
                 )
             """))
@@ -176,9 +176,9 @@ def init_db_safely():
             conn.execute(text(f"""
                 CREATE TABLE IF NOT EXISTS ai_interviews (
                     id VARCHAR PRIMARY KEY,
-                    "moduleId" VARCHAR NOT NULL,
+                    moduleid VARCHAR NOT NULL,
                     title VARCHAR NOT NULL,
-                    "passPercentage" INTEGER,
+                    passpercentage INTEGER,
                     questions_json TEXT NOT NULL
                 )
             """))
@@ -202,32 +202,31 @@ def init_db_safely():
             conn.execute(text(f"""
                 CREATE TABLE IF NOT EXISTS topics (
                     id VARCHAR PRIMARY KEY,
-                    "moduleId" VARCHAR NOT NULL,
+                    moduleid VARCHAR NOT NULL,
+                    topicno INTEGER,
                     title VARCHAR NOT NULL,
                     description TEXT,
-                    duration VARCHAR,
-                    "learningOutcome" TEXT
+                    estimatedduration VARCHAR,
+                    orderno INTEGER
                 )
             """))
             # projects table
             conn.execute(text(f"""
                 CREATE TABLE IF NOT EXISTS projects (
                     id VARCHAR PRIMARY KEY,
-                    "courseId" VARCHAR NOT NULL,
+                    courseid VARCHAR NOT NULL,
                     title VARCHAR NOT NULL,
-                    objective TEXT,
-                    requirements TEXT,
-                    "acceptanceCriteria" TEXT,
-                    "evaluationRubric" TEXT
+                    description TEXT,
+                    difficulty VARCHAR
                 )
             """))
             # final_assessments table
             conn.execute(text(f"""
                 CREATE TABLE IF NOT EXISTS final_assessments (
                     id VARCHAR PRIMARY KEY,
-                    "courseId" VARCHAR NOT NULL,
+                    courseid VARCHAR NOT NULL,
                     title VARCHAR NOT NULL,
-                    "passPercentage" INTEGER,
+                    passpercentage INTEGER,
                     questions_json TEXT NOT NULL
                 )
             """))
@@ -235,9 +234,9 @@ def init_db_safely():
             conn.execute(text(f"""
                 CREATE TABLE IF NOT EXISTS final_ai_interviews (
                     id VARCHAR PRIMARY KEY,
-                    "courseId" VARCHAR NOT NULL,
+                    courseid VARCHAR NOT NULL,
                     title VARCHAR NOT NULL,
-                    "passPercentage" INTEGER,
+                    passpercentage INTEGER,
                     questions_json TEXT NOT NULL
                 )
             """))
