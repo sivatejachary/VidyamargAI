@@ -3816,7 +3816,7 @@ def generate_course(req: CourseGenerateRequest, db: Session = Depends(get_db), c
     try:
         # 1. Insert course
         db.execute(
-            text("INSERT INTO courses (id, title, instructor, rating, reviews, duration, thumbnail, description, category, \"totalModules\", level, status) VALUES (:id, :title, 'Enterprise AI Studio', 4.9, '500+', :duration, 'ai_generated.jpg', :description, :category, :totalModules, :level, 'published')"),
+            text("INSERT INTO courses (id, title, instructor, rating, reviews, duration, thumbnail, description, category, totalmodules, level, status) VALUES (:id, :title, 'Enterprise AI Studio', 4.9, '500+', :duration, 'ai_generated.jpg', :description, :category, :totalModules, :level, 'published')"),
             {
                 "id": course_id,
                 "title": title,
@@ -4002,7 +4002,7 @@ def create_course(req: CourseCreateRequest, db: Session = Depends(get_db), curre
     course_id = "course_" + str(uuid.uuid4())[:8]
     try:
         db.execute(
-            text("INSERT INTO courses (id, title, instructor, rating, reviews, duration, thumbnail, description, category, \"totalModules\", level, status) VALUES (:id, :title, :instructor, 4.5, '0', :duration, 'default.jpg', :description, :category, 0, :level, 'published')"),
+            text("INSERT INTO courses (id, title, instructor, rating, reviews, duration, thumbnail, description, category, totalmodules, level, status) VALUES (:id, :title, :instructor, 4.5, '0', :duration, 'default.jpg', :description, :category, 0, :level, 'published')"),
             {
                 "id": course_id,
                 "title": req.title,
