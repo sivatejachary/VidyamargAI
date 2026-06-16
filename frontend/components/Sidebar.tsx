@@ -110,7 +110,7 @@ export default function Sidebar({ portal }: SidebarProps) {
       <header className="md:hidden flex items-center px-4 py-3 bg-app-surface border-b border-app-border fixed top-0 left-0 right-0 z-40 h-16 w-full font-sans">
         <button 
           onClick={() => setMobileOpen(true)}
-          className="text-app-text-muted hover:text-app-text p-2 rounded-lg hover:bg-app-bg transition-colors z-10"
+          className="text-app-text-muted hover:text-app-text p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-app-bg transition-colors z-10"
           title="Open Menu"
         >
           <Menu size={20} />
@@ -136,7 +136,7 @@ export default function Sidebar({ portal }: SidebarProps) {
 
         <button 
           onClick={toggleTheme}
-          className="ml-auto text-app-text-muted hover:text-app-text p-2 rounded-lg hover:bg-app-bg transition-colors z-10"
+          className="ml-auto text-app-text-muted hover:text-app-text p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-app-bg transition-colors z-10"
           title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
         >
           {theme === "dark" ? <Moon size={20} className="text-slate-400" /> : <Sun size={20} className="text-amber-500" />}
@@ -173,7 +173,7 @@ export default function Sidebar({ portal }: SidebarProps) {
 
                 <button 
                   onClick={() => setMobileOpen(false)}
-                  className="text-app-text-muted hover:text-app-text p-2 rounded-lg hover:bg-app-bg transition-colors"
+                  className="text-app-text-muted hover:text-app-text p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-app-bg transition-colors"
                   title="Close Menu"
                 >
                   <X size={20} />
@@ -190,6 +190,7 @@ export default function Sidebar({ portal }: SidebarProps) {
                       key={link.name}
                       href={link.href}
                       onClick={() => setMobileOpen(false)}
+                      aria-current={isActive ? "page" : undefined}
                       className={`flex items-center gap-3.5 px-4.5 py-3 rounded-xl text-sm font-semibold transition-all duration-200 border ${
                         isActive
                           ? "bg-blue-50 dark:bg-blue-950/30 border-blue-200/60 dark:border-blue-800/30 text-blue-600 dark:text-blue-400"
@@ -267,7 +268,7 @@ export default function Sidebar({ portal }: SidebarProps) {
             )}
             <button 
               onClick={toggleCollapsed}
-              className="text-app-text-muted hover:text-app-text p-1.5 rounded-lg hover:bg-app-bg transition-colors"
+              className="text-app-text-muted hover:text-app-text p-1.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-app-bg transition-colors"
               title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
@@ -284,6 +285,7 @@ export default function Sidebar({ portal }: SidebarProps) {
                   key={link.name}
                   href={link.href}
                   title={collapsed ? link.name : undefined}
+                  aria-current={isActive ? "page" : undefined}
                   className={`flex items-center ${collapsed ? "justify-center px-2" : "gap-3.5 px-4.5"} py-3 rounded-xl text-sm font-semibold transition-all duration-200 border ${
                     isActive
                       ? "bg-blue-50 dark:bg-blue-950/30 border-blue-200/60 dark:border-blue-800/30 text-blue-600 dark:text-blue-400"
@@ -382,6 +384,7 @@ export default function Sidebar({ portal }: SidebarProps) {
               <Link
                 key={tab.name}
                 href={tab.href}
+                aria-current={isActive ? "page" : undefined}
                 className={`flex flex-col items-center justify-center flex-1 h-full py-1 transition-all ${
                   isActive
                     ? "text-blue-600 dark:text-blue-400"

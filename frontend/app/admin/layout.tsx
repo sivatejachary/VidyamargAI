@@ -31,8 +31,8 @@ export default function AdminLayout({
 
   if (!mounted || !isAuthenticated || (role !== "admin" && role !== "super_admin")) {
     return (
-      <div className="min-h-screen bg-[#07070b] flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-4 border-t-purple-500 border-gray-800 animate-spin" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-4 border-t-primary border-muted animate-spin" />
       </div>
     );
   }
@@ -40,9 +40,9 @@ export default function AdminLayout({
   return (
     <div className="min-h-screen bg-app-bg flex flex-col md:flex-row transition-colors duration-300">
       <Sidebar portal="admin" />
-      <div className="flex-1 h-[calc(100vh-4rem)] md:h-screen overflow-y-auto bg-app-bg text-app-text transition-colors duration-300 font-sans mt-16 md:mt-0">
+      <main className="flex-1 h-[calc(100vh-4rem)] md:h-screen overflow-y-auto bg-app-bg text-app-text transition-colors duration-300 font-sans mt-16 md:mt-0">
         {children}
-      </div>
+      </main>
     </div>
   );
 }

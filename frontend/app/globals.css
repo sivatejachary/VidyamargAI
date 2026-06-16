@@ -547,10 +547,10 @@ body {
   color: #2563EB !important;
 }
 
-/* ── Gradients — exclude gradient-text elements (bg-clip-text) so they don't get a black box ── */
+/* ── Gradients — exclude gradient-text elements (bg-clip-text) so they don't get a light-on-dark box ── */
 .light-theme [class*="bg-gradient-to-"]:not([class*="bg-clip-text"]),
 .light-theme .bg-gradient-tara:not([class*="bg-clip-text"]) {
-  background: linear-gradient(135deg, #0A0A0A 0%, #1a1a1a 100%) !important;
+  background: linear-gradient(135deg, #FFFFFF 0%, #F5F5F5 100%) !important;
 }
 /* Restore gradient-text elements — prevent black box on clipped text */
 .light-theme [class*="bg-clip-text"][class*="bg-gradient-to-"] {
@@ -584,16 +584,8 @@ body {
 }
 
 /* ── Badges ── */
-.light-theme [class*="rounded-full"][class*="bg-"] {
-  background-color: #F0F0F0 !important;
-  color: #0A0A0A !important;
-}
-
-/* Category tag badges on course cards keep their accent colors */
-.light-theme [class*="uppercase"][class*="text-xs"] {
-  color: #0A0A0A !important;
-  background-color: rgba(0, 0, 0, 0.06) !important;
-}
+/* Removed overly aggressive wildcard selectors that broke component colors in light theme.
+   Badges are now fully styled using tailwind semantic tokens. */
 
 /* ==========================================================================
    AI TARA VOICE ORB ANIMATIONS  (unchanged — dark/light agnostic)
@@ -675,4 +667,16 @@ textarea.chat-input-textarea:focus {
   border: none !important;
   box-shadow: none !important;
   outline: none !important;
+}
+
+/* ==========================================================================
+   ACCESSIBILITY: PREFERS REDUCED MOTION
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
