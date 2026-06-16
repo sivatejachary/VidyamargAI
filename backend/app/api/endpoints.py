@@ -1949,69 +1949,121 @@ def delete_candidate_resume(resume_id: int, current_user: User = Depends(get_cur
             except Exception:
                 pass
         
+        # Physically delete the file from storage
+        if resume_to_delete.resume_url:
+            try:
+                from app.services.storage import storage_service
+                url_str = resume_to_delete.resume_url
+                if "/storage/" in url_str:
+                    rel_path = url_str.split("/storage/")[1]
+                    parts = rel_path.split("/")
+                    if len(parts) >= 2:
+                        folder = "/".join(parts[:-1])
+                        filename = parts[-1]
+                        storage_service.delete_file(folder, filename)
+                elif storage_service.use_minio:
+                    from urllib.parse import urlparse
+                    parsed = urlparse(url_str)
+                    path_parts = parsed.path.strip("/").split("/")
+                    if len(path_parts) >= 3:
+                        folder = "/".join(path_parts[1:-1])
+                        filename = path_parts[-1]
+                        storage_service.delete_file(folder, filename)
+            except Exception as e:
+                logger.error(f"Failed to delete resume file from disk: {e}")
+
         # Delete the candidate resume record
         db.delete(resume_to_delete)
         
-        # Re-fetch remaining profiles
-        remaining_profiles = [p for i, p in enumerate(profiles) if i != delete_index] if delete_index is not None and delete_index < len(profiles) else profiles
+        # Check if there are any remaining resumes left for this candidate
+        remaining_resumes = db.query(CandidateResume).filter(
+            CandidateResume.candidate_id == candidate.id,
+            CandidateResume.id != resume_id
+        ).order_by(CandidateResume.uploaded_at.desc()).all()
         
-        if is_deleting_latest:
-            if remaining_profiles:
-                # Revert to next latest profile data
-                new_latest_profile = remaining_profiles[0]
-                try:
-                    metadata = json.loads(new_latest_profile.parsed_metadata or "{}")
-                except Exception:
-                    metadata = {}
+        if len(remaining_resumes) == 0:
+            # Delete all candidate profile records
+            db.query(CandidateProfile).filter(CandidateProfile.candidate_id == candidate.id).delete(synchronize_session=False)
+            
+            # Clear all candidate parsed data
+            candidate.phone = None
+            candidate.address = None
+            candidate.education = None
+            candidate.experience = None
+            candidate.skills = None
+            candidate.projects = None
+            candidate.certifications = None
+            candidate.summary = None
+            candidate.achievements = None
+            candidate.languages = None
+            candidate.github = None
+            candidate.linkedin = None
+            candidate.portfolio = None
+            candidate.parsed_name = None
+            candidate.parsed_email = None
+            candidate.status = "Registered"
+            candidate.current_step = "Profile"
+        else:
+            # Re-fetch remaining profiles
+            remaining_profiles = [p for i, p in enumerate(profiles) if i != delete_index] if delete_index is not None and delete_index < len(profiles) else profiles
+            
+            if is_deleting_latest:
+                if remaining_profiles:
+                    # Revert to next latest profile data
+                    new_latest_profile = remaining_profiles[0]
+                    try:
+                        metadata = json.loads(new_latest_profile.parsed_metadata or "{}")
+                    except Exception:
+                        metadata = {}
+                        
+                    if not metadata and new_latest_profile.resume_text:
+                        from app.services.orchestrator import fallback_parse_resume_text
+                        metadata = fallback_parse_resume_text(new_latest_profile.resume_text)
+                        
+                    # Normalize fields to strings for SQLite compatibility
+                    for field in ["education", "experience", "projects", "achievements"]:
+                        val = metadata.get(field)
+                        if isinstance(val, (list, dict)):
+                            metadata[field] = json.dumps(val)
+                    for field in ["skills", "certifications", "languages"]:
+                        val = metadata.get(field)
+                        if isinstance(val, list):
+                            metadata[field] = ", ".join(str(v) for v in val)
                     
-                if not metadata and new_latest_profile.resume_text:
-                    from app.services.orchestrator import fallback_parse_resume_text
-                    metadata = fallback_parse_resume_text(new_latest_profile.resume_text)
-                    
-                # Normalize fields to strings for SQLite compatibility
-                for field in ["education", "experience", "projects", "achievements"]:
-                    val = metadata.get(field)
-                    if isinstance(val, (list, dict)):
-                        metadata[field] = json.dumps(val)
-                for field in ["skills", "certifications", "languages"]:
-                    val = metadata.get(field)
-                    if isinstance(val, list):
-                        metadata[field] = ", ".join(str(v) for v in val)
-                
-                candidate.phone = metadata.get("phone", None)
-                candidate.address = metadata.get("address", None)
-                candidate.skills = metadata.get("skills", None)
-                candidate.education = metadata.get("education", None)
-                candidate.experience = metadata.get("experience", None)
-                candidate.projects = metadata.get("projects", None)
-                candidate.certifications = metadata.get("certifications", None)
-                candidate.summary = metadata.get("summary", None)
-                candidate.achievements = metadata.get("achievements", None)
-                candidate.languages = metadata.get("languages", None)
-                candidate.github = metadata.get("github", None)
-                candidate.linkedin = metadata.get("linkedin", None)
-                candidate.portfolio = metadata.get("portfolio", None)
-                candidate.parsed_name = metadata.get("name", None)
-                candidate.parsed_email = metadata.get("email", None)
-            else:
-                # No resumes left - clear all parsed data
-                candidate.phone = None
-                candidate.address = None
-                candidate.education = None
-                candidate.experience = None
-                candidate.skills = None
-                candidate.projects = None
-                candidate.certifications = None
-                candidate.summary = None
-                candidate.achievements = None
-                candidate.languages = None
-                candidate.github = None
-                candidate.linkedin = None
-                candidate.portfolio = None
-                candidate.parsed_name = None
-                candidate.parsed_email = None
-                candidate.status = "Registered"
-                candidate.current_step = "Profile"
+                    candidate.phone = metadata.get("phone", None)
+                    candidate.address = metadata.get("address", None)
+                    candidate.skills = metadata.get("skills", None)
+                    candidate.education = metadata.get("education", None)
+                    candidate.experience = metadata.get("experience", None)
+                    candidate.projects = metadata.get("projects", None)
+                    candidate.certifications = metadata.get("certifications", None)
+                    candidate.summary = metadata.get("summary", None)
+                    candidate.achievements = metadata.get("achievements", None)
+                    candidate.languages = metadata.get("languages", None)
+                    candidate.github = metadata.get("github", None)
+                    candidate.linkedin = metadata.get("linkedin", None)
+                    candidate.portfolio = metadata.get("portfolio", None)
+                    candidate.parsed_name = metadata.get("name", None)
+                    candidate.parsed_email = metadata.get("email", None)
+                else:
+                    # Clear all parsed data
+                    candidate.phone = None
+                    candidate.address = None
+                    candidate.education = None
+                    candidate.experience = None
+                    candidate.skills = None
+                    candidate.projects = None
+                    candidate.certifications = None
+                    candidate.summary = None
+                    candidate.achievements = None
+                    candidate.languages = None
+                    candidate.github = None
+                    candidate.linkedin = None
+                    candidate.portfolio = None
+                    candidate.parsed_name = None
+                    candidate.parsed_email = None
+                    candidate.status = "Registered"
+                    candidate.current_step = "Profile"
                 
         db.commit()
     except Exception as e:

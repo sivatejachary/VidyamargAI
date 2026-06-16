@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Drawer } from "@/components/ui/Drawer";
 import { Modal } from "@/components/ui/Modal";
 import { Alert } from "@/components/ui/Alert";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { ProgressBar, ProgressRing } from "@/components/ui/Progress";
 import { Skeleton } from "@/components/ui/Skeleton";
 
@@ -646,6 +647,51 @@ export default function ResumeBuilder() {
         <div className="flex flex-col items-center gap-3">
           <Loader2 size={36} className="animate-spin text-slate-800 dark:text-white" />
           <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">Loading Resume Dashboard...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (resumeVersions.length === 0) {
+    return (
+      <div className="flex-1 min-h-screen bg-background text-foreground p-6 md:p-8 font-sans flex items-center justify-center">
+        <div className="max-w-md w-full space-y-4">
+          {successMsg && <Alert variant="success">{successMsg}</Alert>}
+          {errorMsg && <Alert variant="error">{errorMsg}</Alert>}
+
+          {/* Hidden file input */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleResumeUpload}
+            accept="application/pdf"
+            className="hidden"
+          />
+
+          <EmptyState
+            title="No Resume Uploaded"
+            description="Upload your resume to extract profile details, analyze skills, and get personalized course recommendations."
+            icon={<FileText size={36} />}
+            action={
+              <Button 
+                onClick={triggerUpload}
+                disabled={uploading}
+                className="w-full sm:w-auto mt-4 shrink-0"
+              >
+                {uploading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin mr-2 shrink-0" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload size={16} className="mr-2 shrink-0" />
+                    Upload Resume
+                  </>
+                )}
+              </Button>
+            }
+          />
         </div>
       </div>
     );

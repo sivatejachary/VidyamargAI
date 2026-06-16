@@ -103,5 +103,21 @@ class StorageService:
         with open(target_path, "rb") as f:
             return f.read()
 
+    def delete_file(self, folder: str, filename: str):
+        """Deletes a file from MinIO or local storage."""
+        if self.use_minio:
+            try:
+                bucket_path = f"{folder}/{filename}"
+                self.client.remove_object(settings.MINIO_BUCKET, bucket_path)
+            except Exception:
+                pass
+        else:
+            try:
+                target_path = STORAGE_DIR / folder / filename
+                if target_path.exists():
+                    target_path.unlink()
+            except Exception:
+                pass
+
 storage_service = StorageService()
 

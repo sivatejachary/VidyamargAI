@@ -257,6 +257,8 @@ Telegram message:
                     return parsed
                 elif isinstance(parsed, dict):
                     return [parsed]
+            
+            raise Exception("NVIDIA API returned empty response")
         except Exception as e:
             logger.warning(f"Failed to parse job using LLM: {e}. Falling back to rule-based parser.")
             return self.parse_job_from_message_rule_based(message)
