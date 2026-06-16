@@ -3566,7 +3566,7 @@ def recalculate_progress(db: Session, user_id: int, course_id: str):
     completed_items = 0
     for m_id in mod_ids:
         row = db.execute(
-            text("SELECT videoCompleted, pdfCompleted, quizCompleted, writtenCompleted, interviewCompleted FROM user_progress WHERE userId=:user_id AND moduleId=:m_id"),
+            text('SELECT "videoCompleted", "pdfCompleted", "quizCompleted", "writtenCompleted", "interviewCompleted" FROM user_progress WHERE "userId"=:user_id AND "moduleId"=:m_id'),
             {"user_id": user_id, "m_id": m_id}
         ).fetchone()
         if row:
@@ -3629,7 +3629,7 @@ def generate_course(req: CourseGenerateRequest, db: Session = Depends(get_db), c
     import json
     import uuid
     from sqlalchemy import text
-    from app.services.orchestrator import call_nvidia
+    from app.services.orchestrator import call_nvidia, call_gemini
     from app.core.config import settings
 
     if not settings.NVIDIA_API_KEY:
@@ -3771,7 +3771,10 @@ def generate_course(req: CourseGenerateRequest, db: Session = Depends(get_db), c
     messages = [{"role": "user", "content": prompt}]
     ai_res = call_nvidia(messages)
     if not ai_res:
-        raise HTTPException(status_code=500, detail="Failed to get a response from NVIDIA LLM.")
+        logger.warning("NVIDIA API failed or timed out. Falling back to Gemini...")
+        ai_res = call_gemini(prompt, json_mode=True)
+    if not ai_res:
+        raise HTTPException(status_code=500, detail="Failed to get a response from NVIDIA LLM or Gemini fallback.")
 
     try:
         cleaned = ai_res.strip()
@@ -4033,7 +4036,7 @@ def get_course_curriculum(course_id: str, db: Session = Depends(get_db), current
         
         # Get progress
         prog_row = db.execute(
-            text("SELECT videoCompleted, pdfCompleted, quizCompleted, writtenCompleted, interviewCompleted, moduleUnlocked, nextModuleUnlocked FROM user_progress WHERE userId=:user_id AND courseId=:course_id AND moduleId=:mod_id"),
+            text('SELECT "videoCompleted", "pdfCompleted", "quizCompleted", "writtenCompleted", "interviewCompleted", "moduleUnlocked", "nextModuleUnlocked" FROM user_progress WHERE "userId"=:user_id AND "courseId"=:course_id AND "moduleId"=:mod_id'),
             {"user_id": current_user.id, "course_id": course_id, "mod_id": mod_id}
         ).fetchone()
         
@@ -4188,7 +4191,7 @@ def enroll_course(course_id: str, db: Session = Depends(get_db), current_user: U
         
         if first_mod:
             db.execute(
-                text("INSERT INTO user_progress (userId, courseId, moduleId, videoCompleted, pdfCompleted, quizCompleted, writtenCompleted, interviewCompleted, moduleUnlocked, nextModuleUnlocked) VALUES (:user_id, :course_id, :module_id, 0, 0, 0, 0, 0, 1, 0)"),
+                text('INSERT INTO user_progress ("userId", "courseId", "moduleId", "videoCompleted", "pdfCompleted", "quizCompleted", "writtenCompleted", "interviewCompleted", "moduleUnlocked", "nextModuleUnlocked") VALUES (:user_id, :course_id, :module_id, false, false, false, false, false, true, false)'),
                 {"user_id": current_user.id, "course_id": course_id, "module_id": first_mod[0]}
             )
         db.commit()
@@ -4207,18 +4210,18 @@ def complete_lesson(lesson_id: str, db: Session = Depends(get_db), current_user:
     course_id = module[0]
     
     prog = db.execute(
-        text("SELECT id FROM user_progress WHERE userId=:user_id AND moduleId=:mod_id"),
+        text('SELECT id FROM user_progress WHERE "userId"=:user_id AND "moduleId"=:mod_id'),
         {"user_id": current_user.id, "mod_id": mod_id}
     ).fetchone()
     
     if not prog:
         db.execute(
-            text("INSERT INTO user_progress (userId, courseId, moduleId, videoCompleted, pdfCompleted, quizCompleted, writtenCompleted, interviewCompleted, moduleUnlocked, nextModuleUnlocked) VALUES (:user_id, :course_id, :mod_id, 1, 0, 0, 0, 0, 1, 0)"),
+            text('INSERT INTO user_progress ("userId", "courseId", "moduleId", "videoCompleted", "pdfCompleted", "quizCompleted", "writtenCompleted", "interviewCompleted", "moduleUnlocked", "nextModuleUnlocked") VALUES (:user_id, :course_id, :mod_id, true, false, false, false, false, true, false)'),
             {"user_id": current_user.id, "course_id": course_id, "mod_id": mod_id}
         )
     else:
         db.execute(
-            text("UPDATE user_progress SET videoCompleted=1 WHERE userId=:user_id AND moduleId=:mod_id"),
+            text('UPDATE user_progress SET "videoCompleted"=true WHERE "userId"=:user_id AND "moduleId"=:mod_id'),
             {"user_id": current_user.id, "mod_id": mod_id}
         )
     db.commit()
@@ -4238,18 +4241,18 @@ def complete_pdf(pdf_id: str, db: Session = Depends(get_db), current_user: User 
     course_id = module[0]
     
     prog = db.execute(
-        text("SELECT id FROM user_progress WHERE userId=:user_id AND moduleId=:mod_id"),
+        text('SELECT id FROM user_progress WHERE "userId"=:user_id AND "moduleId"=:mod_id'),
         {"user_id": current_user.id, "mod_id": mod_id}
     ).fetchone()
     
     if not prog:
         db.execute(
-            text("INSERT INTO user_progress (userId, courseId, moduleId, videoCompleted, pdfCompleted, quizCompleted, writtenCompleted, interviewCompleted, moduleUnlocked, nextModuleUnlocked) VALUES (:user_id, :course_id, :mod_id, 0, 1, 0, 0, 0, 1, 0)"),
+            text('INSERT INTO user_progress ("userId", "courseId", "moduleId", "videoCompleted", "pdfCompleted", "quizCompleted", "writtenCompleted", "interviewCompleted", "moduleUnlocked", "nextModuleUnlocked") VALUES (:user_id, :course_id, :mod_id, false, true, false, false, false, true, false)'),
             {"user_id": current_user.id, "course_id": course_id, "mod_id": mod_id}
         )
     else:
         db.execute(
-            text("UPDATE user_progress SET pdfCompleted=1 WHERE userId=:user_id AND moduleId=:mod_id"),
+            text('UPDATE user_progress SET "pdfCompleted"=true WHERE "userId"=:user_id AND "moduleId"=:mod_id'),
             {"user_id": current_user.id, "mod_id": mod_id}
         )
     db.commit()
@@ -4303,7 +4306,7 @@ def submit_quiz(quiz_id: str, data: dict, db: Session = Depends(get_db), current
     
     if passed:
         db.execute(
-            text("UPDATE user_progress SET quizCompleted=1 WHERE userId=:user_id AND moduleId=:mod_id"),
+            text('UPDATE user_progress SET "quizCompleted"=true WHERE "userId"=:user_id AND "moduleId"=:mod_id'),
             {"user_id": current_user.id, "mod_id": mod_id}
         )
     db.commit()
@@ -4409,7 +4412,7 @@ def submit_written(written_id: str, data: dict, db: Session = Depends(get_db), c
     
     if passed:
         db.execute(
-            text("UPDATE user_progress SET writtenCompleted=1 WHERE userId=:user_id AND moduleId=:mod_id"),
+            text('UPDATE user_progress SET "writtenCompleted"=true WHERE "userId"=:user_id AND "moduleId"=:mod_id'),
             {"user_id": current_user.id, "mod_id": mod_id}
         )
     db.commit()
@@ -4512,7 +4515,7 @@ def submit_interview(interview_id: str, data: dict, db: Session = Depends(get_db
     
     if passed:
         db.execute(
-            text("UPDATE user_progress SET interviewCompleted=1 WHERE userId=:user_id AND moduleId=:mod_id"),
+            text('UPDATE user_progress SET "interviewCompleted"=true WHERE "userId"=:user_id AND "moduleId"=:mod_id'),
             {"user_id": current_user.id, "mod_id": mod_id}
         )
         
@@ -4525,12 +4528,12 @@ def submit_interview(interview_id: str, data: dict, db: Session = Depends(get_db
         if next_mod:
             next_mod_id = next_mod[0]
             existing_prog = db.execute(
-                text("SELECT id FROM user_progress WHERE userId=:user_id AND moduleId=:next_mod_id"),
+                text('SELECT id FROM user_progress WHERE "userId"=:user_id AND "moduleId"=:next_mod_id'),
                 {"user_id": current_user.id, "next_mod_id": next_mod_id}
             ).fetchone()
             if not existing_prog:
                 db.execute(
-                    text("INSERT INTO user_progress (userId, courseId, moduleId, videoCompleted, pdfCompleted, quizCompleted, writtenCompleted, interviewCompleted, moduleUnlocked, nextModuleUnlocked) VALUES (:user_id, :course_id, :next_mod_id, 0, 0, 0, 0, 0, 1, 0)"),
+                    text('INSERT INTO user_progress ("userId", "courseId", "moduleId", "videoCompleted", "pdfCompleted", "quizCompleted", "writtenCompleted", "interviewCompleted", "moduleUnlocked", "nextModuleUnlocked") VALUES (:user_id, :course_id, :next_mod_id, false, false, false, false, false, true, false)'),
                     {"user_id": current_user.id, "course_id": course_id, "next_mod_id": next_mod_id}
                 )
         else:
@@ -4638,7 +4641,7 @@ def get_career_readiness(db: Session = Depends(get_db), current_user: User = Dep
     certificates_earned = certs[0] if certs else 0
     
     prog_res = db.execute(
-        text("SELECT videoCompleted, pdfCompleted, quizCompleted, writtenCompleted, interviewCompleted FROM user_progress WHERE userId=:user_id"),
+        text('SELECT "videoCompleted", "pdfCompleted", "quizCompleted", "writtenCompleted", "interviewCompleted" FROM user_progress WHERE "userId"=:user_id'),
         {"user_id": current_user.id}
     ).fetchall()
     
