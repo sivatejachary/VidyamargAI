@@ -198,6 +198,60 @@ def init_db_safely():
                     "nextModuleUnlocked" BOOLEAN
                 )
             """))
+            # topics table
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS topics (
+                    id VARCHAR PRIMARY KEY,
+                    "moduleId" VARCHAR NOT NULL,
+                    title VARCHAR NOT NULL,
+                    description TEXT,
+                    duration VARCHAR,
+                    "learningOutcome" TEXT
+                )
+            """))
+            # projects table
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS projects (
+                    id VARCHAR PRIMARY KEY,
+                    "courseId" VARCHAR NOT NULL,
+                    title VARCHAR NOT NULL,
+                    objective TEXT,
+                    requirements TEXT,
+                    "acceptanceCriteria" TEXT,
+                    "evaluationRubric" TEXT
+                )
+            """))
+            # final_assessments table
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS final_assessments (
+                    id VARCHAR PRIMARY KEY,
+                    "courseId" VARCHAR NOT NULL,
+                    title VARCHAR NOT NULL,
+                    "passPercentage" INTEGER,
+                    questions_json TEXT NOT NULL
+                )
+            """))
+            # final_ai_interviews table
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS final_ai_interviews (
+                    id VARCHAR PRIMARY KEY,
+                    "courseId" VARCHAR NOT NULL,
+                    title VARCHAR NOT NULL,
+                    "passPercentage" INTEGER,
+                    questions_json TEXT NOT NULL
+                )
+            """))
+            # readiness_scores table
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS readiness_scores (
+                    id VARCHAR PRIMARY KEY,
+                    "courseId" VARCHAR NOT NULL,
+                    "quizWeight" REAL DEFAULT 25.0,
+                    "writtenWeight" REAL DEFAULT 20.0,
+                    "interviewWeight" REAL DEFAULT 25.0,
+                    "projectWeight" REAL DEFAULT 30.0
+                )
+            """))
             # quiz_attempts table
             conn.execute(text(f"""
                 CREATE TABLE IF NOT EXISTS quiz_attempts (

@@ -404,11 +404,11 @@ export const apiService = {
     return res.json();
   },
 
-  async generateCourse(topic: string, category: string, level: string, description?: string) {
+  async generateCourse(role: string, level: string, duration: string, goal: string, description?: string) {
     const res = await customFetch(`${getBaseUrl()}/courses/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...getHeaders() },
-      body: JSON.stringify({ topic, category, level, description }),
+      body: JSON.stringify({ role, level, duration, goal, description }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: "Failed to generate course" }));

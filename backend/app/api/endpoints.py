@@ -3610,8 +3610,10 @@ def get_courses(db: Session = Depends(get_db)):
 from pydantic import BaseModel
 class CourseGenerateRequest(BaseModel):
     topic: str
-    category: str
+    role: str
     level: str
+    duration: str
+    goal: str = "Job Ready"
     description: Optional[str] = None
 
 class CourseCreateRequest(BaseModel):
@@ -3633,68 +3635,137 @@ def generate_course(req: CourseGenerateRequest, db: Session = Depends(get_db), c
     if not settings.NVIDIA_API_KEY:
         raise HTTPException(status_code=400, detail="AI API key not configured on backend.")
 
-    prompt = f"""
-    You are an expert technical curriculum designer. Generate a complete, detailed course curriculum about the topic: "{req.topic}".
-    Category: "{req.category}"
-    Difficulty Level: "{req.level}"
-    {f"Description details: {req.description}" if req.description else ""}
+    # Select default category based on role
+    category = "Web Development"
+    role_lower = req.role.lower()
+    if "data" in role_lower:
+        category = "Database Technologies"
+    elif "ai" in role_lower or "ml" in role_lower or "machine" in role_lower:
+        category = "AI & Machine Learning"
+    elif "cloud" in role_lower or "devops" in role_lower or "qa" in role_lower:
+        category = "Cloud Computing & DevOps"
+    elif "security" in role_lower or "cyber" in role_lower:
+        category = "Cybersecurity"
+    elif "system" in role_lower:
+        category = "System Design"
+    elif "mobile" in role_lower or "flutter" in role_lower or "android" in role_lower:
+        category = "Mobile Development"
+    elif "python" in role_lower:
+        category = "Programming"
 
-    The course should have exactly 3 modules. Each module must have a video lesson, a PDF reading material, a 5-question Quiz, a 3-question Written Assessment, and a 3-question AI Interview.
+    prompt = f"""
+    You are an expert LMS curriculum architect and learning scientist.
+    Generate a complete, job-ready learning path and curriculum for:
+    Role: {req.role}
+    Difficulty Level: {req.level}
+    Target Duration: {req.duration}
+    Goal: {req.goal}
+    {f"Extra Guidelines: {req.description}" if req.description else ""}
+
+    Design a curriculum that has exactly 3 modules. Each module must contain 3 topics.
+    Each topic must contain a video lesson (with a real or placeholder educational YouTube URL from providers like freeCodeCamp, Traversy Media, Fireship, Mosh, etc.), a PDF summary guide, and a 5-question Quiz.
+    Each module must also contain a Written Assessment (3 open-ended questions) and an AI Technical Interview (3 questions).
+    The course must also contain a hands-on project (Beginner, Intermediate, or Advanced depending on difficulty), a Final Assessment (10 questions), and a Final AI Interview (5 questions).
 
     Format the response as a single valid JSON object following this JSON schema exactly:
     {{
       "title": "Course Title",
-      "description": "Short summary of the course",
-      "category": "{req.category}",
+      "description": "Short overview of the learning path",
+      "category": "{category}",
       "level": "{req.level}",
-      "duration": "12 Hours",
+      "duration": "{req.duration}",
+      "learningObjectives": ["objective 1", "objective 2"],
+      "prerequisites": ["prereq 1"],
+      "expectedOutcomes": ["outcome 1"],
       "modules": [
         {{
           "moduleNo": 1,
           "title": "Module Title",
-          "video": {{
-            "title": "Video Lesson Title",
-            "youtubeUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ",
-            "duration": "15 min"
-          }},
-          "pdf": {{
-            "title": "PDF Reading Title",
-            "pdfUrl": "https://en.wikipedia.org/wiki/Special:Search?search={req.topic.replace(' ', '+')}"
-          }},
-          "quiz": {{
-            "title": "Module Quiz Title",
-            "passPercentage": 80,
-            "questions": [
-              {{
-                "question": "Question 1 text?",
-                "options": ["Option A", "Option B", "Option C", "Option D"],
-                "correct_option": "Option A"
+          "objectives": "Module learning objectives",
+          "topics": [
+            {{
+              "title": "Topic Title",
+              "description": "Topic description",
+              "duration": "2 hours",
+              "learningOutcome": "Outcome of this topic",
+              "video": {{
+                "title": "Video Lesson Title",
+                "youtubeUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+                "duration": "15 min"
+              }},
+              "pdf": {{
+                "title": "Topic PDF Summary Guide",
+                "pdfUrl": "https://en.wikipedia.org/wiki/Special:Search?search={req.role.replace(' ', '+')}"
+              }},
+              "quiz": {{
+                "title": "Topic Quiz Title",
+                "passPercentage": 70,
+                "questions": [
+                  {{
+                    "question": "Question text?",
+                    "options": ["Option A", "Option B", "Option C", "Option D"],
+                    "correct_option": "Option A"
+                  }}
+                ]
               }}
-            ]
-          }},
+            }}
+          ],
           "writtenAssessment": {{
             "title": "Module Written Assessment Title",
             "passPercentage": 70,
             "questions": [
-              "Written question 1?",
-              "Written question 2?",
-              "Written question 3?"
+              "Question 1?",
+              "Question 2?",
+              "Question 3?"
             ]
           }},
           "aiInterview": {{
             "title": "Module AI Interview Title",
             "passPercentage": 60,
             "questions": [
-              "Interview question 1?",
-              "Interview question 2?",
-              "Interview question 3?"
+              "Question 1?",
+              "Question 2?",
+              "Question 3?"
             ]
           }}
         }}
-      ]
+      ],
+      "project": {{
+        "title": "Hands-on Project Title",
+        "objective": "Project Objective",
+        "requirements": "Project Requirements list",
+        "acceptanceCriteria": "Acceptance criteria list",
+        "evaluationRubric": "Evaluation Rubric text"
+      }},
+      "finalAssessment": {{
+        "title": "Final Certification Assessment",
+        "passPercentage": 70,
+        "questions": [
+          {{
+            "question": "Final question?",
+            "options": ["A", "B", "C", "D"],
+            "correct_option": "A"
+          }}
+        ]
+      }},
+      "finalAiInterview": {{
+        "title": "Final AI Job Readiness Interview",
+        "passPercentage": 75,
+        "questions": [
+          "Technical interview question?",
+          "System design question?",
+          "Behavioral question?"
+        ]
+      }},
+      "readinessWeights": {{
+        "quizWeight": 25.0,
+        "writtenWeight": 20.0,
+        "interviewWeight": 25.0,
+        "projectWeight": 30.0
+      }}
     }}
 
-    IMPORTANT: Do not return any other text, markdown blocks (like ```json), or explanations. Return ONLY the JSON object. Ensure all quotes are escaped properly and it is valid JSON.
+    IMPORTANT: Do not return any extra text, markdown blocks (like ```json), or explanations. Return ONLY the JSON object. Ensure it is valid JSON that can be loaded with json.loads in Python.
     """
 
     messages = [{"role": "user", "content": prompt}]
@@ -3718,25 +3789,27 @@ def generate_course(req: CourseGenerateRequest, db: Session = Depends(get_db), c
         raise HTTPException(status_code=500, detail=f"LLM returned invalid JSON: {str(e)}")
 
     course_id = "course_" + str(uuid.uuid4())[:8]
-    title = course_data.get("title", req.topic)
-    description = course_data.get("description", "AI-Generated learning path.")
-    duration = course_data.get("duration", "12 Hours")
+    title = course_data.get("title", req.role)
+    description = course_data.get("description", f"AI-Generated learning path for {req.role}.")
+    duration = course_data.get("duration", req.duration)
     total_modules = len(course_data.get("modules", []))
 
     try:
+        # 1. Insert course
         db.execute(
-            text("INSERT INTO courses (id, title, instructor, rating, reviews, duration, thumbnail, description, category, \"totalModules\", level, status) VALUES (:id, :title, 'AI Generator', 4.8, '100+', :duration, 'ai_generated.jpg', :description, :category, :totalModules, :level, 'published')"),
+            text("INSERT INTO courses (id, title, instructor, rating, reviews, duration, thumbnail, description, category, \"totalModules\", level, status) VALUES (:id, :title, 'Enterprise AI Studio', 4.9, '500+', :duration, 'ai_generated.jpg', :description, :category, :totalModules, :level, 'published')"),
             {
                 "id": course_id,
                 "title": title,
                 "duration": duration,
                 "description": description,
-                "category": req.category,
+                "category": category,
                 "totalModules": total_modules,
                 "level": req.level
             }
         )
 
+        # 2. Insert modules, topics, lessons, pdfs, quizzes, assessments, interviews
         for mod_idx, mod in enumerate(course_data.get("modules", [])):
             mod_no = mod.get("moduleNo", mod_idx + 1)
             mod_title = mod.get("title", f"Module {mod_no}")
@@ -3753,48 +3826,63 @@ def generate_course(req: CourseGenerateRequest, db: Session = Depends(get_db), c
                 }
             )
 
-            # Insert video lesson
-            video = mod.get("video", {})
-            lesson_id = f"lesson_{mod_id}"
-            db.execute(
-                text("INSERT INTO lessons (id, \"moduleId\", title, \"youtubeUrl\", duration) VALUES (:id, :mod_id, :title, :youtubeUrl, :duration)"),
-                {
-                    "id": lesson_id,
-                    "mod_id": mod_id,
-                    "title": video.get("title", "Video Lesson"),
-                    "youtubeUrl": video.get("youtubeUrl", "https://www.youtube.com/embed/dQw4w9WgXcQ"),
-                    "duration": video.get("duration", "15 min")
-                }
-            )
+            # Topics & Topic Quizzes
+            for topic_idx, topic in enumerate(mod.get("topics", [])):
+                topic_id = f"topic_{mod_id}_{topic_idx + 1}"
+                db.execute(
+                    text("INSERT INTO topics (id, \"moduleId\", title, description, duration, \"learningOutcome\") VALUES (:id, :mod_id, :title, :desc, :dur, :outcome)"),
+                    {
+                        "id": topic_id,
+                        "mod_id": mod_id,
+                        "title": topic.get("title", f"Topic {topic_idx + 1}"),
+                        "desc": topic.get("description", ""),
+                        "dur": topic.get("duration", "2 hours"),
+                        "outcome": topic.get("learningOutcome", "")
+                    }
+                )
 
-            # Insert pdf
-            pdf = mod.get("pdf", {})
-            pdf_id = f"pdf_{mod_id}"
-            db.execute(
-                text("INSERT INTO pdfs (id, \"moduleId\", title, \"pdfUrl\") VALUES (:id, :mod_id, :title, :pdfUrl)"),
-                {
-                    "id": pdf_id,
-                    "mod_id": mod_id,
-                    "title": pdf.get("title", "Reading Material"),
-                    "pdfUrl": pdf.get("pdfUrl", "https://en.wikipedia.org")
-                }
-            )
+                # Video Lesson
+                video = topic.get("video", {})
+                lesson_id = f"lesson_{topic_id}"
+                db.execute(
+                    text("INSERT INTO lessons (id, \"moduleId\", title, \"youtubeUrl\", duration) VALUES (:id, :mod_id, :title, :youtubeUrl, :duration)"),
+                    {
+                        "id": lesson_id,
+                        "mod_id": mod_id,
+                        "title": video.get("title", "Topic Video Lesson"),
+                        "youtubeUrl": video.get("youtubeUrl", "https://www.youtube.com/embed/dQw4w9WgXcQ"),
+                        "duration": video.get("duration", "15 min")
+                    }
+                )
 
-            # Insert quiz
-            quiz = mod.get("quiz", {})
-            quiz_id = f"quiz_{mod_id}"
-            db.execute(
-                text("INSERT INTO quizzes (id, \"moduleId\", title, \"passPercentage\", questions_json) VALUES (:id, :mod_id, :title, :passPercentage, :questions_json)"),
-                {
-                    "id": quiz_id,
-                    "mod_id": mod_id,
-                    "title": quiz.get("title", "Module Quiz"),
-                    "passPercentage": quiz.get("passPercentage", 80),
-                    "questions_json": json.dumps(quiz.get("questions", []))
-                }
-            )
+                # PDF summary
+                pdf = topic.get("pdf", {})
+                pdf_id = f"pdf_{topic_id}"
+                db.execute(
+                    text("INSERT INTO pdfs (id, \"moduleId\", title, \"pdfUrl\") VALUES (:id, :mod_id, :title, :pdfUrl)"),
+                    {
+                        "id": pdf_id,
+                        "mod_id": mod_id,
+                        "title": pdf.get("title", "Topic Summary Sheet"),
+                        "pdfUrl": pdf.get("pdfUrl", "https://en.wikipedia.org")
+                    }
+                )
 
-            # Insert written assessment
+                # Quiz
+                quiz = topic.get("quiz", {})
+                quiz_id = f"quiz_{topic_id}"
+                db.execute(
+                    text("INSERT INTO quizzes (id, \"moduleId\", title, \"passPercentage\", questions_json) VALUES (:id, :mod_id, :title, :passPercentage, :questions_json)"),
+                    {
+                        "id": quiz_id,
+                        "mod_id": mod_id,
+                        "title": quiz.get("title", "Topic Concept Quiz"),
+                        "passPercentage": quiz.get("passPercentage", 70),
+                        "questions_json": json.dumps(quiz.get("questions", []))
+                    }
+                )
+
+            # Module Written Assessment
             written = mod.get("writtenAssessment", {})
             written_id = f"written_{mod_id}"
             db.execute(
@@ -3802,13 +3890,13 @@ def generate_course(req: CourseGenerateRequest, db: Session = Depends(get_db), c
                 {
                     "id": written_id,
                     "mod_id": mod_id,
-                    "title": written.get("title", "Written Assessment"),
+                    "title": written.get("title", "Module Written Evaluation"),
                     "passPercentage": written.get("passPercentage", 70),
                     "questions_json": json.dumps(written.get("questions", []))
                 }
             )
 
-            # Insert AI interview
+            # Module AI Interview
             ai_int = mod.get("aiInterview", {})
             ai_int_id = f"interview_{mod_id}"
             db.execute(
@@ -3816,16 +3904,74 @@ def generate_course(req: CourseGenerateRequest, db: Session = Depends(get_db), c
                 {
                     "id": ai_int_id,
                     "mod_id": mod_id,
-                    "title": ai_int.get("title", "AI Interview"),
+                    "title": ai_int.get("title", "Module AI Technical Mock"),
                     "passPercentage": ai_int.get("passPercentage", 60),
                     "questions_json": json.dumps(ai_int.get("questions", []))
                 }
             )
 
+        # 3. Insert Project
+        proj = course_data.get("project", {})
+        proj_id = f"project_{course_id}"
+        db.execute(
+            text("INSERT INTO projects (id, \"courseId\", title, objective, requirements, \"acceptanceCriteria\", \"evaluationRubric\") VALUES (:id, :course_id, :title, :obj, :reqs, :criteria, :rubric)"),
+            {
+                "id": proj_id,
+                "course_id": course_id,
+                "title": proj.get("title", "Capstone Hands-on Project"),
+                "obj": proj.get("objective", ""),
+                "reqs": proj.get("requirements", ""),
+                "criteria": proj.get("acceptanceCriteria", ""),
+                "rubric": proj.get("evaluationRubric", "")
+            }
+        )
+
+        # 4. Insert Final Assessment
+        final_ass = course_data.get("finalAssessment", {})
+        final_ass_id = f"final_ass_{course_id}"
+        db.execute(
+            text("INSERT INTO final_assessments (id, \"courseId\", title, \"passPercentage\", questions_json) VALUES (:id, :course_id, :title, :passPercentage, :questions_json)"),
+            {
+                "id": final_ass_id,
+                "course_id": course_id,
+                "title": final_ass.get("title", "Final Certification Exam"),
+                "passPercentage": final_ass.get("passPercentage", 70),
+                "questions_json": json.dumps(final_ass.get("questions", []))
+            }
+        )
+
+        # 5. Insert Final AI Interview
+        final_int = course_data.get("finalAiInterview", {})
+        final_int_id = f"final_interview_{course_id}"
+        db.execute(
+            text("INSERT INTO final_ai_interviews (id, \"courseId\", title, \"passPercentage\", questions_json) VALUES (:id, :course_id, :title, :passPercentage, :questions_json)"),
+            {
+                "id": final_int_id,
+                "course_id": course_id,
+                "title": final_int.get("title", "Comprehensive Job-Readiness Board Interview"),
+                "passPercentage": final_int.get("passPercentage", 75),
+                "questions_json": json.dumps(final_int.get("questions", []))
+              }
+        )
+
+        # 6. Insert Readiness Weights
+        weights = course_data.get("readinessWeights", {})
+        db.execute(
+            text("INSERT INTO readiness_scores (id, \"courseId\", \"quizWeight\", \"writtenWeight\", \"interviewWeight\", \"projectWeight\") VALUES (:id, :course_id, :qw, :ww, :iw, :pw)"),
+            {
+                "id": f"readiness_{course_id}",
+                "course_id": course_id,
+                "qw": weights.get("quizWeight", 25.0),
+                "ww": weights.get("writtenWeight", 20.0),
+                "iw": weights.get("interviewWeight", 25.0),
+                "pw": weights.get("projectWeight", 30.0)
+            }
+        )
+
         db.commit()
     except Exception as e:
         db.rollback()
-        logger.error(f"Failed to insert generated course: {e}")
+        logger.error(f"Failed to insert generated learning path: {e}")
         raise HTTPException(status_code=500, detail=f"Database insertion error: {str(e)}")
 
     return {"status": "success", "course_id": course_id, "title": title}

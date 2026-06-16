@@ -15,10 +15,12 @@ export default function AdminCourses() {
   const [activeTab, setActiveTab] = useState<"list" | "generate" | "manual">("list");
 
   // AI Generator Form States
-  const [generateTopic, setGenerateTopic] = useState("");
-  const [generateCategory, setGenerateCategory] = useState("Web Development");
-  const [generateLevel, setGenerateLevel] = useState("Intermediate");
+  const [generateRole, setGenerateRole] = useState("Frontend Developer");
+  const [generateLevel, setGenerateLevel] = useState("Beginner");
+  const [generateDuration, setGenerateDuration] = useState("12 Weeks");
+  const [generateGoal, setGenerateGoal] = useState("Job Ready");
   const [generateDesc, setGenerateDesc] = useState("");
+  
   const [generating, setGenerating] = useState(false);
   const [genStep, setGenStep] = useState(0);
 
@@ -33,6 +35,22 @@ export default function AdminCourses() {
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
+  const ROLES = [
+    "Frontend Developer",
+    "Backend Developer",
+    "Full Stack Developer",
+    "Data Analyst",
+    "Data Scientist",
+    "AI Engineer",
+    "ML Engineer",
+    "DevOps Engineer",
+    "Cloud Engineer",
+    "Cyber Security Engineer",
+    "QA Automation Engineer",
+    "Mobile Developer",
+    "Python Developer"
+  ];
+
   const CATEGORIES = [
     "Programming",
     "Web Development",
@@ -45,6 +63,8 @@ export default function AdminCourses() {
   ];
 
   const LEVELS = ["Beginner", "Intermediate", "Advanced"];
+  const DURATIONS = ["4 Weeks", "8 Weeks", "12 Weeks", "24 Weeks"];
+  const GOALS = ["Job Ready", "Skill Mastery", "Certification Prep", "Academic Standard"];
 
   const fetchCourses = async () => {
     try {
@@ -61,19 +81,17 @@ export default function AdminCourses() {
     fetchCourses();
   }, []);
 
-  // AI course generation stepper text
+  // AI course generation stepper text mapping to the 18 Phases
   useEffect(() => {
     if (!generating) return;
     const interval = setInterval(() => {
       setGenStep((prev) => (prev < 4 ? prev + 1 : prev));
-    }, 4500);
+    }, 7000);
     return () => clearInterval(interval);
   }, [generating]);
 
   const handleGenerateCourse = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!generateTopic.trim()) return;
-
     setErrorMsg("");
     setSuccessMsg("");
     setGenerating(true);
@@ -81,18 +99,17 @@ export default function AdminCourses() {
 
     try {
       const res = await apiService.generateCourse(
-        generateTopic,
-        generateCategory,
+        generateRole,
         generateLevel,
+        generateDuration,
+        generateGoal,
         generateDesc
       );
-      setSuccessMsg(`AI Course "${res.title}" successfully generated with 3 modules, lessons, quizzes, assessments, and AI voice interviews!`);
-      setGenerateTopic("");
-      setGenerateDesc("");
+      setSuccessMsg(`AI Course/Learning Path "${res.title}" successfully generated with full 18-phase compliance (Modules, Lessons, Quizzes, Projects, final exams, AI interviews, and postgres relational mappings)!`);
       setActiveTab("list");
       await fetchCourses();
     } catch (err: any) {
-      setErrorMsg(err.message || "Failed to generate course with AI.");
+      setErrorMsg(err.message || "Failed to generate learning path with AI.");
     } finally {
       setGenerating(false);
     }
@@ -251,18 +268,18 @@ export default function AdminCourses() {
               </div>
               
               <div className="flex flex-col gap-2">
-                <h3 className="text-base font-bold text-white">Generating Complete Course via AI...</h3>
-                <p className="text-xs text-gray-400 max-w-sm">This can take up to 30-45 seconds as we build out interactive lessons, study guides, and evaluation tools.</p>
+                <h3 className="text-base font-bold text-white">Autonomously Generating Complete LMS Learning Path...</h3>
+                <p className="text-xs text-gray-400 max-w-sm">Generating comprehensive course materials, video lectures, notes summary, projects, and final AI assessments.</p>
               </div>
 
-              {/* Progress Steps Indicators */}
+              {/* Progress Steps Indicators (aligned to 18-Phase Prompt) */}
               <div className="w-full max-w-md bg-muted/20 border border-gray-850 rounded-xl p-4 flex flex-col gap-3 text-left">
                 {[
-                  "Drafting curriculum modules & overview",
-                  "Creating video lessons & course resources",
-                  "Designing quizzes & conceptual assessments",
-                  "Formulating AI voice mock interview questions",
-                  "Finalizing database rows & deployment"
+                  "Phase 1-3: Designing Learning Path, Objectives, and Course Hierarchy",
+                  "Phase 4-6: Generating Topics, Recommended YouTube Lessons, and PDF Cheat Sheets",
+                  "Phase 7-9: Creating Scenario-Based Quizzes & Module Written Assessments",
+                  "Phase 10-13: Structuring AI Technical Interviews, Capstone Projects & final certification exam",
+                  "Phase 14-18: Formulating Readiness Scoring rules, certificate configurations & Postgres scripts"
                 ].map((step, idx) => {
                   const done = genStep > idx;
                   const active = genStep === idx;
@@ -288,37 +305,26 @@ export default function AdminCourses() {
               <div className="flex items-center gap-2 border-b border-gray-850 pb-4 mb-2">
                 <Wand2 className="text-purple-400" size={20} />
                 <div>
-                  <h2 className="text-base font-bold text-white">AI Course Generator</h2>
-                  <p className="text-xs text-gray-400">Describe the topic, and the system AI will construct a fully functioning multi-module syllabus instantly.</p>
+                  <h2 className="text-base font-bold text-white">Enterprise AI Course Generation Studio</h2>
+                  <p className="text-xs text-gray-400">Specify requirements to generate a complete production-grade learning path matching Coursera/Udemy/LinkedIn standards.</p>
                 </div>
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Course Topic Name</label>
-                <input 
-                  type="text" 
-                  value={generateTopic}
-                  onChange={(e) => setGenerateTopic(e.target.value)}
-                  placeholder="e.g. Master Docker & Kubernetes Deployment"
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Target Role Name</label>
+                <select 
+                  value={generateRole}
+                  onChange={(e) => setGenerateRole(e.target.value)}
                   className="bg-background border border-gray-800 rounded-xl px-4 py-2.5 text-sm focus:outline-hidden focus:border-purple-500 text-white"
                   required
-                />
+                >
+                  {ROLES.map((r) => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Category</label>
-                  <select 
-                    value={generateCategory}
-                    onChange={(e) => setGenerateCategory(e.target.value)}
-                    className="bg-background border border-gray-800 rounded-xl px-4 py-2.5 text-sm focus:outline-hidden focus:border-purple-500 text-white"
-                  >
-                    {CATEGORIES.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Difficulty Level</label>
                   <select 
@@ -331,14 +337,40 @@ export default function AdminCourses() {
                     ))}
                   </select>
                 </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Target Duration</label>
+                  <select 
+                    value={generateDuration}
+                    onChange={(e) => setGenerateDuration(e.target.value)}
+                    className="bg-background border border-gray-800 rounded-xl px-4 py-2.5 text-sm focus:outline-hidden focus:border-purple-500 text-white"
+                  >
+                    {DURATIONS.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Goal</label>
+                  <select 
+                    value={generateGoal}
+                    onChange={(e) => setGenerateGoal(e.target.value)}
+                    className="bg-background border border-gray-800 rounded-xl px-4 py-2.5 text-sm focus:outline-hidden focus:border-purple-500 text-white"
+                  >
+                    {GOALS.map((g) => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Additional Prompt / Focus Area (Optional)</label>
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Focus Skills & custom parameters (Optional)</label>
                 <textarea 
                   value={generateDesc}
                   onChange={(e) => setGenerateDesc(e.target.value)}
-                  placeholder="e.g. Focus on docker-compose, multi-stage builds, and deployment on AWS EKS."
+                  placeholder="e.g. Include React Server Components, Next.js Middleware, state management libraries, and tailwind styling guidelines."
                   className="bg-background border border-gray-800 rounded-xl px-4 py-2.5 text-sm focus:outline-hidden focus:border-purple-500 h-24 text-white resize-none"
                 />
               </div>
@@ -348,7 +380,7 @@ export default function AdminCourses() {
                 className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-2 mt-2"
               >
                 <Wand2 size={16} />
-                <span>Generate Course with AI</span>
+                <span>Generate Complete Learning Path</span>
               </button>
             </form>
           )}
