@@ -3632,7 +3632,7 @@ def generate_course(req: CourseGenerateRequest, db: Session = Depends(get_db), c
     from app.services.orchestrator import call_nvidia, call_gemini
     from app.core.config import settings
 
-    if not settings.NVIDIA_API_KEY:
+    if not settings.NVIDIA_API_KEY and not settings.GEMINI_API_KEY:
         raise HTTPException(status_code=400, detail="AI API key not configured on backend.")
 
     # Select default category based on role
