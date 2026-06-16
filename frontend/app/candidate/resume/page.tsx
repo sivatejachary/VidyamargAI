@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { apiService } from "@/services/api";
+import { apiService, getBackendBaseUrl } from "@/services/api";
 import { useAuthStore } from "@/store/authStore";
 import Link from "next/link";
 import { 
@@ -305,9 +305,7 @@ export default function ResumeBuilder() {
   };
 
   const handleDownloadResumeUrl = (url: string, version: string) => {
-    const backendUrl = typeof window !== "undefined" && window.location.hostname === "localhost"
-      ? "http://127.0.0.1:8000"
-      : `http://${window.location.hostname}:8000`;
+    const backendUrl = getBackendBaseUrl();
     
     const downloadLink = document.createElement("a");
     downloadLink.href = `${backendUrl}${url}`;
@@ -1931,7 +1929,7 @@ export default function ResumeBuilder() {
             {/* Action Bar inside Modal */}
             <div className="flex justify-end p-4 border-b border-border shrink-0">
               <a 
-                href={`${typeof window !== "undefined" && window.location.hostname === "localhost" ? "http://127.0.0.1:8000" : `http://${window.location.hostname}:8000`}${previewUrl}`}
+                href={`${getBackendBaseUrl()}${previewUrl}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border hover:bg-muted text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
@@ -1944,7 +1942,7 @@ export default function ResumeBuilder() {
             {/* PDF Embed */}
             <div className="flex-1 bg-slate-100 dark:bg-slate-950">
               <iframe
-                src={`${typeof window !== "undefined" && window.location.hostname === "localhost" ? "http://127.0.0.1:8000" : `http://${window.location.hostname}:8000`}${previewUrl}`}
+                src={`${getBackendBaseUrl()}${previewUrl}`}
                 className="w-full h-full border-none"
                 title="Resume Preview"
               />

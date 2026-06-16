@@ -3,14 +3,23 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
-import { Sparkles, Terminal, Shield, User, ArrowRight, Sun, Moon } from "lucide-react";
-import { Card } from "@/components/ui/Card";
+import { apiService } from "@/services/api";
+import { Sparkles, Terminal, ArrowRight, Eye, EyeOff, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Alert } from "@/components/ui/Alert";
 import Link from "next/link";
 
-export default function Home() {
+export default function CandidateSignup() {
   const router = useRouter();
-  const { isAuthenticated, role, initialize } = useAuthStore();
+  const { login, isAuthenticated, initialize } = useAuthStore();
+  
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("light");
 
   useEffect(() => {
@@ -51,13 +60,38 @@ export default function Home() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      if (role === "admin" || role === "super_admin") {
-        router.push("/admin");
-      } else {
-        router.push("/candidate");
-      }
+      router.push("/candidate");
     }
-  }, [isAuthenticated, role, router]);
+  }, [isAuthenticated, router]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      // Sign Up specifically as "candidate"
+      await apiService.signup({
+        email,
+        password,
+        full_name: fullName,
+        role: "candidate"
+      });
+      
+      // Log in immediately
+      const params = new URLSearchParams();
+      params.append("username", email);
+      params.append("password", password);
+      
+      const tokenData = await apiService.login(params);
+      login(tokenData.access_token, tokenData.role, tokenData.full_name, tokenData.email);
+      router.push("/candidate");
+    } catch (err: any) {
+      setError(err.message || "An error occurred during registration.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <main className="min-h-screen lg:h-screen lg:overflow-hidden bg-background text-foreground flex relative font-sans">
@@ -74,7 +108,7 @@ export default function Home() {
         <div className="absolute top-2/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-indigo-500/8 dark:bg-indigo-500/15 rounded-full blur-120 pointer-events-none" />
 
         {/* Top: Logo Branding */}
-        <div className="flex items-center gap-3 relative z-10">
+        <Link href="/" className="flex items-center gap-3 relative z-10 cursor-pointer">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shrink-0 border border-indigo-400/20">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="white" opacity="0.95"/>
@@ -89,7 +123,7 @@ export default function Home() {
             </div>
             <span className="block text-9 text-indigo-600 dark:text-indigo-400 font-bold tracking-widest uppercase mt-1">Enterprise Recruiting OS</span>
           </div>
-        </div>
+        </Link>
 
         {/* Center: Headline & Premium Live Mockup Dashboard */}
         <div className="my-auto flex flex-col gap-6 lg:gap-5 xl:gap-8 relative z-10">
@@ -150,13 +184,13 @@ export default function Home() {
         </p>
       </div>
 
-      {/* RIGHT COLUMN: PORTAL ENTRY SELECTION */}
-      <div className="flex-1 lg:auth-form-panel flex flex-col justify-between p-6 lg:p-8 xl:p-12 min-h-screen lg:h-screen lg:overflow-y-auto bg-background relative z-10">
+      {/* RIGHT COLUMN: AUTH PANEL */}
+      <div className="flex-1 lg:auth-form-panel flex flex-col justify-between p-6 lg:p-8 xl:p-12 min-h-screen lg:h-screen lg:overflow-hidden bg-background relative z-10">
         
         {/* Top bar: Theme switcher */}
         <header className="flex justify-between items-center w-full mb-8 lg:mb-4 xl:mb-8 flex-shrink-0">
           {/* Logo Branding visible ONLY on mobile */}
-          <div className="flex items-center gap-2.5 lg:hidden">
+          <Link href="/" className="flex items-center gap-2.5 lg:hidden">
             <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-md shrink-0">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="white" opacity="0.95"/>
@@ -169,9 +203,9 @@ export default function Home() {
                 <span className="text-foreground font-black text-base tracking-tight leading-none">Vidyamarg</span>
                 <span className="text-blue-500 font-black text-base tracking-tight leading-none italic">AI</span>
               </div>
-              <span className="block text-8 text-muted-foreground font-bold tracking-wider uppercase mt-0.5">Enterprise Recruiting OS</span>
+              <span className="block text-8 text-muted-foreground font-bold tracking-wider uppercase mt-0.5">Candidate Portal</span>
             </div>
-          </div>
+          </Link>
 
           <div className="hidden lg:block" />
 
@@ -186,71 +220,92 @@ export default function Home() {
           </button>
         </header>
 
-        {/* Center: Portal Entry Selection */}
-        <div className="w-full max-w-xl mx-auto my-auto py-8 lg:py-4 xl:py-8 flex-shrink-0 flex flex-col gap-8">
-          <div className="text-center lg:text-left">
-            <h2 className="text-3xl font-extrabold text-foreground tracking-tight mb-3">
-              Select Your Portal
-            </h2>
-            <p className="text-sm text-muted-foreground max-w-md leading-relaxed">
-              Welcome to VidyamargAI. Choose the appropriate portal pathway below to access your custom features.
-            </p>
-          </div>
+        {/* Center: Auth Form Container */}
+        <div className="w-full max-w-md mx-auto my-auto py-8 lg:py-4 xl:py-8 flex-shrink-0">
+          <div>
+            <div className="mb-8 lg:mb-4 xl:mb-8">
+              <h2 className="text-2xl font-extrabold text-foreground tracking-tight mb-2">
+                Create Candidate Account
+              </h2>
+              <p className="text-xs font-semibold text-muted-foreground leading-relaxed">
+                Join VidyamargAI to access custom LMS courses, assessments, and AI-led interviews.
+              </p>
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Candidate Card */}
-            <Card hoverEffect className="p-6 flex flex-col gap-6 justify-between border-border/80 bg-card/50 backdrop-blur-md">
-              <div className="flex flex-col gap-3">
-                <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-500 flex items-center justify-center">
-                  <User size={24} />
-                </div>
-                <h3 className="text-lg font-bold text-foreground">Candidate Portal</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  For job seekers. Learn from AI-tailored LMS curriculums, take proctored coding assessments, and conduct automated AI interviews.
-                </p>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4 lg:gap-3 xl:gap-4">
+              {error && (
+                <Alert variant="error">
+                  {error}
+                </Alert>
+              )}
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-11 font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Full Name</label>
+                <Input
+                  type="text"
+                  required
+                  placeholder="e.g. Liam Smith"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                />
               </div>
 
-              <div className="flex flex-col gap-3 mt-4">
-                <Link href="/login" className="w-full">
-                  <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center justify-center gap-2">
-                    <span>Login as Candidate</span>
-                    <ArrowRight size={14} />
-                  </Button>
-                </Link>
-                <div className="text-center">
-                  <Link href="/signup" className="text-xs text-blue-500 hover:underline font-semibold">
-                    Don't have an account? Sign Up
-                  </Link>
-                </div>
-              </div>
-            </Card>
-
-            {/* Recruiter Card */}
-            <Card hoverEffect className="p-6 flex flex-col gap-6 justify-between border-border/80 bg-card/50 backdrop-blur-md">
-              <div className="flex flex-col gap-3">
-                <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-500 flex items-center justify-center">
-                  <Shield size={24} />
-                </div>
-                <h3 className="text-lg font-bold text-foreground">Recruiter Console</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  For hiring administrators. Post jobs, run autonomous resume screenings, check proctor logs, and generate curriculums.
-                </p>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-11 font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Email Address</label>
+                <Input
+                  type="email"
+                  required
+                  placeholder="name@company.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
               </div>
 
-              <div className="flex flex-col gap-3 mt-4">
-                <Link href="/admin-login" className="w-full">
-                  <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold flex items-center justify-center gap-2">
-                    <span>Admin Console Login</span>
-                    <ArrowRight size={14} />
-                  </Button>
-                </Link>
-                <div className="text-center">
-                  <Link href="/admin-register" className="text-xs text-purple-500 hover:underline font-semibold">
-                    Setup new administrator profile
-                  </Link>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-11 font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Security Password</label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1 cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
                 </div>
               </div>
-            </Card>
+
+              <Button
+                type="submit"
+                loading={loading}
+                className="w-full mt-4 lg:mt-2 xl:mt-4"
+              >
+                <span>Register Profile</span>
+                {!loading && <ArrowRight size={16} />}
+              </Button>
+            </form>
+
+            <div className="mt-8 lg:mt-6 lg:pt-4 xl:mt-8 xl:pt-6 text-center border-t border-border flex flex-col gap-2">
+              <Link
+                href="/login"
+                className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-bold"
+              >
+                Already registered? Login here
+              </Link>
+              <Link
+                href="/"
+                className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+              >
+                Cancel and return to portal selection
+              </Link>
+            </div>
           </div>
         </div>
 

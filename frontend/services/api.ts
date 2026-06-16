@@ -13,24 +13,34 @@ const customFetch = async (input: RequestInfo | URL, init?: RequestInit): Promis
   return res;
 };
 
-const getBaseUrl = () => {
+export const getBaseUrl = () => {
   // Use deployed backend URL if available
   if (process.env.NEXT_PUBLIC_API_URL) {
     return process.env.NEXT_PUBLIC_API_URL;
   }
-
-  // Fallback for local development
-  if (typeof window !== "undefined") {
-    let host = window.location.hostname;
-
-    if (host === "localhost") {
-      host = "127.0.0.1";
-    }
-
-    return `http://${host}:8000/api/v1`;
-  }
-
   return "https://vidyamargai-production.up.railway.app/api/v1";
+};
+
+export const getBackendBaseUrl = () => {
+  const baseUrl = getBaseUrl();
+  return baseUrl.replace(/\/api\/v1\/?$/, "");
+};
+
+export const getWsUrl = () => {
+  if (process.env.NEXT_PUBLIC_WS_URL) {
+    return process.env.NEXT_PUBLIC_WS_URL;
+  }
+  const backendBase = getBackendBaseUrl();
+  const wsProto = backendBase.startsWith("https://") ? "wss://" : "ws://";
+  const domain = backendBase.replace(/^https?:\/\//, "");
+  return `${wsProto}${domain}/ws`;
+};
+
+export const getAgentWsUrl = (runId: number | string) => {
+  const backendBase = getBackendBaseUrl();
+  const wsProto = backendBase.startsWith("https://") ? "wss://" : "ws://";
+  const domain = backendBase.replace(/^https?:\/\//, "");
+  return `${wsProto}${domain}/api/v1/ws/agent/${runId}`;
 };
 const getHeaders = () => {
   const headers: Record<string, string> = {};

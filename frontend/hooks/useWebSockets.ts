@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { getWsUrl } from "@/services/api";
 
 export const useWebSockets = (clientId: string) => {
   const ws = useRef<WebSocket | null>(null);
@@ -8,23 +9,6 @@ export const useWebSockets = (clientId: string) => {
   useEffect(() => {
     if (!clientId) return;
 
-    const getWsUrl = () => {
-  if (process.env.NEXT_PUBLIC_WS_URL) {
-    return process.env.NEXT_PUBLIC_WS_URL;
-  }
-
-  if (typeof window !== "undefined") {
-    let host = window.location.hostname;
-
-    if (host === "localhost") {
-      host = "127.0.0.1";
-    }
-
-    return `ws://${host}:8000/ws`;
-  }
-
-  return "ws://vidyamargai-production.up.railway.app/ws";
-};
     const WS_URL = getWsUrl();
     const socket = new WebSocket(`${WS_URL}/${clientId}`);
 

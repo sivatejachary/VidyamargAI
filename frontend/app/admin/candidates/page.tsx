@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiService } from "@/services/api";
+import { apiService, getBackendBaseUrl } from "@/services/api";
 import { Award, FileText, X, MessageSquare, Folder, Download } from "lucide-react";
 import { useWebSockets } from "@/hooks/useWebSockets";
 import { Button } from "@/components/ui/Button";
@@ -458,7 +458,7 @@ export default function AdminCandidates() {
                       </div>
                     </div>
                     <a 
-                      href={`${typeof window !== "undefined" && window.location.hostname === "localhost" ? "http://127.0.0.1:8000" : `http://${window.location.hostname}:8000`}${selectedApplication.resume.resume_url}`}
+                      href={`${getBackendBaseUrl()}${selectedApplication.resume.resume_url}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-3 py-1.5 rounded-lg bg-muted hover:bg-gray-700 text-xs font-bold text-white transition-colors flex items-center gap-1.5"
@@ -622,7 +622,7 @@ export default function AdminCandidates() {
                           </div>
                         </div>
                         <a 
-                          href={`${typeof window !== "undefined" && window.location.hostname === "localhost" ? "http://127.0.0.1:8000" : `http://${window.location.hostname}:8000`}${file.url}`}
+                          href={`${getBackendBaseUrl()}${file.url}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="px-3 py-1.5 rounded-lg bg-muted hover:bg-gray-700 text-xs font-bold text-white transition-colors flex items-center gap-1.5 shrink-0"

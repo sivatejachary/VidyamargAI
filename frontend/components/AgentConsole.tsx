@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { Terminal, Play, CheckCircle2, AlertTriangle, XCircle, Info, RefreshCw } from "lucide-react";
+import { getAgentWsUrl } from "@/services/api";
 
 interface LogMessage {
   message: string;
@@ -42,7 +43,7 @@ export default function AgentConsole({
       return;
     }
 
-    const wsUrl = `ws://127.0.0.1:8000/api/v1/ws/agent/${runId}`;
+    const wsUrl = getAgentWsUrl(runId);
     console.log("Connecting Agent Console to WebSocket:", wsUrl);
     const ws = new WebSocket(wsUrl);
     socketRef.current = ws;
