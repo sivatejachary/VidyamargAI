@@ -853,7 +853,7 @@ export default function CoursePlayer({
                       onClick={async () => {
                         try {
                           if (currentLesson.type === "pdf") {
-                            await apiService.completeLesson(currentLesson.id);
+                            await apiService.completePdf(currentLesson.id);
                           } else {
                             await apiService.completeLesson(currentLesson.id);
                           }

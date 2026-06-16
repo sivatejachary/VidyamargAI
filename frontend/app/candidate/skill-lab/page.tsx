@@ -22,37 +22,41 @@ function transformNewCurriculumToOld(newCur: any) {
   newCur.modules.forEach((mod: any) => {
     const sectionLessons: any[] = [];
     
-    // 1. Video
-    if (mod.video) {
-      const vidId = mod.video.id;
-      sectionLessons.push({
-        id: vidId,
-        title: mod.video.title,
-        type: "video",
-        duration: "15 min",
-        is_locked: !mod.unlocked,
-        video_url: mod.video.youtubeUrl,
+    // Process topics list under each module
+    if (mod.topics && Array.isArray(mod.topics)) {
+      mod.topics.forEach((topic: any) => {
+        // 1. Video
+        if (topic.video) {
+          const vidId = topic.video.id;
+          sectionLessons.push({
+            id: vidId,
+            title: topic.video.title,
+            type: "video",
+            duration: topic.video.duration || "15 min",
+            is_locked: !mod.unlocked, // will compute sequentially later
+            video_url: topic.video.youtubeUrl,
+          });
+          if (topic.video.completed) {
+            completedLessonIds.push(vidId);
+          }
+        }
+        
+        // 2. PDF
+        if (topic.pdf) {
+          const pdfId = topic.pdf.id;
+          sectionLessons.push({
+            id: pdfId,
+            title: topic.pdf.title,
+            type: "pdf",
+            duration: "5 pages",
+            is_locked: !mod.unlocked, // will compute sequentially later
+            pdf_url: topic.pdf.pdfUrl,
+          });
+          if (topic.pdf.completed) {
+            completedLessonIds.push(pdfId);
+          }
+        }
       });
-      if (mod.video.completed) {
-        completedLessonIds.push(vidId);
-      }
-    }
-    
-    // 2. PDF
-    if (mod.pdf) {
-      const pdfId = mod.pdf.id;
-      const isPdfLocked = !mod.unlocked || (mod.video && !mod.video.completed);
-      sectionLessons.push({
-        id: pdfId,
-        title: mod.pdf.title,
-        type: "pdf",
-        duration: "5 pages",
-        is_locked: isPdfLocked,
-        pdf_url: mod.pdf.pdfUrl,
-      });
-      if (mod.pdf.completed) {
-        completedLessonIds.push(pdfId);
-      }
     }
     
     // 3. Quiz
@@ -63,11 +67,11 @@ function transformNewCurriculumToOld(newCur: any) {
         title: mod.quiz.title,
         type: "quiz",
         duration: "5 questions",
-        is_locked: mod.quiz.locked,
+        is_locked: mod.quiz.locked, // will compute sequentially later
         quiz: {
           id: quizId,
           title: mod.quiz.title,
-          questions: mod.quiz.questions.map((q: any, idx: number) => ({
+          questions: (mod.quiz.questions || []).map((q: any, idx: number) => ({
             id: q.id || idx.toString(),
             question: q.question,
             options: q.options,
@@ -88,11 +92,11 @@ function transformNewCurriculumToOld(newCur: any) {
         title: mod.writtenAssessment.title,
         type: "written_assessment",
         duration: "3 questions",
-        is_locked: mod.writtenAssessment.locked,
+        is_locked: mod.writtenAssessment.locked, // will compute sequentially later
         written_assessment: {
           id: writtenId,
           title: mod.writtenAssessment.title,
-          questions: mod.writtenAssessment.questions,
+          questions: mod.writtenAssessment.questions || [],
           best_score: mod.writtenAssessment.bestScore,
           passed: mod.writtenAssessment.passed,
           feedback: mod.writtenAssessment.feedback
@@ -111,11 +115,11 @@ function transformNewCurriculumToOld(newCur: any) {
         title: mod.aiInterview.title,
         type: "ai_interview",
         duration: "10 min",
-        is_locked: mod.aiInterview.locked,
+        is_locked: mod.aiInterview.locked, // will compute sequentially later
         module_interview: {
           id: interviewId,
           title: mod.aiInterview.title,
-          questions: mod.aiInterview.questions,
+          questions: mod.aiInterview.questions || [],
           best_score: mod.aiInterview.bestScore,
           passed: mod.aiInterview.passed,
           feedback: mod.aiInterview.feedback
@@ -125,6 +129,13 @@ function transformNewCurriculumToOld(newCur: any) {
         completedLessonIds.push(interviewId);
       }
     }
+    
+    // Perform sequential linear lock computation for the lessons in this section
+    let prevCompleted = true; // The first item is unlocked if the module itself is unlocked
+    sectionLessons.forEach((les: any) => {
+      les.is_locked = !mod.unlocked || !prevCompleted;
+      prevCompleted = completedLessonIds.includes(les.id);
+    });
     
     sections.push({
       id: mod.moduleId,

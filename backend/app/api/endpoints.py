@@ -4013,6 +4013,16 @@ def create_course(req: CourseCreateRequest, db: Session = Depends(get_db), curre
 
 @router.get("/courses/{course_id}/curriculum")
 def get_course_curriculum(course_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    def load_json_safely(val):
+        if not val:
+            return []
+        if isinstance(val, (dict, list)):
+            return val
+        try:
+            return json.loads(val)
+        except Exception:
+            return []
+
     # Check if course exists
     course = db.execute(text("SELECT id, title, description FROM courses WHERE id=:course_id"), {"course_id": course_id}).fetchone()
     if not course:
@@ -4061,31 +4071,64 @@ def get_course_curriculum(course_id: str, db: Session = Depends(get_db), current
             written_completed = False
             interview_completed = False
             
-        # 1. Lesson
-        lesson_row = db.execute(text("SELECT id, title, youtubeUrl, duration FROM lessons WHERE moduleId=:mod_id"), {"mod_id": mod_id}).fetchone()
-        video_data = None
-        if lesson_row:
-            video_data = {
-                "id": lesson_row[0],
-                "title": lesson_row[1],
-                "youtubeUrl": lesson_row[2],
-                "duration": lesson_row[3],
-                "completed": video_completed
-            }
+        # Fetch topics for this module
+        topics_res = db.execute(
+            text("SELECT id, title, description, topicno, estimatedduration FROM topics WHERE moduleid=:mod_id ORDER BY topicno"),
+            {"mod_id": mod_id}
+        ).fetchall()
+        
+        topics = []
+        for topic_row in topics_res:
+            topic_id = topic_row[0]
+            topic_title = topic_row[1]
+            topic_desc = topic_row[2]
+            topic_no = topic_row[3]
+            topic_dur = topic_row[4]
             
-        # 2. PDF
-        pdf_row = db.execute(text("SELECT id, title, pdfUrl FROM pdfs WHERE moduleId=:mod_id"), {"mod_id": mod_id}).fetchone()
-        pdf_data = None
-        if pdf_row:
-            pdf_data = {
-                "id": pdf_row[0],
-                "title": pdf_row[1],
-                "pdfUrl": pdf_row[2],
-                "completed": pdf_completed
-            }
+            # Fetch lesson (video) for this topic
+            lesson_row = db.execute(
+                text("SELECT id, title, youtubeurl, duration FROM lessons WHERE topicid=:topic_id"),
+                {"topic_id": topic_id}
+            ).fetchone()
+            video_data = None
+            if lesson_row:
+                video_data = {
+                    "id": lesson_row[0],
+                    "title": lesson_row[1],
+                    "youtubeUrl": lesson_row[2],
+                    "duration": lesson_row[3],
+                    "completed": video_completed
+                }
+                
+            # Fetch PDF for this topic
+            pdf_row = db.execute(
+                text("SELECT id, title, pdfurl FROM pdfs WHERE topicid=:topic_id"),
+                {"topic_id": topic_id}
+            ).fetchone()
+            pdf_data = None
+            if pdf_row:
+                pdf_data = {
+                    "id": pdf_row[0],
+                    "title": pdf_row[1],
+                    "pdfUrl": pdf_row[2],
+                    "completed": pdf_completed
+                }
+                
+            topics.append({
+                "topicId": topic_id,
+                "title": topic_title,
+                "description": topic_desc,
+                "topicNo": topic_no,
+                "duration": topic_dur,
+                "video": video_data,
+                "pdf": pdf_data
+            })
             
-        # 3. Quiz
-        quiz_row = db.execute(text("SELECT id, title, passPercentage, questions_json FROM quizzes WHERE moduleId=:mod_id"), {"mod_id": mod_id}).fetchone()
+        # 3. Quiz (Note double-quoted mixed case passPercentage and moduleId columns)
+        quiz_row = db.execute(
+            text('SELECT id, title, "passPercentage", questions_json FROM quizzes WHERE "moduleId"=:mod_id'),
+            {"mod_id": mod_id}
+        ).fetchone()
         quiz_data = None
         if quiz_row:
             quiz_locked = not (video_completed and pdf_completed)
@@ -4095,11 +4138,14 @@ def get_course_curriculum(course_id: str, db: Session = Depends(get_db), current
                 "passPercentage": quiz_row[2],
                 "locked": quiz_locked,
                 "completed": quiz_completed,
-                "questions": json.loads(quiz_row[3]) if quiz_row[3] else []
+                "questions": load_json_safely(quiz_row[3])
             }
             
         # 4. Written
-        written_row = db.execute(text("SELECT id, title, passPercentage, questions_json FROM written_assessments WHERE moduleId=:mod_id"), {"mod_id": mod_id}).fetchone()
+        written_row = db.execute(
+            text("SELECT id, title, passpercentage, questions_json FROM written_assessments WHERE moduleid=:mod_id"),
+            {"mod_id": mod_id}
+        ).fetchone()
         written_data = None
         if written_row:
             written_id = written_row[0]
@@ -4118,14 +4164,17 @@ def get_course_curriculum(course_id: str, db: Session = Depends(get_db), current
                 "passPercentage": written_row[2],
                 "locked": written_locked,
                 "completed": written_completed,
-                "questions": json.loads(written_row[3]) if written_row[3] else [],
+                "questions": load_json_safely(written_row[3]),
                 "bestScore": best_score,
                 "passed": passed,
                 "feedback": feedback
             }
             
         # 5. AI Interview
-        interview_row = db.execute(text("SELECT id, title, passPercentage, questions_json FROM ai_interviews WHERE moduleId=:mod_id"), {"mod_id": mod_id}).fetchone()
+        interview_row = db.execute(
+            text("SELECT id, title, passpercentage, questions_json FROM ai_interviews WHERE moduleid=:mod_id"),
+            {"mod_id": mod_id}
+        ).fetchone()
         interview_data = None
         if interview_row:
             interview_id = interview_row[0]
@@ -4144,7 +4193,7 @@ def get_course_curriculum(course_id: str, db: Session = Depends(get_db), current
                 "passPercentage": interview_row[2],
                 "locked": interview_locked,
                 "completed": interview_completed,
-                "questions": json.loads(interview_row[3]) if interview_row[3] else [],
+                "questions": load_json_safely(interview_row[3]),
                 "bestScore": best_score,
                 "passed": passed,
                 "feedback": feedback
@@ -4155,8 +4204,7 @@ def get_course_curriculum(course_id: str, db: Session = Depends(get_db), current
             "moduleNo": mod_no,
             "moduleName": mod_title,
             "unlocked": unlocked,
-            "video": video_data,
-            "pdf": pdf_data,
+            "topics": topics,
             "quiz": quiz_data,
             "writtenAssessment": written_data,
             "aiInterview": interview_data
@@ -4207,10 +4255,13 @@ def enroll_course(course_id: str, db: Session = Depends(get_db), current_user: U
 
 @router.post("/lessons/{lesson_id}/complete")
 def complete_lesson(lesson_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    lesson = db.execute(text("SELECT moduleId FROM lessons WHERE id=:lesson_id"), {"lesson_id": lesson_id}).fetchone()
-    if not lesson:
+    row = db.execute(
+        text("SELECT t.moduleid FROM lessons l JOIN topics t ON l.topicid = t.id WHERE l.id = :lesson_id"),
+        {"lesson_id": lesson_id}
+    ).fetchone()
+    if not row:
         raise HTTPException(status_code=404, detail="Lesson not found")
-    mod_id = lesson[0]
+    mod_id = row[0]
     
     module = db.execute(text("SELECT courseId FROM modules WHERE id=:mod_id"), {"mod_id": mod_id}).fetchone()
     course_id = module[0]
@@ -4238,10 +4289,13 @@ def complete_lesson(lesson_id: str, db: Session = Depends(get_db), current_user:
 
 @router.post("/pdfs/{pdf_id}/complete")
 def complete_pdf(pdf_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    pdf = db.execute(text("SELECT moduleId FROM pdfs WHERE id=:pdf_id"), {"pdf_id": pdf_id}).fetchone()
-    if not pdf:
+    row = db.execute(
+        text("SELECT t.moduleid FROM pdfs p JOIN topics t ON p.topicid = t.id WHERE p.id = :pdf_id"),
+        {"pdf_id": pdf_id}
+    ).fetchone()
+    if not row:
         raise HTTPException(status_code=404, detail="PDF not found")
-    mod_id = pdf[0]
+    mod_id = row[0]
     
     module = db.execute(text("SELECT courseId FROM modules WHERE id=:mod_id"), {"mod_id": mod_id}).fetchone()
     course_id = module[0]
@@ -4269,7 +4323,7 @@ def complete_pdf(pdf_id: str, db: Session = Depends(get_db), current_user: User 
 
 @router.post("/quiz/{quiz_id}/submit")
 def submit_quiz(quiz_id: str, data: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    quiz = db.execute(text("SELECT moduleId, passPercentage, questions_json FROM quizzes WHERE id=:quiz_id"), {"quiz_id": quiz_id}).fetchone()
+    quiz = db.execute(text('SELECT "moduleId", "passPercentage", questions_json FROM quizzes WHERE id=:quiz_id'), {"quiz_id": quiz_id}).fetchone()
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")
     mod_id = quiz[0]
