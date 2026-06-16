@@ -65,7 +65,7 @@ def call_nvidia(messages, json_mode: bool = False) -> str:
             "messages": messages,
             "temperature": 0.1,
             "top_p": 1,
-            "max_tokens": 2048
+            "max_tokens": 4096
         }
         res = requests.post(url, headers=headers, json=payload, timeout=90)
         if res.status_code == 200:
