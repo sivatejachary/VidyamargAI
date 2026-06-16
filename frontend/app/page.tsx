@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { apiService } from "@/services/api";
-import { Sparkles, Terminal, Shield, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { Sparkles, Terminal, Shield, ArrowRight, Eye, EyeOff, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/Alert";
@@ -27,10 +27,43 @@ export default function Home() {
   const [resetCode, setResetCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [simulatedCode, setSimulatedCode] = useState("");
+  const [theme, setTheme] = useState<"dark" | "light">("light");
 
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  // Sync theme state with localStorage & document root
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") as "dark" | "light" | null;
+    if (savedTheme) {
+      setTheme(savedTheme);
+      if (savedTheme === "light") {
+        document.documentElement.classList.add("light-theme");
+        document.documentElement.classList.remove("dark");
+      } else {
+        document.documentElement.classList.remove("light-theme");
+        document.documentElement.classList.add("dark");
+      }
+    } else {
+      document.documentElement.classList.add("light-theme");
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    localStorage.setItem("theme", nextTheme);
+    if (nextTheme === "light") {
+      document.documentElement.classList.add("light-theme");
+      document.documentElement.classList.remove("dark");
+    } else {
+      document.documentElement.classList.remove("light-theme");
+      document.documentElement.classList.add("dark");
+    }
+  };
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -124,77 +157,146 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-background flex flex-col-reverse md:flex-row relative overflow-hidden">
+    <main className="min-h-screen bg-background text-foreground flex relative overflow-hidden font-sans">
       {/* Decorative Blur Backgrounds */}
-      <div className="absolute top-[-10%] left-[-10%] w-1/2 h-1/2 bg-purple-600/10 rounded-full blur-120 pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-1/2 h-1/2 bg-indigo-600/10 rounded-full blur-120 pointer-events-none" />
+      <div className="absolute top-[-10%] right-[-10%] w-1/2 h-1/2 bg-purple-600/10 rounded-full blur-120 pointer-events-none z-0" />
+      <div className="absolute bottom-[-10%] right-1/3 w-1/2 h-1/2 bg-indigo-600/10 rounded-full blur-120 pointer-events-none z-0" />
 
-      {/* Hero Intro Pane */}
-      <div className="flex-1 p-6 md:p-16 flex flex-col justify-between relative z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shrink-0">
+      {/* LEFT COLUMN: HERO PANEL (Visible on md and up) */}
+      <div className="hidden md:flex md:w-5/12 lg:w-1/2 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white flex-col justify-between p-12 relative overflow-hidden border-r border-slate-900 shrink-0">
+        {/* Background Grid Pattern */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-40 pointer-events-none" />
+        
+        {/* Glow behind dashboard mockup */}
+        <div className="absolute top-2/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-indigo-500/15 rounded-full blur-120 pointer-events-none" />
+
+        {/* Top: Logo Branding */}
+        <div className="flex items-center gap-3 relative z-10">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shrink-0 border border-indigo-400/20">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="white" opacity="0.9"/>
+              <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="white" opacity="0.95"/>
               <path d="M2 17L12 22L22 17" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
           <div>
-            <div className="flex items-baseline gap-0">
-              <span className="text-white font-extrabold text-xl tracking-tight">Vidyamarg</span>
-              <span className="text-blue-500 font-extrabold text-xl tracking-tight italic">AI</span>
+            <div className="flex items-baseline gap-0.5">
+              <span className="text-white font-extrabold text-xl tracking-tight leading-none">Vidyamarg</span>
+              <span className="text-blue-400 font-extrabold text-xl tracking-tight leading-none italic">AI</span>
             </div>
-            <span className="block text-10 text-purple-400 font-semibold tracking-wider uppercase">Enterprise Recruiting OS</span>
+            <span className="block text-9 text-indigo-400 font-bold tracking-widest uppercase mt-1">Enterprise Recruiting OS</span>
           </div>
         </div>
 
-        <div className="my-8 md:my-0 max-w-lg">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-950/40 border border-purple-800/30 text-purple-300 text-xs font-semibold mb-6">
-            <Sparkles size={14} className="animate-pulse" />
-            <span>Introducing Tush AI Recruiter</span>
-          </div>
-          <h1 className="text-3xl md:text-5xl font-extrabold text-white leading-[1.15] mb-6">
-            The Autonomous <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-400">
-              Recruitment Operating System
-            </span>
-          </h1>
-          <p className="text-gray-400 text-sm md:text-base leading-relaxed mb-8">
-            VidyamargAI streamlines screening, creates fully tailored technical assessments, runs proctored tests, conducts video interviews with &nbsp;
-            <strong>Tush AI</strong>, and drafts hiring offers.
-          </p>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="p-4 rounded-xl border border-border bg-card">
-              <Terminal size={20} className="text-purple-400 mb-2" />
-              <h3 className="text-sm font-semibold text-foreground mb-1">AI Orchestration</h3>
-              <p className="text-xs text-muted-foreground">12 coordinate agents processing candidates sequentially.</p>
+        {/* Center: Headline & Premium Live Mockup Dashboard */}
+        <div className="my-auto flex flex-col gap-8 relative z-10">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-semibold mb-5">
+              <Sparkles size={13} className="animate-pulse text-purple-400" />
+              <span>Introducing Tush AI Recruiter v2</span>
             </div>
-            <div className="p-4 rounded-xl border border-border bg-card">
-              <Shield size={20} className="text-indigo-400 mb-2" />
-              <h3 className="text-sm font-semibold text-foreground mb-1">AI Proctoring</h3>
-              <p className="text-xs text-muted-foreground">Tab-monitoring, face detection, and copy-paste warnings.</p>
+            <h1 className="text-3xl lg:text-5xl font-black text-white leading-[1.12] tracking-tight">
+              The Autonomous <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-indigo-300 to-blue-400">
+                Recruitment OS
+              </span>
+            </h1>
+            <p className="text-slate-400 text-sm leading-relaxed mt-4 max-w-md">
+              VidyamargAI coordinates assessments, proctors exams, conducts interviews with <strong className="text-slate-200">Tush AI</strong>, and streamlines full candidate pipelines.
+            </p>
+          </div>
+
+          {/* Premium Glass Mockup */}
+          <div className="glass-panel p-5 rounded-2xl border border-slate-800 bg-slate-900/40 shadow-2xl relative w-full overflow-hidden max-w-lg">
+            {/* Header bar mock */}
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-3 mb-4">
+              <div className="flex gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500/60" />
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/60" />
+              </div>
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-950/50 border border-slate-800/60 rounded-lg text-9 font-mono text-slate-500">
+                <Terminal size={10} className="text-indigo-400" />
+                <span>tush-ai-orchestrator.sh</span>
+              </div>
+            </div>
+
+            {/* Dashboard Contents Mock */}
+            <div className="font-mono text-10 text-slate-400 flex flex-col gap-2.5 leading-relaxed">
+              <div className="flex gap-2">
+                <span className="text-indigo-400 font-bold shrink-0">[16:43:46]</span>
+                <span>Agent <span className="text-white font-bold">#01_screener</span> active: parsed candidate folder.</span>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-indigo-400 font-bold shrink-0">[16:43:48]</span>
+                <span>Proctor status: <span className="text-emerald-400 font-bold">Active</span>. Checking face verification loop.</span>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-indigo-400 font-bold shrink-0">[16:43:52]</span>
+                <span>Tush AI Interviewer: <span className="text-purple-400 font-bold">speaking</span>, latency 82ms.</span>
+              </div>
+              <div className="flex gap-2 border-t border-slate-800/50 pt-2.5 mt-1">
+                <span className="text-emerald-400 font-bold">PIPELINE VERIFIED:</span>
+                <span className="text-white">Liam Smith matched 96% with position terms.</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <p className="hidden md:block text-xs text-gray-500 font-light">
+        {/* Bottom: Footer */}
+        <p className="text-xs text-slate-600 font-light relative z-10 mt-6">
           © {new Date().getFullYear()} VidyamargAI Tech Systems. All rights secured.
         </p>
       </div>
 
-      {/* Auth Panel Pane */}
-      <div className="w-full md:w-480 border-l border-border bg-card/80 backdrop-blur-md p-6 md:p-12 flex flex-col justify-center relative z-10">
-        <div className="w-full max-w-md mx-auto">
+      {/* RIGHT COLUMN: AUTH PANEL */}
+      <div className="flex-1 flex flex-col justify-between p-6 md:p-12 min-h-screen bg-background relative z-10 overflow-y-auto">
+        
+        {/* Top bar: Theme switcher & links */}
+        <header className="flex justify-between items-center w-full mb-8 flex-shrink-0">
+          {/* Logo Branding visible ONLY on mobile */}
+          <div className="flex items-center gap-2.5 md:hidden">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-md shrink-0">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="white" opacity="0.95"/>
+                <path d="M2 17L12 22L22 17" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <div>
+              <div className="flex items-baseline gap-0.5">
+                <span className="text-foreground font-black text-base tracking-tight leading-none">Vidyamarg</span>
+                <span className="text-blue-500 font-black text-base tracking-tight leading-none italic">AI</span>
+              </div>
+              <span className="block text-8 text-muted-foreground font-bold tracking-wider uppercase mt-0.5">Enterprise Recruiting OS</span>
+            </div>
+          </div>
+
+          {/* Spacer on Desktop */}
+          <div className="hidden md:block" />
+
+          {/* Floating Theme Switcher */}
+          <button
+            onClick={toggleTheme}
+            className="p-2.5 rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-all shadow-sm cursor-pointer"
+            title="Toggle theme"
+            aria-label="Toggle theme"
+          >
+            {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+          </button>
+        </header>
+
+        {/* Center: Auth Form Container */}
+        <div className="w-full max-w-md mx-auto my-auto py-8">
           {isForgotPassword ? (
             /* Forgot Password Flow */
             <div>
               <div className="mb-8">
-                <h2 className="text-2xl font-bold text-white mb-2">Reset password</h2>
-                <p className="text-sm text-gray-400">
+                <h2 className="text-2xl font-extrabold text-foreground tracking-tight mb-2">Reset password</h2>
+                <p className="text-xs font-semibold text-muted-foreground leading-relaxed">
                   {forgotStep === 1 
-                    ? "Enter your email address to receive a verification code" 
-                    : "Enter the code sent to your email and your new password"}
+                    ? "Enter your email address to receive a verification code." 
+                    : "Enter the code sent to your email and your new password."}
                 </p>
               </div>
 
@@ -212,7 +314,7 @@ export default function Home() {
                 )}
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-gray-400">Email Address</label>
+                  <label className="text-11 font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Email Address</label>
                   <Input
                     type="email"
                     required
@@ -226,7 +328,7 @@ export default function Home() {
                 {forgotStep === 2 && (
                   <>
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-gray-400">Verification Code</label>
+                      <label className="text-11 font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Verification Code</label>
                       <Input
                         type="text"
                         required
@@ -238,7 +340,7 @@ export default function Home() {
                     </div>
 
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-gray-400">New Password</label>
+                      <label className="text-11 font-bold text-muted-foreground uppercase tracking-wider mb-1 block">New Password</label>
                       <div className="relative">
                         <Input
                           type={showPassword ? "text" : "password"}
@@ -251,7 +353,7 @@ export default function Home() {
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors p-1"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
                         >
                           {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                         </button>
@@ -278,7 +380,7 @@ export default function Home() {
                     setForgotStep(1);
                     setSimulatedCode("");
                   }}
-                  className="text-xs text-purple-400 hover:underline font-medium"
+                  className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-bold cursor-pointer"
                 >
                   Back to login
                 </button>
@@ -293,8 +395,8 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setPortalType("candidate")}
-                    className={`flex-1 text-center py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
-                      portalType === "candidate" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"
+                    className={`flex-1 text-center py-2.5 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer ${
+                      portalType === "candidate" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     Candidate Portal
@@ -302,8 +404,8 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setPortalType("admin")}
-                    className={`flex-1 text-center py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
-                      portalType === "admin" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"
+                    className={`flex-1 text-center py-2.5 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer ${
+                      portalType === "admin" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     Recruiter Admin
@@ -312,13 +414,13 @@ export default function Home() {
               )}
 
               <div className="mb-8">
-                <h2 className="text-2xl font-bold text-white mb-2">
+                <h2 className="text-2xl font-extrabold text-foreground tracking-tight mb-2">
                   {isLogin ? "Welcome back" : "Create candidate profile"}
                 </h2>
-                <p className="text-sm text-gray-400">
+                <p className="text-xs font-semibold text-muted-foreground leading-relaxed">
                   {isLogin 
-                    ? "Enter your credentials to enter the VidyamargAI OS portal" 
-                    : `Join the platform as a ${portalType === "admin" ? "Recruiting Administrator" : "Job Seeking Candidate"}`}
+                    ? "Enter your credentials to enter the VidyamargAI OS portal." 
+                    : `Join the platform as a ${portalType === "admin" ? "Recruiting Administrator." : "Job Seeking Candidate."}`}
                 </p>
               </div>
 
@@ -331,7 +433,7 @@ export default function Home() {
 
                 {!isLogin && (
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-gray-400">Full Name</label>
+                    <label className="text-11 font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Full Name</label>
                     <Input
                       type="text"
                       required
@@ -343,7 +445,7 @@ export default function Home() {
                 )}
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-gray-400">Email Address</label>
+                  <label className="text-11 font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Email Address</label>
                   <Input
                     type="email"
                     required
@@ -355,7 +457,7 @@ export default function Home() {
 
                 <div className="flex flex-col gap-1.5">
                   <div className="flex justify-between items-center">
-                    <label className="text-xs font-semibold text-gray-400">Security Password</label>
+                    <label className="text-11 font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Security Password</label>
                     {isLogin && (
                       <button
                         type="button"
@@ -365,7 +467,7 @@ export default function Home() {
                           setForgotStep(1);
                           setSimulatedCode("");
                         }}
-                        className="text-10 text-purple-400 hover:underline font-medium"
+                        className="text-10 text-purple-600 dark:text-purple-400 hover:underline font-bold cursor-pointer"
                       >
                         Forgot password?
                       </button>
@@ -383,7 +485,7 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors p-1"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1 cursor-pointer"
                     >
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -400,13 +502,13 @@ export default function Home() {
                 </Button>
               </form>
 
-              <div className="mt-8 text-center">
+              <div className="mt-8 text-center border-t border-border pt-6">
                 <button
                   onClick={() => {
                     setError("");
                     setIsLogin(!isLogin);
                   }}
-                  className="text-xs text-purple-400 hover:underline font-medium"
+                  className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-bold cursor-pointer"
                 >
                   {isLogin ? "New to VidyamargAI? Setup an account" : "Already registered? Login here"}
                 </button>
@@ -414,14 +516,14 @@ export default function Home() {
             </div>
           )}
         </div>
-      </div>
 
-      {/* Mobile Copyright Footer */}
-      <footer className="md:hidden w-full text-center py-6 border-t border-gray-900 bg-card/50 relative z-10 mt-auto">
-        <p className="text-xs text-gray-500 font-light">
-          © {new Date().getFullYear()} VidyamargAI Tech Systems. All rights secured.
-        </p>
-      </footer>
+        {/* Bottom Copyright visible ONLY on mobile */}
+        <footer className="md:hidden w-full text-center py-4 mt-8 flex-shrink-0">
+          <p className="text-xs text-muted-foreground font-light">
+            © {new Date().getFullYear()} VidyamargAI Tech Systems. All rights secured.
+          </p>
+        </footer>
+      </div>
     </main>
   );
 }
