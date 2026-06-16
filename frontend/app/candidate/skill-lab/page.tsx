@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { apiService } from "@/services/api";
 import { useAuthStore } from "@/store/authStore";
 import { 
-  Search
+  GraduationCap
 } from "lucide-react";
 
 import ExploreCourses from "./components/ExploreCourses";
@@ -419,27 +419,24 @@ export default function SkillLab() {
 
   const isAiMentor = activeView === "ai-mentor";
 
-  const showSearchBarStats = activeView === "explore" || activeView === "my-learning" || activeView === "certificates";
-
   return (
-    <div className={`w-full bg-slate-50 text-slate-800 p-6 font-sans transition-colors duration-300 relative overflow-hidden flex flex-col ${
-      isAiMentor ? "h-screen pb-4 gap-4 dark:bg-black dark:text-foreground" : "min-h-screen gap-6 dark:bg-slate-950 dark:text-slate-100"
+    <div className={`w-full bg-background text-foreground p-4 sm:p-6 font-sans transition-colors duration-300 relative overflow-hidden flex flex-col ${
+      isAiMentor ? "h-screen pb-4 gap-4" : "min-h-screen gap-5"
     }`}>
-      
-      {/* Ambient glow decoration */}
-      <div className="absolute top-minus-10-pct right-10-pct w-35-pct h-35-pct bg-indigo-500/10 rounded-full blur-140 pointer-events-none" />
-      <div className="absolute bottom-10-pct left-10-pct w-35-pct h-35-pct bg-teal-500/5 rounded-full blur-120 pointer-events-none" />
 
-      {/* Header title */}
-      <div className="relative z-10 w-full pb-2 flex flex-col md:flex-row md:items-end md:justify-between gap-4 shrink-0">
+      {/* Header */}
+      <div className="relative z-10 w-full flex items-center gap-3 shrink-0">
+        <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shrink-0">
+          <GraduationCap size={22} />
+        </div>
         <div>
-          <h1 className="text-4xl md:text-5xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">Skills Lab</h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-semibold tracking-wide uppercase">LEARN • TEST • AI INTERVIEW • GET CERTIFIED</p>
+          <h1 className="text-xl font-bold text-foreground">Skill Lab</h1>
+          <p className="text-xs text-muted-foreground font-medium">Learn · Test · AI Interview · Get Certified</p>
         </div>
       </div>
 
-      {/* Persistent Navigation Tabs Directly Under Heading */}
-      <div className="relative z-10 flex items-center gap-7 border-b border-slate-200 dark:border-border/80 w-full shrink-0">
+      {/* Navigation Tabs */}
+      <div className="relative z-10 flex items-center gap-6 border-b border-border w-full shrink-0 overflow-x-auto scrollbar-hide">
         {[
           { id: "explore", label: "Explore Courses" },
           { id: "my-learning", label: "My Learning" },
@@ -460,11 +457,14 @@ export default function SkillLab() {
                   setShowAllCourses(false);
                 }
               }}
-              className={`text-xs font-bold pb-2.5 border-b-2 transition-all cursor-pointer ${
+              className={`text-xs font-bold pb-2.5 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
                 active 
-                  ? "border-indigo-650 text-indigo-600 dark:border-indigo-500 dark:text-indigo-400 font-extrabold" 
-                  : "border-transparent text-slate-505 hover:text-slate-800 dark:hover:text-slate-200"
+                  ? "border-primary text-primary" 
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
+              aria-label={tab.label}
+              aria-selected={active}
+              role="tab"
             >
               {tab.label}
             </button>
@@ -472,57 +472,7 @@ export default function SkillLab() {
         })}
       </div>
 
-      <div className={`relative z-10 flex flex-col w-full ${isAiMentor ? "flex-1 min-h-0 gap-4" : "gap-6"}`}>
-        {showSearchBarStats && (
-          <div className="flex flex-col gap-5 w-full">
-            
-
-
-            {/* Search bar row */}
-            <div className="flex flex-col sm:flex-row gap-3 items-center w-full mt-1">
-              <div className="relative flex-1 w-full flex items-center">
-                <Search size={16} className="absolute left-4 text-slate-400 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Search courses, mentors, skills..."
-                  value={courseSearchQuery}
-                  onChange={(e) => {
-                    setCourseSearchQuery(e.target.value);
-                    if (activeView !== "explore") {
-                      setActiveView("explore");
-                      setShowAllCourses(true);
-                    }
-                  }}
-                  className="w-full bg-white dark:bg-card border border-slate-200 dark:border-border/80 rounded-xl pl-11 pr-5 py-3.5 text-xs focus:outline-none focus:border-indigo-500 text-slate-900 dark:text-white shadow-sm transition-all animate-fade-in"
-                />
-              </div>
-              <div className="flex gap-2 w-full sm:w-auto shrink-0">
-                <button 
-                  onClick={() => {
-                    if (activeView !== "explore") {
-                      setActiveView("explore");
-                      setShowAllCourses(true);
-                    }
-                  }}
-                  className="px-5 py-3.5 bg-black dark:bg-white text-white dark:text-black font-semibold text-xs rounded-xl hover:opacity-90 transition-all cursor-pointer shadow-sm w-full sm:w-auto"
-                >
-                  Search
-                </button>
-                <button 
-                  onClick={() => {
-                    if (activeView !== "explore") {
-                      setActiveView("explore");
-                      setShowAllCourses(true);
-                    }
-                  }}
-                  className="px-4 py-3.5 bg-white dark:bg-card border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-muted-foreground font-semibold text-xs rounded-xl hover:bg-slate-50 dark:hover:bg-muted transition-all cursor-pointer shadow-sm flex items-center justify-center gap-1.5"
-                >
-                  <span>Filter</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+      <div className={`relative z-10 flex flex-col w-full ${isAiMentor ? "flex-1 min-h-0 gap-4" : "gap-5"}`}>
 
         {/* Tab View components rendering */}
         {(activeView === "explore" || activeView === "course-details") && (

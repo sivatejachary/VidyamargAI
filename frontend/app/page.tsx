@@ -163,12 +163,12 @@ export default function Home() {
       <div className="absolute bottom-[-10%] right-1/3 w-1/2 h-1/2 bg-indigo-600/10 rounded-full blur-120 pointer-events-none z-0" />
 
       {/* LEFT COLUMN: HERO PANEL (Visible on lg and up) */}
-      <div className="hidden lg:flex auth-hero-panel bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white flex-col justify-between p-8 xl:p-12 relative overflow-hidden border-r border-slate-900 shrink-0 h-full lg:h-screen">
+      <div className="hidden lg:flex auth-hero-panel bg-gradient-to-br from-slate-50 via-white to-slate-100 text-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950 dark:text-white flex-col justify-between p-8 xl:p-12 relative overflow-hidden border-r border-slate-200 dark:border-slate-900 shrink-0 h-full lg:h-screen">
         {/* Background Grid Pattern */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-40 pointer-events-none" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-40 dark:opacity-40 pointer-events-none" />
         
         {/* Glow behind dashboard mockup */}
-        <div className="absolute top-2/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-indigo-500/15 rounded-full blur-120 pointer-events-none" />
+        <div className="absolute top-2/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-indigo-500/8 dark:bg-indigo-500/15 rounded-full blur-120 pointer-events-none" />
 
         {/* Top: Logo Branding */}
         <div className="flex items-center gap-3 relative z-10">
@@ -181,70 +181,70 @@ export default function Home() {
           </div>
           <div>
             <div className="flex items-baseline gap-0.5">
-              <span className="text-white font-extrabold text-xl tracking-tight leading-none">Vidyamarg</span>
-              <span className="text-blue-400 font-extrabold text-xl tracking-tight leading-none italic">AI</span>
+              <span className="text-slate-900 dark:text-white font-extrabold text-xl tracking-tight leading-none">Vidyamarg</span>
+              <span className="text-blue-600 dark:text-blue-400 font-extrabold text-xl tracking-tight leading-none italic">AI</span>
             </div>
-            <span className="block text-9 text-indigo-400 font-bold tracking-widest uppercase mt-1">Enterprise Recruiting OS</span>
+            <span className="block text-9 text-indigo-600 dark:text-indigo-400 font-bold tracking-widest uppercase mt-1">Enterprise Recruiting OS</span>
           </div>
         </div>
 
         {/* Center: Headline & Premium Live Mockup Dashboard */}
         <div className="my-auto flex flex-col gap-6 lg:gap-5 xl:gap-8 relative z-10">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-semibold mb-4 lg:mb-3 xl:mb-5">
-              <Sparkles size={13} className="animate-pulse text-purple-400" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200/60 text-indigo-600 dark:bg-purple-500/10 dark:border-purple-500/20 dark:text-purple-300 text-xs font-semibold mb-4 lg:mb-3 xl:mb-5">
+              <Sparkles size={13} className="animate-pulse text-indigo-500 dark:text-purple-400" />
               <span>Introducing Tush AI Recruiter v2</span>
             </div>
-            <h1 className="text-3xl lg:text-4xl xl:text-5xl font-black text-white leading-[1.12] tracking-tight">
-              The Autonomous <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-indigo-300 to-blue-400">
+            <h1 className="text-3xl lg:text-4xl xl:text-5xl font-black leading-[1.12] tracking-tight">
+              <span className="text-slate-900 dark:text-white">The Autonomous</span> <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 dark:from-purple-400 dark:via-indigo-300 dark:to-blue-400">
                 Recruitment OS
               </span>
             </h1>
-            <p className="text-slate-400 text-sm leading-relaxed mt-3 lg:mt-2 xl:mt-4 max-w-md">
-              VidyamargAI coordinates assessments, proctors exams, conducts interviews with <strong className="text-slate-200">Tush AI</strong>, and streamlines full candidate pipelines.
+            <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed mt-3 lg:mt-2 xl:mt-4 max-w-md">
+              VidyamargAI coordinates assessments, proctors exams, conducts interviews with <strong className="text-slate-700 dark:text-slate-200">Tush AI</strong>, and streamlines full candidate pipelines.
             </p>
           </div>
 
-          {/* Premium Glass Mockup */}
-          <div className="glass-panel p-4 lg:p-4 xl:p-5 rounded-2xl border border-slate-800 bg-slate-900/40 shadow-2xl relative w-full overflow-hidden max-w-md xl:max-w-lg">
+          {/* Premium Terminal Mockup — Light Theme: White card with enterprise colors / Dark Theme: Glass panel */}
+          <div className="bg-white border border-slate-200 shadow-terminal-light dark:bg-slate-900/40 dark:border-slate-800 dark:shadow-2xl dark:backdrop-blur-xl p-4 lg:p-4 xl:p-5 rounded-2xl relative w-full overflow-hidden max-w-md xl:max-w-lg">
             {/* Header bar mock */}
-            <div className="flex items-center justify-between border-b border-slate-800/80 pb-2 mb-3 lg:pb-2 lg:mb-2.5 xl:pb-3 xl:mb-4">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800/80 pb-2 mb-3 lg:pb-2 lg:mb-2.5 xl:pb-3 xl:mb-4">
               <div className="flex gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-500/60" />
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/60" />
+                <span className="w-2.5 h-2.5 rounded-full bg-red-400 dark:bg-red-500/60" />
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 dark:bg-amber-500/60" />
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 dark:bg-emerald-500/60" />
               </div>
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-950/50 border border-slate-800/60 rounded-lg text-9 font-mono text-slate-500">
-                <Terminal size={10} className="text-indigo-400" />
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-indigo-50 border border-indigo-200/60 dark:bg-slate-950/50 dark:border-slate-800/60 rounded-lg text-9 font-mono text-indigo-600 dark:text-slate-500">
+                <Terminal size={10} className="text-indigo-500 dark:text-indigo-400" />
                 <span>tush-ai-orchestrator.sh</span>
               </div>
             </div>
 
             {/* Dashboard Contents Mock */}
-            <div className="font-mono text-10 text-slate-400 flex flex-col gap-2 lg:gap-1.5 xl:gap-2.5 leading-relaxed">
+            <div className="font-mono text-10 text-slate-500 dark:text-slate-400 flex flex-col gap-2 lg:gap-1.5 xl:gap-2.5 leading-relaxed">
               <div className="flex gap-2">
-                <span className="text-indigo-400 font-bold shrink-0">[16:43:46]</span>
-                <span>Agent <span className="text-white font-bold">#01_screener</span> active: parsed candidate folder.</span>
+                <span className="text-blue-600 dark:text-indigo-400 font-bold shrink-0">[16:43:46]</span>
+                <span>Agent <span className="text-slate-900 dark:text-white font-bold">#01_screener</span> active: parsed candidate folder.</span>
               </div>
               <div className="flex gap-2">
-                <span className="text-indigo-400 font-bold shrink-0">[16:43:48]</span>
-                <span>Proctor status: <span className="text-emerald-400 font-bold">Active</span>. Checking face verification loop.</span>
+                <span className="text-blue-600 dark:text-indigo-400 font-bold shrink-0">[16:43:48]</span>
+                <span>Proctor status: <span className="text-emerald-600 dark:text-emerald-400 font-bold">Active</span>. Checking face verification loop.</span>
               </div>
               <div className="flex gap-2">
-                <span className="text-indigo-400 font-bold shrink-0">[16:43:52]</span>
-                <span>Tush AI Interviewer: <span className="text-purple-400 font-bold">speaking</span>, latency 82ms.</span>
+                <span className="text-blue-600 dark:text-indigo-400 font-bold shrink-0">[16:43:52]</span>
+                <span>Tush AI Interviewer: <span className="text-purple-600 dark:text-purple-400 font-bold">speaking</span>, latency 82ms.</span>
               </div>
-              <div className="flex gap-2 border-t border-slate-800/50 pt-2 lg:pt-1.5 xl:pt-2.5 mt-0.5">
-                <span className="text-emerald-400 font-bold">PIPELINE VERIFIED:</span>
-                <span className="text-white">Liam Smith matched 96% with position terms.</span>
+              <div className="flex gap-2 border-t border-slate-200/80 dark:border-slate-800/50 pt-2 lg:pt-1.5 xl:pt-2.5 mt-0.5">
+                <span className="text-emerald-600 dark:text-emerald-400 font-bold">PIPELINE VERIFIED:</span>
+                <span className="text-slate-900 dark:text-white">Liam Smith matched 96% with position terms.</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Bottom: Footer */}
-        <p className="text-xs text-slate-600 font-light relative z-10 mt-4">
+        <p className="text-xs text-slate-400 dark:text-slate-600 font-light relative z-10 mt-4">
           © {new Date().getFullYear()} VidyamargAI Tech Systems. All rights secured.
         </p>
       </div>
