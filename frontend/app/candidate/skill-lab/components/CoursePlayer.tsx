@@ -275,6 +275,28 @@ export default function CoursePlayer({
     setNotepadText("");
   };
 
+  const handleVideoEnded = async () => {
+    try {
+      if (currentLesson) {
+        await apiService.completeLesson(currentLesson.id);
+        await fetchCurriculum(selectedCourse.id, currentLesson.id);
+        await loadEnrollments();
+        await loadData();
+        
+        const flat: any[] = [];
+        curriculum.sections?.forEach((s: any) => s.lessons?.forEach((l: any) => flat.push(l)));
+        const idx = flat.findIndex(l => l.id === currentLesson.id);
+        if (idx !== -1 && idx < flat.length - 1) {
+          setCurrentLesson(flat[idx + 1]);
+          setQuizSubmitted(false);
+          setQuizAnswers({});
+        }
+      }
+    } catch (err) {
+      console.error("Failed to complete lesson on video end:", err);
+    }
+  };
+
   const getYoutubeVideoId = (url: string) => {
     if (!url) return null;
     let regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -324,22 +346,16 @@ export default function CoursePlayer({
                 </div>
                 
                 <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black shadow-inner border border-slate-200 dark:border-slate-800 relative group mt-1">
-                  {getYoutubeVideoId(currentLesson.video_url) ? (
-                    <iframe
-                      width="100%"
-                      height="100%"
-                      src={`https://www.youtube.com/embed/${getYoutubeVideoId(currentLesson.video_url)}`}
-                      title={currentLesson.title}
-                      frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowFullScreen
-                      className="w-full h-full"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs font-bold">
-                      No video URL configured.
-                    </div>
-                  )}
+                  <video
+                    src={
+                      currentLesson.video_url && !currentLesson.video_url.includes("youtube.com") && !currentLesson.video_url.includes("youtu.be")
+                        ? currentLesson.video_url
+                        : "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+                    }
+                    controls
+                    onEnded={handleVideoEnded}
+                    className="w-full h-full"
+                  />
                 </div>
               </div>
             ) : currentLesson.type === "pdf" ? (
@@ -847,7 +863,7 @@ export default function CoursePlayer({
               </div>
 
               <div className="flex items-center gap-3">
-                {(currentLesson.type === "video" || currentLesson.type === "pdf") && (
+                {currentLesson.type === "pdf" && (
                   <>
                     <button
                       onClick={async () => {
