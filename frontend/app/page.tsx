@@ -4,7 +4,10 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { apiService } from "@/services/api";
-import { Sparkles, Terminal, Shield, ArrowRight } from "lucide-react";
+import { Sparkles, Terminal, Shield, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Alert } from "@/components/ui/Alert";
 
 export default function Home() {
   const router = useRouter();
@@ -17,6 +20,7 @@ export default function Home() {
   const [fullName, setFullName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [forgotStep, setForgotStep] = useState(1); // 1 = Enter email, 2 = Enter code & new password
@@ -120,13 +124,13 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-[#07070b] flex flex-col md:flex-row relative overflow-hidden">
+    <main className="min-h-screen bg-[#07070b] flex flex-col-reverse md:flex-row relative overflow-hidden">
       {/* Decorative Blur Backgrounds */}
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none" />
 
       {/* Hero Intro Pane */}
-      <div className="flex-1 p-8 md:p-16 flex flex-col justify-between relative z-10">
+      <div className="flex-1 p-6 md:p-16 flex flex-col justify-between relative z-10">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shrink-0">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -144,20 +148,20 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="my-12 md:my-0 max-w-lg">
+        <div className="my-8 md:my-0 max-w-lg">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-950/40 border border-purple-800/30 text-purple-300 text-xs font-semibold mb-6">
             <Sparkles size={14} className="animate-pulse" />
             <span>Introducing Tush AI Recruiter</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-extrabold text-white leading-[1.15] mb-6">
+          <h1 className="text-3xl md:text-5xl font-extrabold text-white leading-[1.15] mb-6">
             The Autonomous <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-400">
               Recruitment Operating System
             </span>
           </h1>
-          <p className="text-gray-400 text-base leading-relaxed mb-8">
-            VidyamargAI streamlines screening, creates fully tailored technical assessments, runs proctored tests, conducts video interviews with 
-            <strong> Tush AI</strong>, and drafts hiring offers.
+          <p className="text-gray-400 text-sm md:text-base leading-relaxed mb-8">
+            VidyamargAI streamlines screening, creates fully tailored technical assessments, runs proctored tests, conducts video interviews with &nbsp;
+            <strong>Tush AI</strong>, and drafts hiring offers.
           </p>
 
           <div className="grid grid-cols-2 gap-4">
@@ -180,7 +184,7 @@ export default function Home() {
       </div>
 
       {/* Auth Panel Pane */}
-      <div className="w-full md:w-[480px] border-l border-gray-900 bg-[#0d0e15]/50 backdrop-blur-md p-8 md:p-12 flex flex-col justify-center relative z-10">
+      <div className="w-full md:w-[480px] border-l border-gray-900 bg-[#0d0e15]/50 backdrop-blur-md p-6 md:p-12 flex flex-col justify-center relative z-10">
         <div className="w-full max-w-md mx-auto">
           {isForgotPassword ? (
             /* Forgot Password Flow */
@@ -196,31 +200,26 @@ export default function Home() {
 
               <form onSubmit={handleForgotPasswordSubmit} className="flex flex-col gap-4">
                 {error && (
-                  <div className={`p-3 rounded-xl text-xs font-medium border ${
-                    error.includes("successfully") 
-                      ? "bg-emerald-950/20 border-emerald-800/40 text-emerald-400" 
-                      : "bg-red-950/20 border-red-800/40 text-red-400"
-                  }`}>
+                  <Alert variant={error.includes("successfully") ? "success" : "error"}>
                     {error}
-                  </div>
+                  </Alert>
                 )}
 
                 {simulatedCode && (
-                  <div className="p-3 rounded-xl text-xs font-medium border bg-blue-950/20 border-blue-800/40 text-blue-400">
+                  <Alert variant="success">
                     [Simulation] Verification code sent: <strong className="font-mono text-sm underline">{simulatedCode}</strong>
-                  </div>
+                  </Alert>
                 )}
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-semibold text-gray-400">Email Address</label>
-                  <input
+                  <Input
                     type="email"
                     required
                     disabled={forgotStep === 2}
                     placeholder="name@company.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="bg-[#12131e] border border-gray-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors disabled:opacity-50"
                   />
                 </div>
 
@@ -228,38 +227,47 @@ export default function Home() {
                   <>
                     <div className="flex flex-col gap-1.5">
                       <label className="text-xs font-semibold text-gray-400">Verification Code</label>
-                      <input
+                      <Input
                         type="text"
                         required
                         placeholder="Enter 6-digit code"
                         value={resetCode}
                         onChange={(e) => setResetCode(e.target.value)}
-                        className="bg-[#12131e] border border-gray-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors font-mono text-center tracking-widest"
+                        className="font-mono text-center tracking-widest"
                       />
                     </div>
 
                     <div className="flex flex-col gap-1.5">
                       <label className="text-xs font-semibold text-gray-400">New Password</label>
-                      <input
-                        type="password"
-                        required
-                        placeholder="••••••••"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        className="bg-[#12131e] border border-gray-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors"
-                      />
+                      <div className="relative">
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          required
+                          placeholder="••••••••"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors p-1"
+                        >
+                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
                     </div>
                   </>
                 )}
 
-                <button
+                <Button
                   type="submit"
-                  disabled={loading}
-                  className="w-full bg-purple-600 hover:bg-purple-500 text-white rounded-xl py-3 text-sm font-semibold flex items-center justify-center gap-2 mt-4 hover:shadow-lg hover:shadow-purple-500/25 transition-all duration-200 disabled:opacity-50"
+                  loading={loading}
+                  className="w-full mt-4"
                 >
-                  {loading ? "Processing..." : forgotStep === 1 ? "Send Verification Code" : "Update Password"}
+                  {forgotStep === 1 ? "Send Verification Code" : "Update Password"}
                   {!loading && <ArrowRight size={16} />}
-                </button>
+                </Button>
               </form>
 
               <div className="mt-8 text-center">
@@ -316,38 +324,32 @@ export default function Home() {
 
               <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 {error && (
-                  <div className={`p-3 rounded-xl text-xs font-medium border ${
-                    error.includes("successfully") 
-                      ? "bg-emerald-950/20 border-emerald-800/40 text-emerald-400" 
-                      : "bg-red-950/20 border-red-800/40 text-red-400"
-                  }`}>
+                  <Alert variant={error.includes("successfully") ? "success" : "error"}>
                     {error}
-                  </div>
+                  </Alert>
                 )}
 
                 {!isLogin && (
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-semibold text-gray-400">Full Name</label>
-                    <input
+                    <Input
                       type="text"
                       required
                       placeholder="e.g. Liam Smith"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      className="bg-[#12131e] border border-gray-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors"
                     />
                   </div>
                 )}
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-semibold text-gray-400">Email Address</label>
-                  <input
+                  <Input
                     type="email"
                     required
                     placeholder="name@company.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="bg-[#12131e] border border-gray-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors"
                   />
                 </div>
 
@@ -369,24 +371,33 @@ export default function Home() {
                       </button>
                     )}
                   </div>
-                  <input
-                    type="password"
-                    required
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="bg-[#12131e] border border-gray-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors"
-                  />
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors p-1"
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </div>
 
-                <button
+                <Button
                   type="submit"
-                  disabled={loading}
-                  className="w-full bg-purple-600 hover:bg-purple-500 text-white rounded-xl py-3 text-sm font-semibold flex items-center justify-center gap-2 mt-4 hover:shadow-lg hover:shadow-purple-500/25 transition-all duration-200 disabled:opacity-50"
+                  loading={loading}
+                  className="w-full mt-4"
                 >
-                  {loading ? "Authenticating..." : isLogin ? "Login" : "Register Profile"}
+                  {isLogin ? "Login" : "Register Profile"}
                   {!loading && <ArrowRight size={16} />}
-                </button>
+                </Button>
               </form>
 
               <div className="mt-8 text-center">

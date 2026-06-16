@@ -10,6 +10,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { Modal } from "@/components/ui/Modal";
+import { Alert } from "@/components/ui/Alert";
 
 // Import custom Job Agent subcomponents
 import AgentConsole from "@/components/AgentConsole";
@@ -285,43 +292,41 @@ export default function CandidateJobs() {
   const uniqueSources = ["All", ...Array.from(new Set(jobs.map(j => j.source)))].sort();
 
   return (
-    <div className="min-h-screen bg-slate-50/50 pb-20">
+    <div className="min-h-screen bg-background text-foreground pb-20">
       {/* Header */}
-      <div className="bg-white border-b border-slate-100 py-6 sticky top-0 z-20 shadow-sm">
+      <div className="bg-card border-b border-border py-6 sticky top-0 z-20 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-100">
               <Sparkles className="w-6 h-6 animate-pulse" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
                 Autonomous Recruiter Agent
               </h1>
-              <p className="text-xs text-slate-500 font-medium">
+              <p className="text-xs text-muted-foreground font-medium">
                 AI Agent active · Continuously searching, verifying, and matching live jobs
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <button
+            <Button
               onClick={triggerAgentRun}
-              disabled={agentStatus === "running"}
-              className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl shadow-md shadow-blue-100 transition duration-150 cursor-pointer"
+              loading={agentStatus === "running"}
             >
               <RefreshCw className={`w-4 h-4 ${agentStatus === "running" ? "animate-spin" : ""}`} />
-              Re-Run Job Agent
-            </button>
+              <span>Re-Run Job Agent</span>
+            </Button>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {error && (
-          <div className="bg-rose-50 border border-rose-100 text-rose-800 rounded-2xl p-4 flex items-center gap-3 text-sm">
-            <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
-            <span>{error}</span>
-          </div>
+          <Alert variant="error">
+            {error}
+          </Alert>
         )}
 
         {/* Section 1: AI Agent Console */}
@@ -368,10 +373,10 @@ export default function CandidateJobs() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, delay: idx * 0.1 }}
-                      className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm hover:shadow-md hover:border-blue-100 transition duration-200 relative overflow-hidden flex flex-col justify-between"
+                      className="bg-card text-card-foreground border border-border rounded-3xl p-6 shadow-xs hover:border-muted-foreground/30 hover:shadow-md transition-all duration-200 relative overflow-hidden flex flex-col justify-between"
                     >
                       {/* Match ribbon */}
-                      <div className={`absolute top-0 right-0 px-2.5 py-1 rounded-bl-lg border-l border-b border-slate-100 text-[10px] font-extrabold flex items-center gap-1 ${styles.bg} ${styles.text}`}>
+                      <div className={`absolute top-0 right-0 px-2.5 py-1 rounded-bl-lg border-l border-b border-border text-[10px] font-extrabold flex items-center gap-1 ${styles.bg} ${styles.text}`}>
                         <span className={`w-1 h-1 rounded-full ${styles.dot}`} />
                         {job.match_score}%
                       </div>
@@ -508,17 +513,16 @@ export default function CandidateJobs() {
             )}
 
             {/* Section 5: All Ranked Jobs */}
-            <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm space-y-6">
+            <Card className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-800">All Ranked Opportunities</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">Explore full ranked pipeline of matched listings</p>
+                  <h2 className="text-lg font-bold text-foreground">All Ranked Opportunities</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">Explore full ranked pipeline of matched listings</p>
                 </div>
-
-                <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
+                    <Input
                       type="text"
                       placeholder="Filter by keyword..."
                       value={searchQuery}
@@ -526,23 +530,23 @@ export default function CandidateJobs() {
                         setSearchQuery(e.target.value);
                         setCurrentPage(1);
                       }}
-                      className="pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 w-44"
+                      className="pl-9 w-44 py-2 text-xs"
                     />
                   </div>
-
+ 
                   {uniqueSources.length > 1 && (
-                    <select
+                    <Select
                       value={selectedSource}
                       onChange={(e) => {
                         setSelectedSource(e.target.value);
                         setCurrentPage(1);
                       }}
-                      className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none"
+                      className="py-2 text-xs w-32"
                     >
                       {uniqueSources.map(src => (
                         <option key={src} value={src}>{src}</option>
                       ))}
-                    </select>
+                    </Select>
                   )}
                 </div>
               </div>
@@ -558,9 +562,10 @@ export default function CandidateJobs() {
                       const styles = getMatchStyles(job.match_score);
                       const isSaved = savedJobIds.has(job.id);
                       return (
-                        <div
+                        <Card
                           key={job.id}
-                          className="p-5 bg-slate-50/50 rounded-xl border border-slate-100 hover:shadow-md hover:bg-white hover:border-blue-100 transition duration-200 flex flex-col justify-between"
+                          hoverEffect
+                          className="p-5 bg-slate-50/50 hover:bg-white hover:border-blue-100 transition duration-200 flex flex-col justify-between"
                         >
                           <div>
                             <div className="flex items-start justify-between gap-3 mb-3">
@@ -627,7 +632,7 @@ export default function CandidateJobs() {
                               </button>
                             </div>
                           </div>
-                        </div>
+                        </Card>
                       );
                     })}
                   </div>
@@ -659,58 +664,50 @@ export default function CandidateJobs() {
                   )}
                 </>
               )}
-            </div>
+            </Card>
           </>
         )}
       </div>
 
       {/* Description Modal */}
       {selectedJob && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl border border-slate-100 shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden"
-          >
-            {/* Header */}
-            <div className="p-6 border-b border-slate-100 flex items-start justify-between gap-4">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-slate-700 to-slate-900 flex items-center justify-center text-white text-base font-extrabold shrink-0">
-                  {selectedJob.company.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <h3 className="font-bold text-slate-800 text-base leading-tight">{selectedJob.title}</h3>
-                  <p className="text-slate-500 text-xs mt-1 font-semibold">{selectedJob.company}</p>
-                </div>
+        <Modal
+          isOpen={!!selectedJob}
+          onClose={() => setSelectedJob(null)}
+          title={selectedJob.title}
+          className="max-w-2xl max-h-[85vh]"
+        >
+          <div className="flex flex-col h-full -m-6">
+            {/* Modal Subheader info */}
+            <div className="px-6 py-4 border-b border-border bg-muted/20 flex items-center gap-3 shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-slate-700 to-slate-900 flex items-center justify-center text-white text-sm font-extrabold shrink-0">
+                {selectedJob.company.charAt(0).toUpperCase()}
               </div>
-              <button
-                onClick={() => setSelectedJob(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-50"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div>
+                <h4 className="font-bold text-foreground text-sm">{selectedJob.company}</h4>
+              </div>
             </div>
 
             {/* Scrollable Body */}
-            <div className="p-6 overflow-y-auto space-y-6 text-sm text-slate-600">
-              <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex items-start gap-3">
-                <Target className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+            <div className="p-6 overflow-y-auto space-y-6 text-sm text-muted-foreground flex-1">
+              <div className="bg-muted/30 rounded-xl p-4 border border-border flex items-start gap-3">
+                <Target className="w-5 h-5 text-primary shrink-0 mt-0.5" />
                 <div>
-                  <h4 className="text-xs font-bold text-slate-700">Detailed AI Match Summary</h4>
-                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">{selectedJob.reasoning}</p>
+                  <h4 className="text-xs font-bold text-foreground">Detailed AI Match Summary</h4>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{selectedJob.reasoning}</p>
                 </div>
               </div>
 
               {/* Source & Verification Badges in Modal */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100/80 flex flex-col gap-1.5">
-                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Source Platform</span>
+                <div className="bg-muted/20 rounded-xl p-3.5 border border-border flex flex-col gap-1.5">
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Source Platform</span>
                   <span className={`text-[11px] font-bold inline-flex items-center gap-1.5 px-3 py-1 border rounded-lg w-max ${getSourceBadgeStyles(selectedJob.source)}`}>
                     {selectedJob.source.toLowerCase().includes("telegram") ? "📢" : "💼"} {selectedJob.source}
                   </span>
                 </div>
-                <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100/80 flex flex-col gap-1.5">
-                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Landed Page Consistency</span>
+                <div className="bg-muted/20 rounded-xl p-3.5 border border-border flex flex-col gap-1.5">
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Landed Page Consistency</span>
                   <span className={`text-[11px] font-bold inline-flex items-center gap-1.5 px-3 py-1 border rounded-lg w-max ${getVerificationBadge(selectedJob.verification_score || 100, selectedJob.verification_status || "Fully Verified").bg}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${getVerificationBadge(selectedJob.verification_score || 100, selectedJob.verification_status || "Fully Verified").dot}`} />
                     {getVerificationBadge(selectedJob.verification_score || 100, selectedJob.verification_status || "Fully Verified").text} ({selectedJob.verification_score || 100}%)
@@ -719,12 +716,12 @@ export default function CandidateJobs() {
               </div>
 
               <div>
-                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">Job Description</h4>
+                <h4 className="text-xs font-bold text-foreground uppercase tracking-wider mb-2">Job Description</h4>
                 <div className="text-xs leading-relaxed whitespace-pre-wrap">{selectedJob.description}</div>
               </div>
 
               <div>
-                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">Target Skills</h4>
+                <h4 className="text-xs font-bold text-foreground uppercase tracking-wider mb-2">Target Skills</h4>
                 <div className="flex flex-wrap gap-1.5">
                   {selectedJob.skills.map(skill => {
                     const isMatched = selectedJob.matched_skills.includes(skill);
@@ -733,8 +730,8 @@ export default function CandidateJobs() {
                         key={skill}
                         className={`px-2.5 py-0.5 border rounded-md text-xs font-medium ${
                           isMatched
-                            ? "bg-emerald-50 border-emerald-100 text-emerald-700"
-                            : "bg-rose-50 border-rose-100 text-rose-700"
+                            ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-450"
+                            : "bg-destructive/10 border-destructive/20 text-destructive"
                         }`}
                       >
                         {skill} {isMatched ? "✓" : "✗"}
@@ -746,35 +743,34 @@ export default function CandidateJobs() {
             </div>
 
             {/* Footer */}
-            <div className="p-4 bg-slate-50/50 border-t border-slate-150 flex gap-3">
-              <button
+            <div className="p-4 bg-muted/10 border-t border-border flex gap-3 shrink-0">
+              <Button
                 onClick={() => {
                   handleSaveJob(selectedJob);
                   setSelectedJob(prev => prev ? { ...prev, is_saved: !savedJobIds.has(prev.id) } : null);
                 }}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold transition ${
-                  savedJobIds.has(selectedJob.id)
-                    ? "bg-blue-50 border-blue-250 text-blue-700"
-                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                }`}
+                variant={savedJobIds.has(selectedJob.id) ? "secondary" : "outline"}
+                className="flex items-center gap-2"
               >
                 {savedJobIds.has(selectedJob.id) ? <BookmarkCheck className="w-4.5 h-4.5" /> : <Bookmark className="w-4.5 h-4.5" />}
                 <span>{savedJobIds.has(selectedJob.id) ? "Saved" : "Save Job"}</span>
-              </button>
+              </Button>
 
               {selectedJob.apply_url && (
                 <a
                   href={selectedJob.apply_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition"
+                  className="flex-1"
                 >
-                  Apply Directly <ArrowUpRight className="w-4 h-4" />
+                  <Button className="w-full flex items-center justify-center gap-1.5">
+                    Apply Directly <ArrowUpRight className="w-4 h-4" />
+                  </Button>
                 </a>
               )}
             </div>
-          </motion.div>
-        </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

@@ -11,6 +11,14 @@ import {
   Briefcase, MapPin, Mail, Phone, Camera, Code, Folder, Trophy,
   Globe, Languages, User
 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { Drawer } from "@/components/ui/Drawer";
+import { Modal } from "@/components/ui/Modal";
+import { Alert } from "@/components/ui/Alert";
+import { ProgressBar, ProgressRing } from "@/components/ui/Progress";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 interface ResumeVersion {
   id: number;
@@ -35,6 +43,8 @@ export default function ResumeBuilder() {
   const [analysisData, setAnalysisData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [uploadStep, setUploadStep] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
@@ -173,19 +183,47 @@ export default function ResumeBuilder() {
     }
 
     setUploading(true);
+    setUploadStep(1);
+    setUploadProgress(5);
     setErrorMsg("");
     setSuccessMsg("");
 
+    // Simulate progress while uploading and parsing
+    const progressInterval = setInterval(() => {
+      setUploadProgress((prev) => {
+        if (prev < 90) {
+          const next = prev + Math.floor(Math.random() * 5) + 2;
+          // Dynamically adjust steps based on progress
+          if (next >= 20 && next < 40) setUploadStep(2);
+          else if (next >= 40 && next < 65) setUploadStep(3);
+          else if (next >= 65 && next < 85) setUploadStep(4);
+          else if (next >= 85) setUploadStep(5);
+          return Math.min(next, 92);
+        }
+        return prev;
+      });
+    }, 250);
+
     try {
       await apiService.uploadResume(selectedFile);
+      clearInterval(progressInterval);
+      setUploadStep(5);
+      setUploadProgress(100);
+      
+      // Let the user see the 100% completion for a brief moment
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      
       setSuccessMsg("Resume uploaded and parsed successfully! AI scores are updating...");
       setTimeout(() => setSuccessMsg(""), 5000);
       await loadDashboardData();
     } catch (err: any) {
+      clearInterval(progressInterval);
       setErrorMsg(err.message || "Resume upload failed.");
       setTimeout(() => setErrorMsg(""), 5000);
     } finally {
       setUploading(false);
+      setUploadProgress(0);
+      setUploadStep(0);
     }
   };
 
@@ -542,7 +580,7 @@ export default function ResumeBuilder() {
   }
 
   return (
-    <div className="flex-1 min-h-screen bg-slate-50/50 dark:bg-[#09090b] text-slate-800 dark:text-slate-100 p-6 md:p-8 font-sans transition-colors duration-300">
+    <div className="flex-1 min-h-screen bg-background text-foreground p-6 md:p-8 font-sans transition-colors duration-300">
       
       {/* Hidden file input */}
       <input
@@ -553,21 +591,85 @@ export default function ResumeBuilder() {
         className="hidden"
       />
 
+      {/* Upload Stepper Modal */}
+      {uploading && (
+        <Modal
+          isOpen={uploading}
+          onClose={() => {}}
+          title="Processing Resume"
+          className="max-w-md"
+        >
+          <div className="flex flex-col gap-6 py-2">
+            <div className="space-y-1.5 text-center">
+              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                Ingestion Pipeline
+              </span>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Tush AI is analyzing your CV and extracting structural data.
+              </p>
+            </div>
+
+            {/* Stepper Steps */}
+            <div className="space-y-4 my-2">
+              {[
+                { step: 1, label: "Uploading Document" },
+                { step: 2, label: "Extracting Bio & Location" },
+                { step: 3, label: "Parsing Skills & Experience" },
+                { step: 4, label: "Analyzing Quality Metrics" },
+                { step: 5, label: "Syncing Profile Data" }
+              ].map((s) => {
+                const isCompleted = uploadStep > s.step;
+                const isActive = uploadStep === s.step;
+                return (
+                  <div key={s.step} className="flex items-center gap-3.5">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 border transition-all ${
+                      isCompleted 
+                        ? "bg-success border-success text-success-foreground"
+                        : isActive
+                          ? "bg-primary border-primary text-primary-foreground animate-pulse"
+                          : "border-border text-muted-foreground"
+                    }`}>
+                      {isCompleted ? <Check size={12} strokeWidth={3} /> : s.step}
+                    </div>
+                    <span className={`text-xs font-semibold ${
+                      isActive 
+                        ? "text-foreground font-bold" 
+                        : isCompleted 
+                          ? "text-muted-foreground line-through opacity-75"
+                          : "text-muted-foreground"
+                    }`}>
+                      {s.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Progress Bar */}
+            <div className="space-y-2 mt-2">
+              <div className="flex justify-between items-center text-xs font-semibold">
+                <span className="text-muted-foreground">Overall progress</span>
+                <span className="text-foreground">{uploadProgress}%</span>
+              </div>
+              <ProgressBar value={uploadProgress} />
+            </div>
+          </div>
+        </Modal>
+      )}
+
       <div className="max-w-[1440px] mx-auto space-y-6">
         
         {/* Status Alerts */}
         {successMsg && (
-          <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-250 dark:border-emerald-800/40 text-emerald-800 dark:text-emerald-400 text-xs font-semibold flex items-center gap-2 animate-fadeIn">
-            <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
-            <span>{successMsg}</span>
-          </div>
+          <Alert variant="success">
+            {successMsg}
+          </Alert>
         )}
 
         {errorMsg && (
-          <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/20 border border-red-250 dark:border-red-800/40 text-red-800 dark:text-red-400 text-xs font-semibold flex items-center gap-2 animate-fadeIn">
-            <AlertTriangle size={16} className="text-red-500 shrink-0" />
-            <span>{errorMsg}</span>
-          </div>
+          <Alert variant="error">
+            {errorMsg}
+          </Alert>
         )}
 
         {/* 1. Header Area */}
@@ -579,20 +681,24 @@ export default function ResumeBuilder() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <button 
+            <Button 
+              variant="outline"
+              size="sm"
               onClick={handleDownloadLatestResume}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 transition-all shadow-sm shrink-0 cursor-pointer"
+              className="shrink-0"
             >
               <Download size={14} />
               <span>Download Resume</span>
-            </button>
-            <button 
+            </Button>
+            <Button 
+              variant="outline"
+              size="sm"
               onClick={() => setIsEditOpen(true)}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 transition-all shadow-sm shrink-0 cursor-pointer"
+              className="shrink-0"
             >
               <Eye size={14} />
               <span>View Profile Details</span>
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -603,101 +709,70 @@ export default function ResumeBuilder() {
           <div className="lg:col-span-2 space-y-6">
             
             {/* MOBILE ONLY VERSION OF THE PROFILE CARD (Shown on screens < md) */}
-            <div className="block md:hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 p-4 shadow-sm">
-              <div className="grid grid-cols-2 gap-2 relative">
-                
-                {/* Profile Details Column */}
-                <div className="space-y-3 pr-2 border-r border-slate-200/60 dark:border-slate-800/80">
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-405 dark:text-slate-500 block">
-                    Profile Details
-                  </span>
-                  
-                  <div className="flex flex-row items-center gap-2">
-                    <div className="relative shrink-0">
-                      <div className="w-12 h-12 rounded-full overflow-hidden border border-slate-200/60 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-800 dark:text-slate-200 text-lg font-black shadow-sm">
-                        {avatarLetter}
-                      </div>
-                      <button 
-                        onClick={triggerUpload}
-                        disabled={uploading}
-                        className="absolute bottom-0 right-0 w-5 h-5 rounded-full bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-350 flex items-center justify-center border border-slate-200 dark:border-slate-700 hover:bg-slate-50 transition-all shadow-sm cursor-pointer"
-                        title="Upload Resume to Update Profile"
-                      >
-                        {uploading ? <Loader2 size={9} className="animate-spin" /> : <Upload size={9} />}
-                      </button>
+            <Card className="block md:hidden border border-border bg-card p-4 shadow-sm space-y-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="relative shrink-0">
+                    <div className="w-14 h-14 rounded-full overflow-hidden border border-border bg-muted flex items-center justify-center text-foreground text-xl font-black shadow-sm">
+                      {avatarLetter}
                     </div>
-                    
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-col items-start gap-0.5">
-                        <h2 className="text-xs font-black text-slate-900 dark:text-white truncate max-w-[80px]" title={displayName || undefined}>
-                          {displayName}
-                        </h2>
-                        <span className="inline-flex px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-[8px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/40">
-                          Verified
-                        </span>
-                      </div>
-                    </div>
+                    <button 
+                      onClick={triggerUpload}
+                      disabled={uploading}
+                      className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-background border border-border text-muted-foreground flex items-center justify-center hover:bg-muted transition-all shadow-sm cursor-pointer"
+                      title="Upload Resume to Update Profile"
+                    >
+                      {uploading ? <Loader2 size={10} className="animate-spin" /> : <Upload size={10} />}
+                    </button>
                   </div>
-
-                  <div className="space-y-1 text-[9px] font-semibold text-slate-655 dark:text-slate-400">
-                    <div className="flex items-center gap-1.5">
-                      <User size={11} className="text-slate-400 shrink-0" />
-                      <span className="truncate max-w-[130px]">{getFirstRole() || "Not specified"}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <MapPin size={11} className="text-slate-400 shrink-0" />
-                      <span className="truncate max-w-[130px]">{profile?.address || "Not specified"}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Mail size={11} className="text-slate-400 shrink-0" />
-                      <span className="truncate max-w-[130px]" title={displayEmail}>{displayEmail}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Phone size={11} className="text-slate-400 shrink-0" />
-                      <span className="truncate max-w-[130px]">{profile?.phone || "Not specified"}</span>
+                  
+                  <div className="min-w-0">
+                    <div className="flex flex-col items-start gap-1">
+                      <h2 className="text-sm font-black text-foreground truncate max-w-[120px]" title={displayName || undefined}>
+                        {displayName}
+                      </h2>
+                      <Badge variant="success">Verified</Badge>
                     </div>
                   </div>
                 </div>
 
-                {/* Profile Completion Column */}
-                <div className="space-y-3 pl-2 flex flex-col items-center justify-start text-center">
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-405 dark:text-slate-500 self-start block text-left w-full">
-                    Profile Completion
-                  </span>
-                  
-                  <div className="relative flex items-center justify-center my-1 shrink-0">
-                    <svg width="76" height="76" className="transform -rotate-90">
-                      <circle cx="38" cy="38" r="32" fill="none" strokeWidth="5" className="text-slate-100 dark:text-slate-800" stroke="currentColor" />
-                      <circle cx="38" cy="38" r="32" fill="none" strokeWidth="5" strokeDasharray={2 * Math.PI * 32} strokeDashoffset={2 * Math.PI * 32 - (completionScore / 100) * (2 * Math.PI * 32)} strokeLinecap="round" stroke="#10b981" className="transition-all duration-700 ease-out" />
-                    </svg>
-                    <div className="absolute text-base font-black text-slate-900 dark:text-white">{completionScore}%</div>
-                  </div>
-                  
-                  <div className="space-y-0.5">
-                    <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 block">
-                      {completionScore >= 75 ? "Good Progress!" : (completionScore > 0 ? "Started" : (resumeVersions.length > 0 ? "Resume Uploaded" : "No Resume Uploaded"))}
-                    </span>
-                    <p className="text-[9px] text-slate-505 dark:text-slate-400 leading-normal max-w-[130px] mx-auto">
-                      {resumeVersions.length > 0 
-                        ? "Improve details to get better job matches." 
-                        : "Upload your resume to improve your profile completion."}
-                    </p>
-                  </div>
-                </div>
+                <ProgressRing 
+                  value={completionScore} 
+                  size={72} 
+                  strokeWidth={5} 
+                />
+              </div>
 
+              <div className="space-y-1 text-xs font-semibold text-muted-foreground pt-2 border-t border-border">
+                <div className="flex items-center gap-2">
+                  <User size={12} className="text-muted-foreground shrink-0" />
+                  <span className="truncate">{getFirstRole() || "Not specified"}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <MapPin size={12} className="text-muted-foreground shrink-0" />
+                  <span className="truncate">{profile?.address || "Not specified"}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Mail size={12} className="text-muted-foreground shrink-0" />
+                  <span className="truncate" title={displayEmail}>{displayEmail}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Phone size={12} className="text-muted-foreground shrink-0" />
+                  <span className="truncate">{profile?.phone || "Not specified"}</span>
+                </div>
               </div>
 
               {/* Horizontal Divider Line */}
-              <div className="border-t border-slate-200/60 dark:border-slate-800/80 my-5" />
+              <div className="border-t border-border my-4" />
 
               {/* Missing Section */}
-              <div className="space-y-4">
-                <span className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+              <div className="space-y-3">
+                <span className="text-xs font-black text-muted-foreground uppercase tracking-wider block">
                   Missing ({100 - completionScore}%)
                 </span>
                 
                 {/* Mobile Missing Cards */}
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {missingItems.length > 0 ? (
                     missingItems.map((item, idx) => {
                       let IconComponent = Award;
@@ -709,59 +784,57 @@ export default function ResumeBuilder() {
                         <div 
                           key={idx} 
                           onClick={handleCompleteNow} 
-                          className="flex items-center justify-between p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                          className="flex items-center justify-between p-3 rounded-xl border border-border bg-background shadow-xs cursor-pointer hover:bg-muted transition-colors"
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/40 shrink-0">
-                              <IconComponent size={18} />
+                          <div className="flex items-center gap-2.5">
+                            <div className="p-1.5 rounded-lg bg-success/10 text-success border border-success/20 shrink-0">
+                              <IconComponent size={14} />
                             </div>
-                            <span className="text-sm font-semibold text-slate-850 dark:text-slate-200">{item}</span>
+                            <span className="text-xs font-semibold text-foreground">{item}</span>
                           </div>
                           
-                          <div className="flex items-center gap-2">
-                            <span className="px-2.5 py-0.5 rounded-full bg-red-50 dark:bg-red-950/30 text-[10px] font-bold text-red-500 dark:text-red-400 border border-red-100 dark:border-red-950/20">
-                              Missing
-                            </span>
-                            <ChevronRight size={16} className="text-slate-400" />
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant="destructive">Missing</Badge>
+                            <ChevronRight size={14} className="text-muted-foreground" />
                           </div>
                         </div>
                       );
                     })
                   ) : (
-                    <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-center text-xs text-emerald-600 dark:text-emerald-400 font-bold">
+                    <div className="p-3 rounded-xl border border-border bg-background text-center text-xs text-success font-bold">
                       All sections complete! ✓
                     </div>
                   )}
                 </div>
 
                 {/* Complete your profile box */}
-                <div className="p-5 rounded-2xl bg-emerald-50/20 dark:bg-slate-900/30 border border-emerald-100/50 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div className="flex items-center gap-4 text-left w-full sm:w-auto">
-                    <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-800 border border-emerald-100 dark:border-emerald-700 flex items-center justify-center shrink-0 shadow-sm text-emerald-600 dark:text-emerald-400">
-                      <FileText size={22} />
+                <div className="p-4 rounded-2xl bg-success/5 border border-success/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 text-left w-full sm:w-auto">
+                    <div className="w-10 h-10 rounded-xl bg-background border border-success/30 flex items-center justify-center shrink-0 shadow-xs text-success">
+                      <FileText size={18} />
                     </div>
                     <div className="min-w-0">
-                      <h4 className="text-sm font-black text-slate-900 dark:text-white">Complete your profile</h4>
-                      <p className="text-xs text-slate-550 dark:text-slate-400 mt-0.5 leading-relaxed">
-                        Add missing information to improve your profile and get better job opportunities.
+                      <h4 className="text-xs font-black text-foreground">Complete your profile</h4>
+                      <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
+                        Add missing details to get better job matches.
                       </p>
                     </div>
                   </div>
                   
-                  <button 
+                  <Button 
                     onClick={handleCompleteNow}
-                    className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#0e9f6e] hover:bg-emerald-700 text-xs font-black text-white transition-all shadow-sm shadow-emerald-500/10 cursor-pointer text-center shrink-0"
+                    size="sm"
+                    className="w-full sm:w-auto text-xs py-2 h-auto"
                   >
                     Update Profile
-                  </button>
+                  </Button>
                 </div>
                 
               </div>
-
-            </div>
+            </Card>
 
             {/* DESKTOP ONLY VERSION OF THE PROFILE CARD (Shown on screens >= md) */}
-            <div className="hidden md:grid grid-cols-1 md:grid-cols-2 gap-6 p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-855 shadow-sm">
+            <Card className="hidden md:grid grid-cols-1 md:grid-cols-2 gap-6">
               
               {/* Bio Column */}
               <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 md:border-r border-slate-155 dark:border-slate-800/80 md:pr-6">
@@ -852,10 +925,10 @@ export default function ResumeBuilder() {
                 </div>
               </div>
 
-            </div>
+            </Card>
 
             {/* Row 2: Profile Summary Grid (6 widgets) */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-855 rounded-3xl p-6 shadow-sm space-y-4">
+            <Card className="space-y-4">
               <h3 className="text-base font-black text-slate-900 dark:text-white">Profile Summary</h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 
@@ -944,13 +1017,13 @@ export default function ResumeBuilder() {
                 </div>
 
               </div>
-            </div>
+            </Card>
 
             {/* Row 3: Detailed Profile Overview + Top Skills side-by-side */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
               {/* Detailed Profile Overview */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-855 rounded-3xl p-6 shadow-sm flex flex-col">
+              <Card className="flex flex-col">
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-4 shrink-0">
                   <h3 className="text-base font-black text-slate-900 dark:text-white">Detailed Profile Overview</h3>
                   <button 
@@ -994,10 +1067,10 @@ export default function ResumeBuilder() {
                     );
                   })}
                 </div>
-              </div>
+              </Card>
 
               {/* Top Skills & Keywords */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-855 rounded-3xl p-6 shadow-sm flex flex-col gap-6">
+              <Card className="flex flex-col gap-6">
                 <div>
                   <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 block">Top Skills</h3>
                   <div className="flex flex-wrap gap-1.5">
@@ -1026,7 +1099,7 @@ export default function ResumeBuilder() {
                     )}
                   </div>
                 </div>
-              </div>
+              </Card>
 
             </div>
 
@@ -1036,7 +1109,7 @@ export default function ResumeBuilder() {
           <div className="space-y-6">
             
             {/* AI Insights Card */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-855 rounded-3xl p-6 shadow-sm">
+            <Card>
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
                 <h3 className="text-base font-black text-slate-900 dark:text-white">AI Insights</h3>
                 <button className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">View All</button>
@@ -1087,10 +1160,10 @@ export default function ResumeBuilder() {
                   </div>
                 </div>
               </div>
-            </div>
+            </Card>
 
             {/* AI Quality Score Card */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-855 rounded-3xl p-6 shadow-sm space-y-6">
+            <Card className="space-y-6">
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                 <h3 className="text-base font-black text-slate-900 dark:text-white">AI Quality Score</h3>
                 <button 
@@ -1156,10 +1229,10 @@ export default function ResumeBuilder() {
                 <Sparkles size={13} className="animate-pulse" />
                 <span>Improve with AI</span>
               </button>
-            </div>
+            </Card>
 
             {/* Resume Versions Card */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-855 rounded-3xl p-6 shadow-sm space-y-4">
+            <Card className="space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                 <h3 className="text-base font-black text-slate-900 dark:text-white">Resume Versions</h3>
                 <button className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">View All</button>
@@ -1235,7 +1308,7 @@ export default function ResumeBuilder() {
                   </>
                 )}
               </button>
-            </div>
+            </Card>
 
           </div>
 
@@ -1667,33 +1740,24 @@ export default function ResumeBuilder() {
       )}
       {/* 4. PDF Preview Modal */}
       {showPreviewModal && previewUrl && (
-        <div className="fixed inset-0 z-50 bg-black/50 dark:bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl w-full max-w-4xl h-[85vh] shadow-2xl flex flex-col overflow-hidden">
-            
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-150 dark:border-slate-800 px-6 py-4">
-              <div className="flex items-center gap-2">
-                <FileText size={16} className="text-indigo-505" />
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Resume Preview</h3>
-                <span className="text-[9px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded uppercase tracking-wider">PDF</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <a 
-                  href={`${typeof window !== "undefined" && window.location.hostname === "localhost" ? "http://127.0.0.1:8000" : `http://${window.location.hostname}:8000`}${previewUrl}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold text-slate-655 dark:text-slate-350 transition-colors"
-                >
-                  <ExternalLink size={12} />
-                  <span>Open in new tab</span>
-                </a>
-                <button 
-                  onClick={() => setShowPreviewModal(false)}
-                  className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
-                >
-                  <X size={18} />
-                </button>
-              </div>
+        <Modal
+          isOpen={showPreviewModal}
+          onClose={() => setShowPreviewModal(false)}
+          title="Resume Preview"
+          className="max-w-4xl h-[85vh]"
+        >
+          <div className="flex flex-col h-full -m-6">
+            {/* Action Bar inside Modal */}
+            <div className="flex justify-end p-4 border-b border-border shrink-0">
+              <a 
+                href={`${typeof window !== "undefined" && window.location.hostname === "localhost" ? "http://127.0.0.1:8000" : `http://${window.location.hostname}:8000`}${previewUrl}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border hover:bg-muted text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ExternalLink size={12} />
+                <span>Open in new tab</span>
+              </a>
             </div>
             
             {/* PDF Embed */}
@@ -1704,9 +1768,8 @@ export default function ResumeBuilder() {
                 title="Resume Preview"
               />
             </div>
-
           </div>
-        </div>
+        </Modal>
       )}
 
     </div>

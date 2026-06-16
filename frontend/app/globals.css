@@ -3,15 +3,35 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
+  --color-background: var(--app-bg);
+  --color-foreground: var(--app-text);
+  --color-card: var(--app-card);
+  --color-card-foreground: var(--app-text);
+  --color-border: var(--app-border);
+  --color-muted: var(--app-surface);
+  --color-muted-foreground: var(--app-text-muted);
+  
+  --color-primary: var(--brand-primary);
+  --color-primary-foreground: #FFFFFF;
+  --color-secondary: var(--app-surface);
+  --color-secondary-foreground: var(--app-text);
+  --color-destructive: #EF4444;
+  --color-destructive-foreground: #FFFFFF;
+  --color-success: #10B981;
+  --color-success-foreground: #FFFFFF;
+  --color-warning: #F59E0B;
+  --color-warning-foreground: #FFFFFF;
+  
+  --color-ring: var(--brand-primary);
+
+  /* Keep legacy variables for compatibility */
   --color-app-bg: var(--app-bg);
   --color-app-surface: var(--app-surface);
   --color-app-card: var(--app-card);
   --color-app-border: var(--app-border);
-
   --color-app-text: var(--app-text);
   --color-app-text-secondary: var(--app-text-secondary);
   --color-app-text-muted: var(--app-text-muted);
-
   --color-brand-primary: var(--brand-primary);
   --color-brand-secondary: #06B6D4;
   --color-brand-success: #10B981;
@@ -299,7 +319,7 @@ body {
 
   --app-text: #0A0A0A;
   --app-text-secondary: #262626;
-  --app-text-muted: #737373;
+  --app-text-muted: #4B5563;
 }
 
 /* ── Page & outer backgrounds ── */
@@ -417,12 +437,11 @@ body {
 .light-theme [class*="text-slate-100"],
 .light-theme [class*="text-slate-200"],
 .light-theme [class*="text-slate-300"] { color: #262626 !important; }
-
 .light-theme [class*="text-gray-400"],
 .light-theme [class*="text-gray-500"],
 .light-theme [class*="text-slate-400"],
 .light-theme [class*="text-slate-500"],
-.light-theme [class*="text-[#a9b2c3]"] { color: #737373 !important; }
+.light-theme [class*="text-[#a9b2c3]"] { color: #4B5563 !important; }
 
 /* ── Borders ── */
 .light-theme [class*="border-slate-800"],

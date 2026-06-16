@@ -133,6 +133,14 @@ export default function Sidebar({ portal }: SidebarProps) {
             <span className="text-blue-600 dark:text-blue-400 font-extrabold text-base tracking-tight italic">AI</span>
           </div>
         </div>
+
+        <button 
+          onClick={toggleTheme}
+          className="ml-auto text-app-text-muted hover:text-app-text p-2 rounded-lg hover:bg-app-bg transition-colors z-10"
+          title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+        >
+          {theme === "dark" ? <Moon size={20} className="text-slate-400" /> : <Sun size={20} className="text-amber-500" />}
+        </button>
       </header>
 
       {/* Mobile Drawer Navigation overlay */}
@@ -357,6 +365,36 @@ export default function Sidebar({ portal }: SidebarProps) {
           )}
         </div>
       </aside>
+
+      {/* Mobile Bottom Navigation Bar for Candidate */}
+      {portal === "candidate" && (
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-app-surface border-t border-app-border flex justify-around items-center h-16 px-2 w-full font-sans shadow-[0_-2px_10px_rgba(0,0,0,0.05)] dark:shadow-[0_-2px_10px_rgba(0,0,0,0.2)]">
+          {[
+            { name: "Home", href: "/candidate/resume", icon: FileText },
+            { name: "Jobs", href: "/candidate/jobs", icon: Briefcase },
+            { name: "Skill Lab", href: "/candidate/skill-lab", icon: Compass },
+            { name: "Ask Tush AI", href: "/candidate/chat", icon: Sparkles },
+            { name: "Profile", href: "/candidate/profile", icon: Users }
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = pathname === tab.href || (tab.href !== "/candidate/chat" && pathname.startsWith(tab.href));
+            return (
+              <Link
+                key={tab.name}
+                href={tab.href}
+                className={`flex flex-col items-center justify-center flex-1 h-full py-1 transition-all ${
+                  isActive
+                    ? "text-blue-600 dark:text-blue-400"
+                    : "text-app-text-muted hover:text-app-text"
+                }`}
+              >
+                <Icon size={20} className="mb-0.5 shrink-0" />
+                <span className="text-[10px] font-semibold tracking-tight leading-none">{tab.name}</span>
+              </Link>
+            );
+          })}
+        </nav>
+      )}
     </>
   );
 }

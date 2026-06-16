@@ -4,6 +4,14 @@ import { useEffect, useState } from "react";
 import { apiService } from "@/services/api";
 import { Award, FileText, X, MessageSquare, Folder, Download } from "lucide-react";
 import { useWebSockets } from "@/hooks/useWebSockets";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Textarea } from "@/components/ui/Textarea";
+import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { Alert } from "@/components/ui/Alert";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export default function AdminCandidates() {
   const [rankings, setRankings] = useState<any[]>([]);
@@ -258,18 +266,21 @@ export default function AdminCandidates() {
   };
 
   const getStatusBadge = (status: string) => {
-    const map: Record<string, { text: string; css: string }> = {
-      applied: { text: "Applied", css: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
-      screening: { text: "Screening", css: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" },
-      assessment: { text: "Assessment", css: "bg-purple-500/10 text-purple-400 border-purple-500/20" },
-      interview: { text: "Interview", css: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" },
-      ranking: { text: "Ranking", css: "bg-orange-500/10 text-orange-400 border-orange-500/20" },
-      recommendation: { text: "Hiring Report", css: "bg-teal-500/10 text-teal-400 border-teal-500/20" },
-      offer: { text: "Offer Active", css: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
-      onboarding: { text: "Onboarded", css: "bg-pink-500/10 text-pink-400 border-pink-500/20" },
-      rejected: { text: "Rejected", css: "bg-red-500/10 text-red-400 border-red-500/20" }
-    };
-    return map[status.toLowerCase()] || { text: status, css: "bg-gray-500/10 text-gray-400 border-gray-500/20" };
+    const s = status.toLowerCase();
+    let variant: "primary" | "secondary" | "success" | "warning" | "destructive" | "outline" = "secondary";
+    let text = status;
+
+    if (s === "applied") { variant = "primary"; text = "Applied"; }
+    else if (s === "screening") { variant = "warning"; text = "Screening"; }
+    else if (s === "assessment") { variant = "warning"; text = "Assessment"; }
+    else if (s === "interview") { variant = "primary"; text = "Interview"; }
+    else if (s === "ranking") { variant = "warning"; text = "Ranking"; }
+    else if (s === "recommendation") { variant = "success"; text = "Hiring Report"; }
+    else if (s === "offer") { variant = "success"; text = "Offer Active"; }
+    else if (s === "onboarding") { variant = "success"; text = "Onboarded"; }
+    else if (s === "rejected") { variant = "destructive"; text = "Rejected"; }
+
+    return <Badge variant={variant}>{text}</Badge>;
   };
 
   return (
@@ -286,7 +297,7 @@ export default function AdminCandidates() {
         
         {/* Candidates Table List */}
         <div className="lg:col-span-2 flex flex-col gap-4">
-          <div className="glass-panel rounded-2xl border border-gray-800 overflow-hidden bg-[#0c0d14]/40">
+          <Card className="overflow-hidden p-0 bg-[#0c0d14]/40">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-gray-400 border-collapse">
                 <thead className="bg-[#0f1019] text-gray-300 font-bold border-b border-gray-800 text-[10px] uppercase tracking-wider">
@@ -337,13 +348,13 @@ export default function AdminCandidates() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </Card>
         </div>
 
         {/* Detailed scorecard panel */}
         <div className="flex flex-col gap-6">
           {selectedRank ? (
-            <div className="glass-panel p-6 rounded-2xl border border-gray-800 bg-[#0d0e15]/40 flex flex-col gap-6 max-h-[85vh] overflow-y-auto">
+            <Card className="flex flex-col gap-6 max-h-[85vh] overflow-y-auto bg-[#0d0e15]/40">
               
               <div className="flex justify-between items-start border-b border-gray-800 pb-4">
                 <div>
@@ -368,9 +379,7 @@ export default function AdminCandidates() {
               {/* Status */}
               <div className="flex justify-between items-center text-xs">
                 <span className="text-gray-400">Recruitment Status:</span>
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${getStatusBadge(selectedRank.application?.status || "").css}`}>
-                  {getStatusBadge(selectedRank.application?.status || "").text}
-                </span>
+                {getStatusBadge(selectedRank.application?.status || "")}
               </div>
 
               {/* Score breakdown */}
@@ -637,63 +646,62 @@ export default function AdminCandidates() {
                   <span>Hackathon Assignment</span>
                 </h3>
                 
-                <div className="flex flex-col gap-2 bg-[#0c0d14]/40 p-4 rounded-xl border border-gray-800/40">
+                <div className="flex flex-col gap-3 bg-[#0c0d14]/40 p-4 rounded-xl border border-gray-800/40">
                   <div>
                     <label className="text-[9px] text-gray-500 uppercase font-bold tracking-wider block mb-1">Team Name</label>
-                    <input 
+                    <Input 
                       type="text" 
                       placeholder="e.g. Team Alpha"
                       value={assignTeamName}
                       onChange={(e) => setAssignTeamName(e.target.value)}
-                      className="w-full bg-[#08090e] border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500"
                     />
                   </div>
 
                   <div>
                     <label className="text-[9px] text-gray-500 uppercase font-bold tracking-wider block mb-1">Mentor Name</label>
-                    <input 
+                    <Input 
                       type="text" 
                       placeholder="e.g. Dr. Amit Sharma"
                       value={assignMentorName}
                       onChange={(e) => setAssignMentorName(e.target.value)}
-                      className="w-full bg-[#08090e] border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500"
                     />
                   </div>
 
                   <div>
                     <label className="text-[9px] text-gray-500 uppercase font-bold tracking-wider block mb-1">Assigned Problem</label>
-                    <select
+                    <Select
                       value={assignProblemId}
                       onChange={(e) => setAssignProblemId(e.target.value)}
-                      className="w-full bg-[#08090e] border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500"
                     >
                       <option value="q1">Q1. AI Safety Guardrail System</option>
                       <option value="q2">Q2. Self-Improving Code Gen Agent</option>
                       <option value="q3">Q3. Log Generation & CVE Scanning</option>
                       <option value="q4">Q4. PDF-Aware Smart Chatbot (RAG)</option>
                       <option value="q5">Q5. Intelligent Web Crawler</option>
-                    </select>
+                    </Select>
                   </div>
 
                   <div>
                     <label className="text-[9px] text-gray-500 uppercase font-bold tracking-wider block mb-1">Team Members (comma separated)</label>
-                    <textarea 
+                    <Textarea 
                       placeholder="e.g. Jane Doe, John Smith"
                       value={assignMembers}
                       onChange={(e) => setAssignMembers(e.target.value)}
-                      className="w-full bg-[#08090e] border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500 min-h-[50px]"
+                      className="min-h-[50px]"
                     />
                   </div>
 
-                  <button
+                  <Button
                     onClick={handleSaveHackathonAssignment}
-                    className="w-full mt-2 py-2 px-3 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                    className="w-full mt-2"
                   >
                     Save Hackathon Assignment
-                  </button>
+                  </Button>
 
                   {assignSuccess && (
-                    <span className="text-[10px] text-emerald-400 font-semibold text-center block mt-1">Assignment saved successfully!</span>
+                    <Alert variant="success" className="mt-1">
+                      Assignment saved successfully!
+                    </Alert>
                   )}
                 </div>
               </div>
@@ -775,7 +783,7 @@ export default function AdminCandidates() {
 
                   {/* Reply Input */}
                   <div className="flex gap-2 items-center mt-1">
-                    <input 
+                    <Input 
                       type="text" 
                       placeholder="Type a reply..."
                       value={adminReplyText}
@@ -783,25 +791,23 @@ export default function AdminCandidates() {
                       onKeyDown={(e) => {
                         if (e.key === "Enter") handleSendAdminReply();
                       }}
-                      className="flex-1 bg-[#08090e] border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500"
                     />
-                    <button
+                    <Button
                       onClick={handleSendAdminReply}
                       disabled={sendingMessage || !adminReplyText.trim()}
-                      className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer disabled:bg-gray-800 disabled:text-gray-500"
+                      size="sm"
                     >
                       Send
-                    </button>
+                    </Button>
                   </div>
 
                 </div>
               </div>
-
-            </div>
+            </Card>
           ) : (
-            <div className="glass-panel p-8 rounded-2xl border border-gray-800 text-center text-gray-500 h-64 flex items-center justify-center">
+            <Card className="text-center text-gray-500 h-64 flex items-center justify-center bg-[#0d0e15]/40">
               Select a candidate from the ranking list to load their full diagnostic report files.
-            </div>
+            </Card>
           )}
         </div>
 

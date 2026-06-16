@@ -1,8 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, ChangeEvent, KeyboardEvent } from "react";
 import { apiService } from "@/services/api";
-import { Mic, MicOff, MessageSquare, Play, Sparkles, CheckCircle, ArrowRight, User, Cpu } from "lucide-react";
+import { 
+  Mic, MicOff, MessageSquare, Play, Sparkles, CheckCircle2, 
+  ArrowRight, User, Cpu, Loader2, Camera, CameraOff, X, 
+  AlertTriangle, ShieldAlert
+} from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { Modal } from "@/components/ui/Modal";
+import { Alert } from "@/components/ui/Alert";
+import { ProgressRing } from "@/components/ui/Progress";
 
 export default function CandidateInterview() {
   const [apps, setApps] = useState<any[]>([]);
@@ -10,7 +21,6 @@ export default function CandidateInterview() {
   const [interview, setInterview] = useState<any>(null);
   const [analysis, setAnalysis] = useState<any>(null);
 
-  
   const [loading, setLoading] = useState(true);
   const [interviewStarted, setInterviewStarted] = useState(false);
   const [interviewFinished, setInterviewFinished] = useState(false);
@@ -27,6 +37,11 @@ export default function CandidateInterview() {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isSimulated, setIsSimulated] = useState(false);
 
+  // Tara AI voice animation states: speaking, listening, thinking, disconnected
+  const [voiceState, setVoiceState] = useState<"speaking" | "listening" | "thinking" | "disconnected">("disconnected");
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+
   const stopStream = () => {
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
@@ -42,10 +57,23 @@ export default function CandidateInterview() {
     };
   }, [stream]);
 
+  // Connect video stream to video tag when it updates
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream, interviewStarted]);
+
   const fetchApps = async () => {
     try {
       const data = await apiService.getApplications();
-      const intApps = data.filter((a: any) => a.status.toLowerCase() === "interview" || a.status.toLowerCase() === "ranking" || a.status.toLowerCase() === "recommendation" || a.status.toLowerCase() === "offer" || a.status.toLowerCase() === "onboarding");
+      const intApps = data.filter((a: any) => 
+        a.status.toLowerCase() === "interview" || 
+        a.status.toLowerCase() === "ranking" || 
+        a.status.toLowerCase() === "recommendation" || 
+        a.status.toLowerCase() === "offer" || 
+        a.status.toLowerCase() === "onboarding"
+      );
       setApps(intApps);
       if (intApps.length > 0) {
         setSelectedApp(intApps[0]);
@@ -70,7 +98,6 @@ export default function CandidateInterview() {
         setInterviewFinished(true);
         loadAnalysis(sess.id);
       } else {
-        // Initialize questions
         const questionsList = JSON.parse(sess.questions || "[]");
         if (questionsList.length > 0) {
           setCurrQuestion(questionsList[sess.current_question_index]);
@@ -83,7 +110,6 @@ export default function CandidateInterview() {
 
   const loadAnalysis = async (intId: number) => {
     try {
-      // Admin route fetch, but let's query safely if candidate needs report summary
       const res = await apiService.getInterviewAnalysis(intId);
       setAnalysis(res);
     } catch {
@@ -124,6 +150,12 @@ export default function CandidateInterview() {
     setInterviewStarted(true);
     setWaveActive(true);
     setDialogue([{ role: "TARA AI", text: currQuestion }]);
+    
+    // Set to Speaking initially, then transition to Listening
+    setVoiceState("speaking");
+    setTimeout(() => {
+      setVoiceState("listening");
+    }, 4500);
   };
 
   const submitAnswer = async () => {
@@ -132,8 +164,8 @@ export default function CandidateInterview() {
     const candidateAns = answer;
     setAnswer("");
     
-    // Append candidate text
     setDialogue((prev) => [...prev, { role: "Candidate", text: candidateAns }]);
+    setVoiceState("thinking");
 
     try {
       const data = await apiService.answerInterviewQuestion(interview.id, candidateAns);
@@ -141,14 +173,22 @@ export default function CandidateInterview() {
         setInterviewFinished(true);
         setInterviewStarted(false);
         setWaveActive(false);
+        setVoiceState("disconnected");
         stopStream();
         await loadAnalysis(interview.id);
       } else {
         setCurrQuestion(data.next_question);
         setDialogue((prev) => [...prev, { role: "TARA AI", text: data.next_question }]);
+        
+        // Return to Speaking, then Listening
+        setVoiceState("speaking");
+        setTimeout(() => {
+          setVoiceState("listening");
+        }, 4500);
       }
     } catch (err) {
       console.error(err);
+      setVoiceState("listening");
     } finally {
       setSubmitting(false);
     }
@@ -156,119 +196,155 @@ export default function CandidateInterview() {
 
   if (loading) {
     return (
-      <div className="p-8 max-w-5xl mx-auto text-gray-500">
-        Loading interview chamber...
+      <div className="flex-1 min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 size={36} className="animate-spin text-primary" />
+          <span className="text-sm font-semibold text-muted-foreground">Loading Interview Chamber...</span>
+        </div>
       </div>
     );
   }
 
   if (apps.length === 0) {
-
     return (
-      <div className="p-8 md:p-12 max-w-2xl mx-auto text-center flex flex-col justify-center items-center gap-6 min-h-[60vh] glass-panel border border-gray-800 rounded-3xl bg-[#0c0d14]/40 mt-10 shadow-xl font-sans">
-        <div className="flex items-center gap-3 bg-purple-950/30 border border-purple-500/10 px-4 py-2.5 rounded-full text-purple-400 text-xs font-bold w-fit animate-pulse">
-          <Cpu size={14} />
-          <span>Tara AI Recruiter</span>
-        </div>
-        
-        <div className="relative p-6 rounded-2xl border border-purple-500/10 bg-purple-950/5 text-purple-300 italic max-w-md text-xs leading-relaxed">
-          "Hello! I do not have any scheduled virtual interview sessions registered for you at this stage. Complete your assigned proctored assessments first, and once they are evaluated, I will connect with you here for your live video interview."
-        </div>
-        
-        <div className="border border-gray-850 p-4 rounded-xl bg-gray-900/10 text-left w-full max-w-sm border-gray-800/60">
-          <div className="flex justify-between text-xs mb-2 text-gray-500">
-            <span>Interview Stage:</span>
-            <span className="text-gray-400 font-semibold uppercase">Pending Assessment</span>
+      <div className="max-w-xl mx-auto py-16 px-6">
+        <Card className="flex flex-col items-center text-center gap-6 p-8">
+          <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 px-4 py-2 rounded-full text-primary text-xs font-bold w-fit animate-pulse">
+            <Cpu size={14} />
+            <span>Tara AI Recruiter</span>
           </div>
-          <div className="flex justify-between text-xs text-gray-500 font-sans">
-            <span>Tara AI Status:</span>
-            <span className="text-purple-400 font-medium">Awaiting Test Results</span>
+          
+          <p className="text-sm text-muted-foreground italic leading-relaxed max-w-sm">
+            "Hello! I do not have any scheduled virtual interview sessions registered for you at this stage. Complete your assigned proctored assessments first, and once they are evaluated, I will connect with you here for your live video interview."
+          </p>
+          
+          <div className="border border-border p-4 rounded-2xl bg-muted/20 text-left w-full max-w-sm">
+            <div className="flex justify-between text-xs mb-2">
+              <span className="text-muted-foreground font-semibold">Interview Stage:</span>
+              <span className="text-foreground font-bold uppercase">Pending Assessment</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground font-semibold">Tara AI Status:</span>
+              <span className="text-primary font-bold">Awaiting Test Results</span>
+            </div>
           </div>
-        </div>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="p-8 md:p-12 max-w-7xl mx-auto flex flex-col gap-8">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight flex items-center gap-2">
-          <span>Tara AI Interview</span>
-          <Sparkles size={20} className="text-purple-400 animate-pulse" />
-        </h1>
-        <p className="text-sm text-gray-400 mt-1">
-          Autonomous conversational assessment engine hosted by Tara AI.
-        </p>
+    <div className="flex-1 min-h-screen bg-background text-foreground p-6 md:p-8 font-sans">
+      
+      {/* Dynamic Voice Orb CSS Keyframe Animations */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes orb-speaking {
+          0%, 100% { transform: scale(1); box-shadow: 0 0 20px 5px rgba(139, 92, 246, 0.4), inset 0 0 15px rgba(139, 92, 246, 0.5); }
+          50% { transform: scale(1.08); box-shadow: 0 0 45px 15px rgba(139, 92, 246, 0.7), inset 0 0 25px rgba(139, 92, 246, 0.8); }
+        }
+        @keyframes orb-listening {
+          0%, 100% { transform: scale(1); border-radius: 50%; box-shadow: 0 0 20px 5px rgba(16, 185, 129, 0.4); }
+          33% { border-radius: 46% 54% 50% 50% / 50% 50% 54% 46%; }
+          66% { border-radius: 54% 46% 52% 48% / 48% 52% 46% 54%; transform: scale(1.04); box-shadow: 0 0 35px 12px rgba(16, 185, 129, 0.65); }
+        }
+        @keyframes orb-thinking {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes orb-thinking-pulse {
+          0%, 100% { transform: scale(1); box-shadow: 0 0 20px 5px rgba(245, 158, 11, 0.4); }
+          50% { transform: scale(1.03); box-shadow: 0 0 35px 10px rgba(245, 158, 11, 0.65); }
+        }
+        @keyframes wave-bounce {
+          0%, 100% { transform: scaleY(0.3); }
+          50% { transform: scaleY(1); }
+        }
+      `}} />
+
+      {/* Header Area */}
+      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight flex items-center gap-2">
+            <span>Tara AI Interview</span>
+            <Sparkles size={20} className="text-primary animate-pulse" />
+          </h1>
+          <p className="text-sm text-muted-foreground font-semibold mt-1">
+            Autonomous adaptive conversation chamber hosted by Tara AI.
+          </p>
+        </div>
       </div>
 
+      {/* Setup screen */}
       {!interviewStarted && !interviewFinished && (
-        <div className="glass-panel p-8 rounded-2xl border border-gray-800 text-center flex flex-col items-center justify-center gap-6 min-h-[40vh] bg-[#0c0d14]/40">
-          <div className="w-16 h-16 rounded-full bg-purple-900/20 flex items-center justify-center border border-purple-500/20 glow-primary">
-            <Cpu size={28} className="text-purple-400" />
+        <Card className="max-w-2xl mx-auto p-8 text-center flex flex-col items-center justify-center gap-6 shadow-sm border border-border">
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 animate-pulse">
+            <Cpu size={28} className="text-primary" />
           </div>
-          <div>
-            <h2 className="text-lg font-bold text-white">Ready to connect with Tara AI</h2>
-            <p className="text-xs text-gray-500 max-w-md mt-2 leading-relaxed">
-              Tara AI will ask questions regarding your professional skills, projects, and custom assessment decisions. 
-              The interview is fully adaptive based on your statements.
+          <div className="space-y-2">
+            <h2 className="text-lg font-black text-foreground">Ready to connect with Tara AI</h2>
+            <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
+              Tara AI will conduct an adaptive video dialogue regarding your experiences, technical choices, and coding reasoning. 
+              Please ensure you are in a quiet room with active microphone permissions.
             </p>
           </div>
-          <button
+          <Button
             onClick={startInterview}
-            className="bg-purple-600 hover:bg-purple-500 px-6 py-3 rounded-xl text-xs font-bold text-white transition-all shadow-md flex items-center gap-2"
+            size="lg"
+            className="w-full sm:w-auto font-bold"
           >
-            <Play size={12} fill="white" />
+            <Play size={14} className="mr-2 fill-current" />
             <span>Connect Webcam & Microphone</span>
-          </button>
-        </div>
+          </Button>
+        </Card>
       )}
 
-      {/* Active Conversation Layout */}
+      {/* Active Chamber Layout */}
       {interviewStarted && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch min-h-[70vh]">
           
-          {/* Column A: Feeds */}
-          <div className="flex flex-col gap-6">
+          {/* Column A: Feeds & Status (Left 4 cols) */}
+          <div className="lg:col-span-4 flex flex-col gap-6">
             
-            {/* Webcam feed */}
-            <div className="glass-panel rounded-2xl border border-gray-800 overflow-hidden bg-[#0d0e15] relative aspect-video flex items-center justify-center">
-              <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
-                <span className="text-[10px] font-bold text-red-500 tracking-wider">LIVE FEED</span>
+            {/* Live Camera Feed Card */}
+            <Card className="overflow-hidden p-0 relative aspect-video flex items-center justify-center bg-black border border-border">
+              <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 bg-black/50 backdrop-blur-xs px-2.5 py-1 rounded-md border border-white/5">
+                <span className="w-2 h-2 rounded-full bg-destructive animate-ping shrink-0" />
+                <span className="text-[9px] font-bold text-destructive tracking-wider uppercase">LIVE FEED</span>
               </div>
 
               {!isSimulated && stream ? (
                 <video
-                  ref={(el) => {
-                    if (el) el.srcObject = stream;
-                  }}
+                  ref={videoRef}
                   autoPlay
                   playsInline
                   muted={isMuted}
                   className="w-full h-full object-cover transform -scale-x-100"
                 />
               ) : (
-                <div className="flex flex-col items-center justify-center text-center p-6">
-                  <User className="text-gray-800/80 scale-[3.5] pointer-events-none mb-4" />
-                  {isSimulated && (
-                    <div className="mt-4 bg-amber-950/20 border border-amber-900/30 text-amber-400 text-[8px] font-bold px-2 py-1 rounded-md uppercase tracking-wider font-sans">
-                      Simulated Webcam Active
-                    </div>
+                <div className="flex flex-col items-center justify-center text-center p-6 text-muted-foreground">
+                  <User size={48} className="text-muted/40 mb-3" />
+                  {isSimulated ? (
+                    <Badge variant="warning" className="text-[9px] tracking-wider uppercase font-bold">
+                      Simulated Camera Active
+                    </Badge>
+                  ) : (
+                    <span className="text-xs">Connecting Camera Feed...</span>
                   )}
                 </div>
               )}
 
-              {/* Sound wave visual */}
+              {/* sound wave checks */}
               {waveActive && !isMuted && (
-                <div className="absolute bottom-4 left-4 flex items-center gap-1 bg-black/40 px-2 py-1 rounded-lg border border-white/5 h-6">
+                <div className="absolute bottom-4 left-4 flex items-center gap-0.5 bg-black/60 backdrop-blur-xs px-2 py-1.5 rounded-lg border border-white/5 h-6">
                   {[...Array(6)].map((_, i) => (
                     <span
                       key={i}
-                      className="w-0.5 bg-purple-400 rounded-full animate-bounce"
+                      className="w-0.5 bg-primary rounded-full shrink-0"
                       style={{
-                        height: `${Math.random() * 100}%`,
-                        animationDelay: `${i * 0.1}s`,
-                        animationDuration: "0.5s"
+                        height: "100%",
+                        animation: "wave-bounce 0.6s ease-in-out infinite",
+                        animationDelay: `${i * 0.08}s`,
+                        transformOrigin: "center"
                       }}
                     />
                   ))}
@@ -276,171 +352,270 @@ export default function CandidateInterview() {
               )}
 
               <div className="absolute bottom-4 right-4 z-20 flex gap-2">
-                <button
+                <Button
                   onClick={() => setIsMuted(!isMuted)}
-                  className={`p-2 rounded-xl border ${
-                    isMuted ? "bg-red-950/40 border-red-800/40 text-red-400" : "bg-[#12131e]/60 border-gray-800 text-gray-400"
-                  } hover:scale-105 transition-transform`}
+                  variant={isMuted ? "destructive" : "secondary"}
+                  size="sm"
+                  className="rounded-xl h-8 w-8 p-0"
                 >
                   {isMuted ? <MicOff size={14} /> : <Mic size={14} />}
-                </button>
+                </Button>
               </div>
-            </div>
+            </Card>
 
-            {/* Tara AI Portrait screen */}
-            <div className="glass-panel p-6 rounded-2xl border border-gray-800 bg-[#0d0e15]/40 flex flex-col gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-gradient-tara flex items-center justify-center font-bold text-white">T</div>
-                <div>
-                  <h4 className="text-xs font-bold text-white">Tara AI</h4>
-                  <span className="text-[9px] text-purple-400 font-semibold tracking-wide">Recruiter Agent</span>
+            {/* Proctor Alert Card */}
+            <Card className="flex-1 flex flex-col justify-between p-6">
+              <div className="space-y-4">
+                <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <ShieldAlert size={14} className="text-primary" />
+                  <span>Proctor Monitor</span>
+                </h3>
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-xs font-semibold">
+                    <span className="text-muted-foreground">AI Face Lock:</span>
+                    <Badge variant="success">Active & Verified</Badge>
+                  </div>
+                  <div className="flex justify-between items-center text-xs font-semibold">
+                    <span className="text-muted-foreground">Tab Focus lock:</span>
+                    <Badge variant="success">LOCKED</Badge>
+                  </div>
+                  <div className="flex justify-between items-center text-xs font-semibold">
+                    <span className="text-muted-foreground">Browser Integrity:</span>
+                    <Badge variant="success">Secured</Badge>
+                  </div>
                 </div>
               </div>
-              <p className="text-xs text-purple-300 italic leading-relaxed mt-2 p-3 rounded-xl border border-purple-500/10 bg-purple-950/5">
-                "{currQuestion}"
-              </p>
-            </div>
 
+              <div className="mt-6 pt-4 border-t border-border flex items-start gap-2 bg-destructive/5 p-3 rounded-xl border border-destructive/10">
+                <AlertTriangle size={14} className="text-destructive shrink-0 mt-0.5" />
+                <p className="text-[10px] text-destructive font-bold leading-normal">
+                  Warning: Leaving full screen or changing tabs will auto-submit the interview and record a proctor violation flag.
+                </p>
+              </div>
+            </Card>
           </div>
 
-          {/* Column B: Transcript & Answer Console */}
-          <div className="lg:col-span-2 flex flex-col gap-6 h-[55vh]">
+          {/* Column B: Immersive Fullscreen ChatGPT Voice Panel (Right 8 cols) */}
+          <Card className="lg:col-span-8 flex flex-col justify-between bg-black border border-border relative overflow-hidden p-6 min-h-[600px]">
             
-            {/* Dialogue list */}
-            <div className="glass-panel p-6 rounded-2xl border border-gray-800 flex-1 overflow-y-auto flex flex-col gap-4">
-              <h3 className="text-xs font-bold text-white flex items-center gap-2 border-b border-gray-800 pb-3">
-                <MessageSquare size={14} className="text-purple-400" />
-                <span>Interview Live Transcript</span>
-              </h3>
-
-              <div className="flex flex-col gap-4 flex-1">
-                {dialogue.map((bubble, i) => (
-                  <div
-                    key={i}
-                    className={`flex flex-col max-w-[80%] ${
-                      bubble.role === "Candidate" ? "self-end items-end" : "self-start items-start"
-                    }`}
-                  >
-                    <span className="text-[9px] text-gray-500 font-semibold mb-1">{bubble.role}</span>
-                    <div
-                      className={`p-3 rounded-2xl text-xs leading-relaxed ${
-                        bubble.role === "Candidate"
-                          ? "bg-purple-600 text-white rounded-tr-none"
-                          : "bg-gray-800/40 text-gray-300 rounded-tl-none border border-gray-800/60"
-                      }`}
-                    >
-                      {bubble.text}
-                    </div>
-                  </div>
-                ))}
+            {/* Header info */}
+            <div className="flex items-center justify-between border-b border-border/40 pb-4 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <Cpu size={18} className="text-primary animate-pulse" />
+                <div>
+                  <h3 className="text-sm font-black text-white">Chamber session</h3>
+                  <span className="text-[9px] text-muted-foreground font-bold tracking-wider uppercase">Adaptive AI Recruiter</span>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-1.5">
+                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                  voiceState === "speaking" ? "bg-purple-500 animate-pulse" :
+                  voiceState === "listening" ? "bg-emerald-500 animate-pulse" :
+                  voiceState === "thinking" ? "bg-amber-500 animate-pulse" : "bg-muted"
+                }`} />
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  {voiceState === "speaking" ? "Tara Speaking" :
+                   voiceState === "listening" ? "Tara Listening" :
+                   voiceState === "thinking" ? "Tara Thinking" : "Offline"}
+                </span>
               </div>
             </div>
 
-            {/* Input console */}
-            <div className="glass-panel p-4 rounded-2xl border border-gray-800 flex gap-3 items-center">
-              <input
-                type="text"
-                disabled={submitting}
-                placeholder="Type your spoken answer response..."
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && submitAnswer()}
-                className="flex-1 bg-[#12131e] border border-gray-800 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-purple-500 transition-colors"
-              />
-              <button
-                onClick={submitAnswer}
-                disabled={submitting || !answer.trim()}
-                className="bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white px-4 py-3 rounded-xl text-xs font-bold transition-all shadow-md shrink-0 flex items-center gap-1.5"
-              >
-                <span>Send</span>
-                <ArrowRight size={12} />
-              </button>
+            {/* Immersive Center: Tara Voice Orb Chamber */}
+            <div className="flex-1 flex flex-col items-center justify-center py-8 relative shrink-0">
+              
+              {/* Animation Voice Orb wrapper */}
+              <div className="relative flex items-center justify-center w-64 h-64">
+                
+                {/* Dotted rotating circle for Thinking state */}
+                {voiceState === "thinking" && (
+                  <>
+                    <div 
+                      className="absolute border border-dashed border-amber-500/60 rounded-full w-[200px] h-[200px]"
+                      style={{ animation: "orb-thinking 8s linear infinite" }}
+                    />
+                    <div 
+                      className="absolute border border-dotted border-amber-400/40 rounded-full w-[230px] h-[230px]"
+                      style={{ animation: "orb-thinking 12s linear infinite reverse" }}
+                    />
+                  </>
+                )}
+
+                {/* Pulsing sound ring for Speaking state */}
+                {voiceState === "speaking" && (
+                  <div 
+                    className="absolute border border-purple-500/30 rounded-full w-[190px] h-[190px] animate-ping"
+                    style={{ animationDuration: "1.5s" }}
+                  />
+                )}
+
+                {/* Main Voice Orb core */}
+                <div 
+                  className={`w-36 h-36 rounded-full flex items-center justify-center transition-all duration-500 bg-gradient-to-tr shadow-2xl relative z-10 ${
+                    voiceState === "speaking" 
+                      ? "from-purple-600 via-pink-500 to-indigo-600" 
+                      : voiceState === "listening"
+                        ? "from-emerald-500 via-teal-400 to-cyan-500"
+                        : voiceState === "thinking"
+                          ? "from-amber-500 via-orange-500 to-yellow-500"
+                          : "from-slate-700 via-slate-800 to-slate-900"
+                  }`}
+                  style={{
+                    animation: 
+                      voiceState === "speaking" ? "orb-speaking 2s ease-in-out infinite" :
+                      voiceState === "listening" ? "orb-listening 2.5s ease-in-out infinite" :
+                      voiceState === "thinking" ? "orb-thinking-pulse 1.5s ease-in-out infinite" : "none"
+                  }}
+                >
+                  {/* Subtle CPU brain silhouette in center */}
+                  <Cpu size={32} className="text-white/60 drop-shadow-sm" />
+                </div>
+
+              </div>
+
+              {/* Real-time Subtitle / Caption Overlay */}
+              <div className="max-w-xl w-full bg-slate-950/80 backdrop-blur-md border border-white/5 rounded-2xl p-4 shadow-2xl text-center space-y-1.5 mt-4 shrink-0">
+                <span className="text-[8px] font-black uppercase tracking-wider text-muted-foreground/60 block">
+                  {voiceState === "speaking" ? "Tara's Caption" : "Your Transcription"}
+                </span>
+                <p className="text-sm text-slate-100 font-medium leading-relaxed">
+                  {voiceState === "speaking" || voiceState === "thinking" 
+                    ? `"${currQuestion}"`
+                    : dialogue[dialogue.length - 1]?.role === "Candidate"
+                      ? `"${dialogue[dialogue.length - 1].text}"`
+                      : `"Hello! I am listening to your response..."`
+                  }
+                </p>
+              </div>
+
             </div>
 
-          </div>
+            {/* Bottom: Floating Chat Input bar */}
+            <div className="flex gap-3 items-center border-t border-border/40 pt-4 shrink-0">
+              <Input
+                type="text"
+                disabled={submitting}
+                placeholder={voiceState === "thinking" ? "Tara is thinking..." : "Type your spoken answer response..."}
+                value={answer}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setAnswer(e.target.value)}
+                onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && submitAnswer()}
+                className="bg-[#0b0c10] border-border text-white text-xs h-11"
+              />
+              <Button
+                onClick={submitAnswer}
+                disabled={submitting || !answer.trim()}
+                size="sm"
+                className="h-11 px-5 font-bold"
+              >
+                {submitting ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : (
+                  <>
+                    <span>Send</span>
+                    <ArrowRight size={13} className="ml-1" />
+                  </>
+                )}
+              </Button>
+            </div>
 
+          </Card>
+          
         </div>
       )}
 
       {/* Completed & Analysis Screen */}
       {interviewFinished && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto mt-4">
           
-          {/* Success summary */}
-          <div className="lg:col-span-2 glass-panel p-8 rounded-2xl border border-gray-800 flex flex-col justify-between min-h-[45vh] bg-[#0c0d14]/40">
-            <div className="flex flex-col gap-4">
-              <div className="w-14 h-14 bg-emerald-950/40 border border-emerald-800/30 flex items-center justify-center rounded-2xl text-emerald-400">
-                <CheckCircle size={28} />
+          {/* Summary */}
+          <Card className="lg:col-span-2 flex flex-col justify-between p-8 min-h-[45vh]">
+            <div className="space-y-6">
+              <div className="w-14 h-14 bg-success/15 border border-success/20 flex items-center justify-center rounded-2xl text-success shadow-xs">
+                <CheckCircle2 size={28} />
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-white">Interview Process Completed</h2>
-                <p className="text-xs text-gray-500 mt-2 leading-relaxed">
-                  Excellent job. Tara AI has evaluated your conversation transcript and structural reasoning patterns. 
-                  The scoring report is detailed below.
+              <div className="space-y-2">
+                <h2 className="text-xl font-black text-foreground">Interview Process Completed</h2>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Excellent job. Tara AI has evaluated your conversation transcript, thinking structure, and coding reasoning. 
+                  The full scorecard metrics are shown on the side panel.
                 </p>
               </div>
 
               {!analysis ? (
-                <div className="border border-gray-800/60 p-5 rounded-2xl bg-[#0d0e15]/40 mt-4 text-center">
-                  <span className="text-xs text-gray-500 font-semibold block">Not enough data available</span>
-                  <span className="text-[10px] text-gray-600 block mt-1">Evaluation report is pending calculations.</span>
+                <div className="border border-dashed border-border p-6 rounded-2xl bg-muted/10 text-center text-xs text-muted-foreground">
+                  Evaluation report is currently calculating. Please refresh in a moment.
                 </div>
               ) : (
-                <div className="border border-gray-800/60 p-5 rounded-2xl bg-[#0d0e15]/40 mt-4">
-                  <h3 className="text-xs font-bold text-white mb-2">Tara's Evaluation Notes</h3>
-                  <p className="text-xs text-gray-400 leading-relaxed italic">
+                <div className="border border-border p-5 rounded-2xl bg-muted/20">
+                  <h3 className="text-xs font-black text-foreground mb-1.5 uppercase tracking-wider">Evaluation Summary</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed italic">
                     "{analysis.report_summary}"
                   </p>
                 </div>
               )}
             </div>
 
-            <div className="mt-8 border-t border-gray-800/60 pt-6">
-              <p className="text-[10px] text-gray-500">
+            <div className="mt-8 pt-4 border-t border-border">
+              <p className="text-[10px] text-muted-foreground font-semibold">
                 Next Stage: The Candidate Ranking Agent is currently computing your composite score percentile relative to alternative applicants.
               </p>
             </div>
-          </div>
+          </Card>
 
-          {/* Scores breakdown cards */}
-          <div className="glass-panel p-6 rounded-2xl border border-gray-800 bg-[#0d0e15]/40 flex flex-col gap-6">
-            <h3 className="text-xs font-bold text-white border-b border-gray-800 pb-3 flex items-center gap-2">
-              <Cpu size={14} className="text-purple-400" />
-              <span>Metrics scorecard</span>
-            </h3>
+          {/* Scores Panel */}
+          <Card className="flex flex-col justify-between p-6">
+            <div className="space-y-6">
+              <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground border-b border-border pb-3 flex items-center gap-1.5">
+                <Cpu size={14} className="text-primary" />
+                <span>Scorecard Breakdown</span>
+              </h3>
 
-            {!analysis ? (
-              <div className="text-center py-12 text-gray-500 text-xs font-semibold">
-                Not enough data available
-              </div>
-            ) : (
-              <div className="flex flex-col gap-4">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-gray-400">Technical competency:</span>
-                  <span className="font-bold text-purple-400">{analysis.technical_score}%</span>
+              {!analysis ? (
+                <div className="text-center py-16 text-muted-foreground text-xs font-semibold italic">
+                  Not enough data available
                 </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-gray-400">Communication quality:</span>
-                  <span className="font-bold text-indigo-400">{analysis.communication_score}%</span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-gray-400">Confidence delivery:</span>
-                  <span className="font-bold text-indigo-400">{analysis.confidence_score}%</span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-gray-400">Structured logic:</span>
-                  <span className="font-bold text-purple-400">{analysis.thinking_score}%</span>
-                </div>
+              ) : (
+                <div className="space-y-4">
+                  
+                  <div className="flex justify-between items-center text-xs font-semibold">
+                    <span className="text-muted-foreground">Technical Competency:</span>
+                    <span className="text-foreground">{analysis.technical_score}%</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs font-semibold">
+                    <span className="text-muted-foreground">Communication Quality:</span>
+                    <span className="text-foreground">{analysis.communication_score}%</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs font-semibold">
+                    <span className="text-muted-foreground">Confidence Delivery:</span>
+                    <span className="text-foreground">{analysis.confidence_score}%</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs font-semibold">
+                    <span className="text-muted-foreground">Structured Logic:</span>
+                    <span className="text-foreground">{analysis.thinking_score}%</span>
+                  </div>
 
-                <div className="border-t border-gray-800/80 pt-4 mt-2 flex justify-between items-center text-xs font-bold text-white">
-                  <span>Aggregate average:</span>
-                  <span className="text-sm text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-400">
-                    {analysis.final_score}%
-                  </span>
+                  <div className="border-t border-border pt-4 mt-6 flex justify-between items-center text-xs font-black text-foreground">
+                    <span>AGGREGATE SCORE:</span>
+                    <span className="text-sm text-primary">
+                      {analysis.final_score}%
+                    </span>
+                  </div>
                 </div>
+              )}
+            </div>
+            
+            {analysis && (
+              <div className="mt-6 flex justify-center">
+                <ProgressRing 
+                  value={analysis.final_score} 
+                  size={96} 
+                  strokeWidth={6} 
+                />
               </div>
             )}
-          </div>
+          </Card>
 
         </div>
       )}
