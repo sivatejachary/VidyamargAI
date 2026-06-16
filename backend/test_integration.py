@@ -41,7 +41,7 @@ class TestHireAIEngine(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(candidate.status, "Registered")
 
         # 2. Run Resume Collection (mock file content)
-        resume_bytes = b"Skill: Python, FastAPI, React. Experience: 3 Years."
+        resume_bytes = b"Candidate Name: Alex River. Skills: Python, FastAPI, SQLite, React, PostgreSQL. Experience: 5 Years as Backend Developer. Education: Master's in Computer Science."
         resume = await orchestrator.run_resume_collection_agent(self.db, candidate.id, resume_bytes, "alex_resume.pdf")
         
         self.assertEqual(candidate.status, "Resume Uploaded")
