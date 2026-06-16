@@ -13,8 +13,11 @@ build/
 *.tsbuildinfo
 
 # Databases
+*.db
 *.db-journal
 test_temp.db
+backend/storage/
+storage/
 
 # Environment variables (except the base one if needed, but local overrides should be ignored)
 .env.local

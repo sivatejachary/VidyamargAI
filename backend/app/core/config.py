@@ -20,12 +20,6 @@ for path in [
         except Exception:
             pass
 
-# Dynamically compute absolute path of workspace root's hireai.db
-_config_dir = os.path.dirname(os.path.abspath(__file__))
-_workspace_root = os.path.abspath(os.path.join(_config_dir, "../../../"))
-_default_db_path = os.path.join(_workspace_root, "hireai.db").replace("\\", "/")
-_default_db_url = f"sqlite:///{_default_db_path}"
-
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
@@ -37,10 +31,10 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
     
-    # Database (Fallback to SQLite local file in workspace)
+    # Database (Fallback to PostgreSQL local)
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL", 
-        _default_db_url
+        "postgresql://postgres:postgres@localhost:5432/hireai"
     )
     
     # Storage (MinIO / S3)

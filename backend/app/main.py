@@ -65,54 +65,15 @@ def init_db_safely():
     except Exception as e:
         print(f"Auto-seed warning initialization failed: {e}")
 
-    # Run safe DB migration (PostgreSQL + SQLite compatible)
-    IS_POSTGRES = settings.DATABASE_URL.startswith("postgresql") or settings.DATABASE_URL.startswith("postgres")
-
     def _get_columns(conn, table_name: str):
-        """Return list of column names for a table — works on both PG and SQLite."""
-        if IS_POSTGRES:
-            rows = conn.execute(text(
-                "SELECT column_name FROM information_schema.columns "
-                "WHERE table_name = :t"
-            ), {"t": table_name}).fetchall()
-            return [r[0] for r in rows]
-        else:
-            rows = conn.execute(text(f"PRAGMA table_info({table_name})")).fetchall()
-            return [r[1] for r in rows]
+        """Return list of column names for a table in PostgreSQL."""
+        rows = conn.execute(text(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = :t"
+        ), {"t": table_name}).fetchall()
+        return [r[0] for r in rows]
 
-    def _serial():
-        """Primary key type: SERIAL for PG, INTEGER AUTOINCREMENT for SQLite."""
-        return "SERIAL PRIMARY KEY" if IS_POSTGRES else "INTEGER PRIMARY KEY AUTOINCREMENT"
-
-    try:
-        with engine.begin() as conn:
-            # ── Candidates table extra columns ──────────────────────────────────
-            cols = _get_columns(conn, "candidates")
-            for col_name, col_type in [
-                ("hackathon_team",    "VARCHAR"),
-                ("assigned_mentor",   "VARCHAR"),
-                ("hackathon_problem", "VARCHAR"),
-                ("hackathon_members", "TEXT"),
-                ("summary",           "TEXT"),
-                ("achievements",      "TEXT"),
-                ("languages",         "TEXT"),
-            ]:
-                if col_name not in cols:
-                    conn.execute(text(f"ALTER TABLE candidates ADD COLUMN {col_name} {col_type}"))
-                    print(f"Migration: Added column {col_name} to candidates.")
-
-            # ── Jobs table extra columns ─────────────────────────────────────────
-            job_cols = _get_columns(conn, "jobs")
-            for col_name, col_type in [
-                ("company_id",   "INTEGER"),
-                ("recruiter_id", "INTEGER"),
-            ]:
-                if col_name not in job_cols:
-                    conn.execute(text(f"ALTER TABLE jobs ADD COLUMN {col_name} {col_type}"))
-                    print(f"Migration: Added column {col_name} to jobs.")
-
-            # ── Courses / Learning tables ────────────────────────────────────────
-            serial = _serial()
+    serial = "SERIAL PRIMARY KEY"
             conn.execute(text(f"""
                 CREATE TABLE IF NOT EXISTS courses (
                     id VARCHAR PRIMARY KEY,

@@ -1175,7 +1175,7 @@ async def get_jobs(
             db.commit()
 
     # Check cache first
-    cached = await job_cache.get(current_user.id, search or "")
+    cached = await job_cache.get(current_user.id, "")
     if cached is not None:
         # Apply search filter on cached results
         if search:
@@ -1214,6 +1214,9 @@ async def get_jobs(
     all_live_jobs: list[LiveJob] = []
 
     def _run_connectors():
+        from app.services.job_connectors import (
+            linkedin_jobs, naukri, foundit, internshala, wellfound, hiring_posts
+        )
         collected = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=6) as ex:
             futures = {
