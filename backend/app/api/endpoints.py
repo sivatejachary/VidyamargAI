@@ -3662,10 +3662,10 @@ def generate_course(req: CourseGenerateRequest, db: Session = Depends(get_db), c
     Goal: {req.goal}
     {f"Extra Guidelines: {req.description}" if req.description else ""}
 
-    Design a curriculum that has exactly 3 modules. Each module must contain 3 topics.
-    Each topic must contain a video lesson (with a real or placeholder educational YouTube URL from providers like freeCodeCamp, Traversy Media, Fireship, Mosh, etc.), a PDF summary guide, and a 5-question Quiz.
-    Each module must also contain a Written Assessment (3 open-ended questions) and an AI Technical Interview (3 questions).
-    The course must also contain a hands-on project (Beginner, Intermediate, or Advanced depending on difficulty), a Final Assessment (10 questions), and a Final AI Interview (5 questions).
+    Design a curriculum that has exactly 2 modules. Each module must contain 2 topics.
+    Each topic must contain a video lesson (with a real or placeholder educational YouTube URL from providers like freeCodeCamp, Traversy Media, Fireship, Mosh, etc.), a PDF summary guide, and a 3-question Quiz.
+    Each module must also contain a Written Assessment (2 open-ended questions) and an AI Technical Interview (2 questions).
+    The course must also contain a hands-on project (Beginner, Intermediate, or Advanced depending on difficulty), a Final Assessment (5 questions), and a Final AI Interview (3 questions).
 
     Format the response as a single valid JSON object following this JSON schema exactly:
     {{
@@ -3770,26 +3770,42 @@ def generate_course(req: CourseGenerateRequest, db: Session = Depends(get_db), c
 
     messages = [{"role": "user", "content": prompt}]
     ai_res = call_nvidia(messages)
-    if not ai_res:
-        logger.warning("NVIDIA API failed or timed out. Falling back to Gemini...")
+    
+    course_data = None
+    parse_error = None
+    
+    if ai_res:
+        try:
+            cleaned = ai_res.strip()
+            if cleaned.startswith("```"):
+                cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned[3:]
+            if cleaned.endswith("```"):
+                cleaned = cleaned[:-3]
+            cleaned = cleaned.strip()
+            if cleaned.startswith("json"):
+                cleaned = cleaned[4:].strip()
+            course_data = json.loads(cleaned)
+        except Exception as e:
+            logger.warning(f"Failed to parse NVIDIA response: {e}. Falling back to Gemini...")
+            parse_error = e
+
+    if not course_data:
         ai_res = call_gemini(prompt, json_mode=True)
-    if not ai_res:
-        raise HTTPException(status_code=500, detail="Failed to get a response from NVIDIA LLM or Gemini fallback.")
-
-    try:
-        cleaned = ai_res.strip()
-        if cleaned.startswith("```"):
-            cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned[3:]
-        if cleaned.endswith("```"):
-            cleaned = cleaned[:-3]
-        cleaned = cleaned.strip()
-        if cleaned.startswith("json"):
-            cleaned = cleaned[4:].strip()
-
-        course_data = json.loads(cleaned)
-    except Exception as e:
-        logger.error(f"Error parsing generated course JSON: {e}, Raw: {ai_res}")
-        raise HTTPException(status_code=500, detail=f"LLM returned invalid JSON: {str(e)}")
+        if not ai_res:
+            raise HTTPException(status_code=500, detail="Failed to get a valid response from NVIDIA LLM or Gemini fallback.")
+        try:
+            cleaned = ai_res.strip()
+            if cleaned.startswith("```"):
+                cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned[3:]
+            if cleaned.endswith("```"):
+                cleaned = cleaned[:-3]
+            cleaned = cleaned.strip()
+            if cleaned.startswith("json"):
+                cleaned = cleaned[4:].strip()
+            course_data = json.loads(cleaned)
+        except Exception as e:
+            logger.error(f"Error parsing Gemini response: {e}, Raw: {ai_res}")
+            raise HTTPException(status_code=500, detail=f"LLM returned invalid JSON: {str(e)}")
 
     course_id = "course_" + str(uuid.uuid4())[:8]
     title = course_data.get("title", req.role)
