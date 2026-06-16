@@ -17,13 +17,13 @@ logger = logging.getLogger(__name__)
 
 def call_gemini(prompt: str, json_mode: bool = False) -> str:
     """
-    Direct HTTPS call to Gemini 2.5 Flash API to avoid dependency issues.
+    Direct HTTPS call to Gemini 3.5 Flash API to avoid dependency issues.
     Falls back to empty string on missing key or network error.
     """
     if not settings.GEMINI_API_KEY:
         return ""
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={settings.GEMINI_API_KEY}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={settings.GEMINI_API_KEY}"
         headers = {"Content-Type": "application/json"}
         payload = {
             "contents": [{"parts": [{"text": prompt}]}]
