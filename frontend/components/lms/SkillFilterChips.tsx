@@ -1,7 +1,5 @@
 "use client";
 
-import { SKILL_CHIPS } from "@/types/lms.types";
-
 interface SkillFilterChipsProps {
   chips: readonly string[];
   activeChip: string;
