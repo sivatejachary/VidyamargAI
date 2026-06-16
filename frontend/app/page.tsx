@@ -157,13 +157,13 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-background text-foreground flex relative overflow-hidden font-sans">
+    <main className="min-h-screen lg:h-screen lg:overflow-hidden bg-background text-foreground flex relative font-sans">
       {/* Decorative Blur Backgrounds */}
       <div className="absolute top-[-10%] right-[-10%] w-1/2 h-1/2 bg-purple-600/10 rounded-full blur-120 pointer-events-none z-0" />
       <div className="absolute bottom-[-10%] right-1/3 w-1/2 h-1/2 bg-indigo-600/10 rounded-full blur-120 pointer-events-none z-0" />
 
-      {/* LEFT COLUMN: HERO PANEL (Visible on md and up) */}
-      <div className="hidden md:flex md:w-5/12 lg:w-1/2 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white flex-col justify-between p-12 relative overflow-hidden border-r border-slate-900 shrink-0">
+      {/* LEFT COLUMN: HERO PANEL (Visible on lg and up) */}
+      <div className="hidden lg:flex auth-hero-panel bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white flex-col justify-between p-8 xl:p-12 relative overflow-hidden border-r border-slate-900 shrink-0 h-full lg:h-screen">
         {/* Background Grid Pattern */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-40 pointer-events-none" />
         
@@ -189,27 +189,27 @@ export default function Home() {
         </div>
 
         {/* Center: Headline & Premium Live Mockup Dashboard */}
-        <div className="my-auto flex flex-col gap-8 relative z-10">
+        <div className="my-auto flex flex-col gap-6 lg:gap-5 xl:gap-8 relative z-10">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-semibold mb-5">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-semibold mb-4 lg:mb-3 xl:mb-5">
               <Sparkles size={13} className="animate-pulse text-purple-400" />
               <span>Introducing Tush AI Recruiter v2</span>
             </div>
-            <h1 className="text-3xl lg:text-5xl font-black text-white leading-[1.12] tracking-tight">
+            <h1 className="text-3xl lg:text-4xl xl:text-5xl font-black text-white leading-[1.12] tracking-tight">
               The Autonomous <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-indigo-300 to-blue-400">
                 Recruitment OS
               </span>
             </h1>
-            <p className="text-slate-400 text-sm leading-relaxed mt-4 max-w-md">
+            <p className="text-slate-400 text-sm leading-relaxed mt-3 lg:mt-2 xl:mt-4 max-w-md">
               VidyamargAI coordinates assessments, proctors exams, conducts interviews with <strong className="text-slate-200">Tush AI</strong>, and streamlines full candidate pipelines.
             </p>
           </div>
 
           {/* Premium Glass Mockup */}
-          <div className="glass-panel p-5 rounded-2xl border border-slate-800 bg-slate-900/40 shadow-2xl relative w-full overflow-hidden max-w-lg">
+          <div className="glass-panel p-4 lg:p-4 xl:p-5 rounded-2xl border border-slate-800 bg-slate-900/40 shadow-2xl relative w-full overflow-hidden max-w-md xl:max-w-lg">
             {/* Header bar mock */}
-            <div className="flex items-center justify-between border-b border-slate-800/80 pb-3 mb-4">
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-2 mb-3 lg:pb-2 lg:mb-2.5 xl:pb-3 xl:mb-4">
               <div className="flex gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-500/60" />
@@ -222,7 +222,7 @@ export default function Home() {
             </div>
 
             {/* Dashboard Contents Mock */}
-            <div className="font-mono text-10 text-slate-400 flex flex-col gap-2.5 leading-relaxed">
+            <div className="font-mono text-10 text-slate-400 flex flex-col gap-2 lg:gap-1.5 xl:gap-2.5 leading-relaxed">
               <div className="flex gap-2">
                 <span className="text-indigo-400 font-bold shrink-0">[16:43:46]</span>
                 <span>Agent <span className="text-white font-bold">#01_screener</span> active: parsed candidate folder.</span>
@@ -235,7 +235,7 @@ export default function Home() {
                 <span className="text-indigo-400 font-bold shrink-0">[16:43:52]</span>
                 <span>Tush AI Interviewer: <span className="text-purple-400 font-bold">speaking</span>, latency 82ms.</span>
               </div>
-              <div className="flex gap-2 border-t border-slate-800/50 pt-2.5 mt-1">
+              <div className="flex gap-2 border-t border-slate-800/50 pt-2 lg:pt-1.5 xl:pt-2.5 mt-0.5">
                 <span className="text-emerald-400 font-bold">PIPELINE VERIFIED:</span>
                 <span className="text-white">Liam Smith matched 96% with position terms.</span>
               </div>
@@ -244,18 +244,18 @@ export default function Home() {
         </div>
 
         {/* Bottom: Footer */}
-        <p className="text-xs text-slate-600 font-light relative z-10 mt-6">
+        <p className="text-xs text-slate-600 font-light relative z-10 mt-4">
           © {new Date().getFullYear()} VidyamargAI Tech Systems. All rights secured.
         </p>
       </div>
 
       {/* RIGHT COLUMN: AUTH PANEL */}
-      <div className="flex-1 flex flex-col justify-between p-6 md:p-12 min-h-screen bg-background relative z-10 overflow-y-auto">
+      <div className="flex-1 lg:auth-form-panel flex flex-col justify-between p-6 lg:p-8 xl:p-12 min-h-screen lg:h-screen lg:overflow-hidden bg-background relative z-10">
         
         {/* Top bar: Theme switcher & links */}
-        <header className="flex justify-between items-center w-full mb-8 flex-shrink-0">
+        <header className="flex justify-between items-center w-full mb-8 lg:mb-4 xl:mb-8 flex-shrink-0">
           {/* Logo Branding visible ONLY on mobile */}
-          <div className="flex items-center gap-2.5 md:hidden">
+          <div className="flex items-center gap-2.5 lg:hidden">
             <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-md shrink-0">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="white" opacity="0.95"/>
@@ -273,7 +273,7 @@ export default function Home() {
           </div>
 
           {/* Spacer on Desktop */}
-          <div className="hidden md:block" />
+          <div className="hidden lg:block" />
 
           {/* Floating Theme Switcher */}
           <button
@@ -287,11 +287,11 @@ export default function Home() {
         </header>
 
         {/* Center: Auth Form Container */}
-        <div className="w-full max-w-md mx-auto my-auto py-8">
+        <div className="w-full max-w-md mx-auto my-auto py-8 lg:py-4 xl:py-8 flex-shrink-0">
           {isForgotPassword ? (
             /* Forgot Password Flow */
             <div>
-              <div className="mb-8">
+              <div className="mb-8 lg:mb-4 xl:mb-8">
                 <h2 className="text-2xl font-extrabold text-foreground tracking-tight mb-2">Reset password</h2>
                 <p className="text-xs font-semibold text-muted-foreground leading-relaxed">
                   {forgotStep === 1 
@@ -300,7 +300,7 @@ export default function Home() {
                 </p>
               </div>
 
-              <form onSubmit={handleForgotPasswordSubmit} className="flex flex-col gap-4">
+              <form onSubmit={handleForgotPasswordSubmit} className="flex flex-col gap-4 lg:gap-3 xl:gap-4">
                 {error && (
                   <Alert variant={error.includes("successfully") ? "success" : "error"}>
                     {error}
@@ -365,14 +365,14 @@ export default function Home() {
                 <Button
                   type="submit"
                   loading={loading}
-                  className="w-full mt-4"
+                  className="w-full mt-4 lg:mt-2 xl:mt-4"
                 >
                   {forgotStep === 1 ? "Send Verification Code" : "Update Password"}
                   {!loading && <ArrowRight size={16} />}
                 </Button>
               </form>
 
-              <div className="mt-8 text-center">
+              <div className="mt-8 lg:mt-4 xl:mt-8 text-center">
                 <button
                   onClick={() => {
                     setError("");
@@ -391,7 +391,7 @@ export default function Home() {
             <div>
               {/* Portal Switcher */}
               {!isLogin && (
-                <div className="flex bg-muted p-1 rounded-xl mb-6 border border-border">
+                <div className="flex bg-muted p-1 rounded-xl mb-6 lg:mb-4 xl:mb-6 border border-border">
                   <button
                     type="button"
                     onClick={() => setPortalType("candidate")}
@@ -413,7 +413,7 @@ export default function Home() {
                 </div>
               )}
 
-              <div className="mb-8">
+              <div className="mb-8 lg:mb-4 xl:mb-8">
                 <h2 className="text-2xl font-extrabold text-foreground tracking-tight mb-2">
                   {isLogin ? "Welcome back" : "Create candidate profile"}
                 </h2>
@@ -424,7 +424,7 @@ export default function Home() {
                 </p>
               </div>
 
-              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <form onSubmit={handleSubmit} className="flex flex-col gap-4 lg:gap-3 xl:gap-4">
                 {error && (
                   <Alert variant={error.includes("successfully") ? "success" : "error"}>
                     {error}
@@ -495,14 +495,14 @@ export default function Home() {
                 <Button
                   type="submit"
                   loading={loading}
-                  className="w-full mt-4"
+                  className="w-full mt-4 lg:mt-2 xl:mt-4"
                 >
                   {isLogin ? "Login" : "Register Profile"}
                   {!loading && <ArrowRight size={16} />}
                 </Button>
               </form>
 
-              <div className="mt-8 text-center border-t border-border pt-6">
+              <div className="mt-8 lg:mt-6 lg:pt-4 xl:mt-8 xl:pt-6 text-center border-t border-border">
                 <button
                   onClick={() => {
                     setError("");
@@ -518,7 +518,7 @@ export default function Home() {
         </div>
 
         {/* Bottom Copyright visible ONLY on mobile */}
-        <footer className="md:hidden w-full text-center py-4 mt-8 flex-shrink-0">
+        <footer className="lg:hidden w-full text-center py-4 mt-8 flex-shrink-0">
           <p className="text-xs text-muted-foreground font-light">
             © {new Date().getFullYear()} VidyamargAI Tech Systems. All rights secured.
           </p>

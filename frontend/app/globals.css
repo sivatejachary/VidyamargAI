@@ -376,3 +376,17 @@ textarea.chat-input-textarea:focus {
 .h-80-px { height: 80px; }
 .w-96-px { width: 96px; }
 .h-96-px { height: 96px; }
+
+/* Auth Layout Utilities */
+:root {
+  --auth-hero-width: 58%;
+  --auth-form-width: 42%;
+}
+
+.auth-hero-panel {
+  width: var(--auth-hero-width);
+}
+
+.auth-form-panel {
+  width: var(--auth-form-width);
+}
