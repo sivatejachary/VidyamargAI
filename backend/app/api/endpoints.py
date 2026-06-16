@@ -3609,7 +3609,7 @@ def get_courses(db: Session = Depends(get_db)):
 
 from pydantic import BaseModel
 class CourseGenerateRequest(BaseModel):
-    topic: str
+    topic: Optional[str] = "General"
     role: str
     level: str
     duration: str

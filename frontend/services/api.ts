@@ -421,11 +421,21 @@ export const apiService = {
     const res = await customFetch(`${getBaseUrl()}/courses/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...getHeaders() },
-      body: JSON.stringify({ role, level, duration, goal, description }),
+      body: JSON.stringify({ topic: role, role, level, duration, goal, description }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: "Failed to generate course" }));
-      throw new Error(err.detail || "Failed to generate course");
+      let detailMsg = "Failed to generate course";
+      if (err.detail) {
+        if (typeof err.detail === "string") {
+          detailMsg = err.detail;
+        } else if (Array.isArray(err.detail)) {
+          detailMsg = err.detail.map((e: any) => e.msg || JSON.stringify(e)).join(", ");
+        } else {
+          detailMsg = typeof err.detail === "object" ? JSON.stringify(err.detail) : String(err.detail);
+        }
+      }
+      throw new Error(detailMsg);
     }
     return res.json();
   },
