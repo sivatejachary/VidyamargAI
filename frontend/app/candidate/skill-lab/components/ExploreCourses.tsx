@@ -160,6 +160,80 @@ export default function ExploreCourses({
     [courses]
   );
 
+  /* ─── Get courses matching a specific roadmap step ─── */
+  const getCoursesForStep = useCallback(
+    (step: string, pathCourses: any[]) => {
+      const stepLower = step.toLowerCase();
+      
+      // Smart step keywords matching
+      let keywords: string[] = [stepLower];
+      if (stepLower.includes("html") || stepLower.includes("css")) {
+        keywords = ["html", "css", "web development", "frontend"];
+      } else if (stepLower.includes("javascript") || stepLower.includes("js")) {
+        keywords = ["javascript", "js", "web development", "react", "next.js"];
+      } else if (stepLower.includes("typescript")) {
+        keywords = ["typescript", "ts", "next.js", "react"];
+      } else if (stepLower.includes("react")) {
+        keywords = ["react", "next.js"];
+      } else if (stepLower.includes("next.js")) {
+        keywords = ["next.js", "react"];
+      } else if (stepLower.includes("python")) {
+        keywords = ["python"];
+      } else if (stepLower.includes("databases") || stepLower.includes("sql")) {
+        keywords = ["sql", "database", "postgres"];
+      } else if (stepLower.includes("apis") || stepLower.includes("node.js")) {
+        keywords = ["api", "node.js", "fastapi", "backend"];
+      } else if (stepLower.includes("ml fundamentals") || stepLower.includes("deep learning") || stepLower.includes("llms") || stepLower.includes("math")) {
+        keywords = ["machine learning", "ml", "python", "ai"];
+      } else if (stepLower.includes("aws core") || stepLower.includes("cloud") || stepLower.includes("networking")) {
+        keywords = ["aws", "cloud", "devops"];
+      } else if (stepLower.includes("architecture") || stepLower.includes("system design")) {
+        keywords = ["system design", "scalability"];
+      } else if (stepLower.includes("docker") || stepLower.includes("ci/cd") || stepLower.includes("kubernetes")) {
+        keywords = ["docker", "aws", "kubernetes", "devops"];
+      } else if (stepLower.includes("cryptography") || stepLower.includes("ethical hacking") || stepLower.includes("siem")) {
+        keywords = ["security", "cybersecurity", "networking"];
+      }
+
+      return pathCourses.filter((c: any) => {
+        const titleLower = (c.title || "").toLowerCase();
+        const categoryLower = (c.category || "").toLowerCase();
+        const descLower = (c.description || "").toLowerCase();
+        const skillsLower = (c.skills || []).map((s: string) => s.toLowerCase());
+
+        return keywords.some(kw => 
+          titleLower.includes(kw) || 
+          categoryLower.includes(kw) || 
+          descLower.includes(kw) ||
+          skillsLower.some((s: string) => s.includes(kw) || kw.includes(s))
+        );
+      });
+    },
+    []
+  );
+
+  /* ─── Get progress status for the career path steps ─── */
+  const getStepProgressStatus = useCallback(
+    (stepIndex: number, pathSteps: string[], pathCourses: any[]) => {
+      // Simple logic: if courses in this step are completed, it's complete.
+      // If we are currently learning them, it's active.
+      const stepCourses = getCoursesForStep(pathSteps[stepIndex], pathCourses);
+      if (stepCourses.length === 0) return "upcoming";
+
+      const stepEnrollments = stepCourses.map(c => enrollments.find(e => e.course_id === c.id)).filter(Boolean);
+      if (stepEnrollments.length === 0) return "upcoming";
+
+      const allCompleted = stepEnrollments.every(e => e.progress >= 100);
+      if (allCompleted) return "complete";
+
+      const someProgress = stepEnrollments.some(e => e.progress > 0);
+      if (someProgress) return "current";
+
+      return "upcoming";
+    },
+    [enrollments, getCoursesForStep]
+  );
+
   /* ─── Render helpers ─── */
   const getEnrollment = useCallback(
     (courseId: string | number) => enrollments.find((e: any) => e.course_id === courseId),
@@ -355,29 +429,29 @@ export default function ExploreCourses({
          ═══════════════════════════════════════════════════════ */}
       {modalPath && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center animate-in fade-in duration-200"
           onClick={() => setModalPath(null)}
           role="dialog"
           aria-modal="true"
           aria-label={`${modalPath.title} courses`}
         >
           {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-md" />
 
           {/* Modal panel */}
           <div
-            className="relative z-10 w-full sm:max-w-3xl lg:max-w-4xl max-h-[85vh] bg-card border border-border rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-200"
+            className="relative z-10 w-full sm:max-w-3xl lg:max-w-4xl max-h-[85vh] bg-card border border-border rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-300"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header with gradient */}
             <div className={`relative bg-gradient-to-br ${modalPath.gradient} p-5 sm:p-6 shrink-0`}>
-              <div className="absolute inset-0 bg-gradient-to-b from-black/0 to-black/20 pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/0 to-black/30 pointer-events-none" />
               <div className="relative flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <span className="text-3xl" role="img" aria-hidden="true">{modalPath.icon}</span>
                   <div>
                     <h2 className="text-lg sm:text-xl font-bold text-white">{modalPath.title}</h2>
-                    <p className="text-xs text-white/70 mt-0.5">{modalPath.subtitle}</p>
+                    <p className="text-xs text-white/80 mt-0.5">{modalPath.subtitle}</p>
                   </div>
                 </div>
                 <button
@@ -390,56 +464,109 @@ export default function ExploreCourses({
               </div>
 
               {/* Stats + Skills */}
-              <div className="relative flex flex-wrap items-center gap-3 mt-3 text-white/80 text-xs">
-                <span className="flex items-center gap-1"><BookOpen size={12} />{modalPath.courseCount} courses</span>
+              <div className="relative flex flex-wrap items-center gap-3 mt-3.5 text-white/90 text-xs">
+                <span className="flex items-center gap-1.5"><BookOpen size={13} />{modalPath.courseCount} courses</span>
                 <span className="w-px h-3 bg-white/30" />
-                <span className="flex items-center gap-1"><Clock size={12} />{modalPath.totalHours}h total</span>
+                <span className="flex items-center gap-1.5"><Clock size={13} />{modalPath.totalHours}h total</span>
                 {modalPath.badge && PATH_BADGES[modalPath.badge] && (
                   <>
                     <span className="w-px h-3 bg-white/30" />
-                    <span className="bg-white/20 px-2 py-0.5 rounded text-[11px] font-semibold">{PATH_BADGES[modalPath.badge].label}</span>
+                    <span className="bg-white/20 px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider">{PATH_BADGES[modalPath.badge].label}</span>
                   </>
                 )}
               </div>
-
-              {/* Learning roadmap steps */}
-              <div className="relative flex flex-wrap items-center gap-1.5 mt-3">
-                {modalPath.steps.map((step, i) => (
-                  <span key={step} className="flex items-center gap-1.5">
-                    <span className="bg-white/20 text-white text-[10px] font-medium px-2 py-0.5 rounded-md">{step}</span>
-                    {i < modalPath.steps.length - 1 && <ArrowRight size={10} className="text-white/40" />}
-                  </span>
-                ))}
-              </div>
             </div>
 
-            {/* Course grid — scrollable */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+            {/* Course roadmap steps — scrollable */}
+            <div className="flex-1 overflow-y-auto p-5 sm:p-6 bg-slate-50 dark:bg-slate-900/40">
               {(() => {
                 const pathCourses = getPathCourses(modalPath);
                 return (
-                  <>
-                    <p className="text-xs text-muted-foreground mb-4">
-                      {pathCourses.length} course{pathCourses.length !== 1 ? "s" : ""} in this path
-                    </p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {pathCourses.map((c: any) => (
-                        <CourseCard
-                          key={c.id}
-                          course={c}
-                          enrollment={getEnrollment(c.id)}
-                          onEnroll={async (id) => {
-                            const course = courses.find((co: any) => co.id === id);
-                            if (course) await handleStartCourse(course);
-                          }}
-                          onResume={(course) => {
-                            setModalPath(null);
-                            handleGoToLesson(course, "video");
-                          }}
-                        />
-                      ))}
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-sm font-bold text-foreground">Learning Roadmap</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Follow the steps in this path to gain job-ready skills
+                      </p>
                     </div>
-                  </>
+
+                    <div className="relative border-l-2 border-slate-200 dark:border-slate-800 pl-6 ml-3.5 space-y-8">
+                      {modalPath.steps.map((step, index) => {
+                        const stepCourses = getCoursesForStep(step, pathCourses);
+                        const progressStatus = getStepProgressStatus(index, modalPath.steps, pathCourses);
+
+                        // Icon selection based on status
+                        let nodeIcon = <Circle size={14} className="text-muted-foreground/50" />;
+                        if (progressStatus === "complete") {
+                          nodeIcon = <CheckCircle size={14} className="text-emerald-500 fill-emerald-500/10" />;
+                        } else if (progressStatus === "current") {
+                          nodeIcon = <span className="w-2.5 h-2.5 rounded-full bg-primary" />;
+                        }
+
+                        return (
+                          <div key={step} className="relative">
+                            {/* Roadmap Node Indicator */}
+                            <div className={`absolute -left-[35px] top-1 w-[18px] h-[18px] rounded-full border-2 bg-card flex items-center justify-center ${
+                              progressStatus === "complete" 
+                                ? "border-emerald-500" 
+                                : progressStatus === "current"
+                                ? "border-primary"
+                                : "border-slate-350 dark:border-slate-800"
+                            }`}>
+                              {nodeIcon}
+                            </div>
+
+                            {/* Step Title & Info */}
+                            <div className="mb-3">
+                              <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                                progressStatus === "complete"
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : progressStatus === "current"
+                                  ? "text-primary"
+                                  : "text-muted-foreground"
+                              }`}>
+                                Step {index + 1}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <h4 className="text-sm font-bold text-foreground">{step}</h4>
+                                {progressStatus === "current" && (
+                                  <span className="text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-md">
+                                    Current Step
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Courses for this Step */}
+                            {stepCourses.length > 0 ? (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                {stepCourses.map((c: any) => (
+                                  <CourseCard
+                                    key={c.id}
+                                    course={c}
+                                    enrollment={getEnrollment(c.id)}
+                                    onEnroll={async (id) => {
+                                      const course = courses.find((co: any) => co.id === id);
+                                      if (course) await handleStartCourse(course);
+                                    }}
+                                    onResume={(course) => {
+                                      setModalPath(null);
+                                      handleGoToLesson(course, "video");
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="bg-card/50 border border-dashed border-border rounded-xl p-3 flex items-center justify-between text-xs text-muted-foreground">
+                                <span>No active courses matched this step. Self-paced study recommended.</span>
+                                <span className="text-[10px] font-medium bg-muted px-2 py-0.5 rounded">Core Concepts</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 );
               })()}
             </div>
