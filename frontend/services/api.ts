@@ -3,7 +3,10 @@ import { useAuthStore } from "@/store/authStore";
 const customFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
   const res = await fetch(input, init);
   if (res.status === 401) {
-    if (typeof window !== "undefined") {
+    const urlString = typeof input === "string" ? input : input.toString();
+    const isAuthRoute = urlString.includes("/auth/");
+    
+    if (!isAuthRoute && typeof window !== "undefined") {
       useAuthStore.getState().logout();
       if (window.location.pathname !== "/") {
         window.location.href = "/";
