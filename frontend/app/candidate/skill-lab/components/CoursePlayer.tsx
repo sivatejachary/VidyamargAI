@@ -154,6 +154,7 @@ export default function CoursePlayer({
 
   // Load User Stats & Resume playback position
   useEffect(() => {
+    if (!currentLesson) return;
     const loadPlayerStats = async () => {
       try {
         const stats = await apiService.getUserStats();
@@ -167,6 +168,7 @@ export default function CoursePlayer({
 
   // Handle switching active lesson & prefetching/resuming
   useEffect(() => {
+    if (!currentLesson) return;
     setVideoError(null);
     setIsLoading(true);
     setIsPlaying(false);
@@ -257,18 +259,18 @@ export default function CoursePlayer({
       // Short timeout to ensure video element is bound
       setTimeout(loadResumeState, 300);
     }
-  }, [currentLesson.id]);
+  }, [currentLesson?.id]);
 
   // Auto-Save notes every 3 seconds if modified
   useEffect(() => {
-    if (!notepadText) return;
+    if (!currentLesson || !notepadText) return;
     setNotesStatus("Saving...");
     const timer = setTimeout(async () => {
       localStorage.setItem(`notes:lesson:${currentLesson.id}`, notepadText);
       setNotesStatus("Saved");
     }, 3000);
     return () => clearTimeout(timer);
-  }, [notepadText, currentLesson.id]);
+  }, [notepadText, currentLesson?.id]);
 
   // Track unique video segments for Anti-Cheat
   const updateWatchedSegments = (time: number) => {
@@ -503,7 +505,7 @@ export default function CoursePlayer({
   // Keyboard controls
   useEffect(() => {
     const handleKeys = (e: KeyboardEvent) => {
-      if (currentLesson.type !== "video") return;
+      if (!currentLesson || currentLesson.type !== "video") return;
       if (document.activeElement?.tagName === "TEXTAREA" || document.activeElement?.tagName === "INPUT") return;
 
       if (e.code === "Space") {
@@ -706,6 +708,15 @@ export default function CoursePlayer({
     const secs = Math.floor(seconds % 60);
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
+
+  if (loadingCurriculum || !currentLesson || !curriculum) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <div className="w-12 h-12 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin" />
+        <p className="text-xs text-muted-foreground font-semibold text-slate-500">Loading course curriculum...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
