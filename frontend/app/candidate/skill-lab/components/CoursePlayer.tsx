@@ -77,6 +77,7 @@ export default function CoursePlayer({
   }, [currentLesson?.video_url]);
   const ytPlayerRef = useRef<any>(null);
   const ytIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const ytStartedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Anti-Cheat & Resume Watching states
   const [watchedSegments, setWatchedSegments] = useState<number[]>([]);
@@ -200,6 +201,11 @@ export default function CoursePlayer({
       autoNextTimerRef.current = null;
     }
     setAutoNextCount(null);
+
+    if (ytStartedTimeoutRef.current) {
+      clearTimeout(ytStartedTimeoutRef.current);
+      ytStartedTimeoutRef.current = null;
+    }
 
     // Smart Prefetch: Preload metadata for the next lesson
     if (nextLesson) {
@@ -333,7 +339,13 @@ export default function CoursePlayer({
                 // Playing is 1, Paused is 2, Ended is 0
                 if (state === 1) {
                   setIsPlaying(true);
-                  setHasStarted(true);
+                  if (ytStartedTimeoutRef.current) {
+                    clearTimeout(ytStartedTimeoutRef.current);
+                  }
+                  ytStartedTimeoutRef.current = setTimeout(() => {
+                    setHasStarted(true);
+                    ytStartedTimeoutRef.current = null;
+                  }, 600);
                   if (!ytIntervalRef.current) {
                     ytIntervalRef.current = setInterval(() => {
                       if (ytPlayerRef.current && ytPlayerRef.current.getCurrentTime) {
@@ -359,6 +371,10 @@ export default function CoursePlayer({
                 } else if (state === 0) {
                   // Ended
                   setIsPlaying(false);
+                  if (ytStartedTimeoutRef.current) {
+                    clearTimeout(ytStartedTimeoutRef.current);
+                    ytStartedTimeoutRef.current = null;
+                  }
                   if (ytIntervalRef.current) {
                     clearInterval(ytIntervalRef.current);
                     ytIntervalRef.current = null;
@@ -367,6 +383,10 @@ export default function CoursePlayer({
                 } else if (state === 2) {
                   // Paused
                   setIsPlaying(false);
+                  if (ytStartedTimeoutRef.current) {
+                    clearTimeout(ytStartedTimeoutRef.current);
+                    ytStartedTimeoutRef.current = null;
+                  }
                   if (ytIntervalRef.current) {
                     clearInterval(ytIntervalRef.current);
                     ytIntervalRef.current = null;
@@ -409,6 +429,7 @@ export default function CoursePlayer({
     return () => {
       if (checkInterval) clearInterval(checkInterval);
       if (ytIntervalRef.current) clearInterval(ytIntervalRef.current);
+      if (ytStartedTimeoutRef.current) clearTimeout(ytStartedTimeoutRef.current);
       if (ytPlayerRef.current) {
         try {
           ytPlayerRef.current.destroy();
@@ -569,10 +590,13 @@ export default function CoursePlayer({
       if (isPlaying) {
         ytPlayerRef.current.pauseVideo();
         setIsPlaying(false);
+        if (ytStartedTimeoutRef.current) {
+          clearTimeout(ytStartedTimeoutRef.current);
+          ytStartedTimeoutRef.current = null;
+        }
       } else {
         ytPlayerRef.current.playVideo();
         setIsPlaying(true);
-        setHasStarted(true);
       }
     } else if (videoRef.current) {
       if (isPlaying) {
