@@ -685,38 +685,10 @@ export default function CoursePlayer({
         console.warn("ArrowRight forward skipping is disabled");
       } else if (e.code === "ArrowLeft") {
         e.preventDefault();
-        const nextTime = Math.max(0, currentTime - 5);
-        if (isYouTube && ytPlayerRef.current) {
-          ytPlayerRef.current.seekTo(nextTime, true);
-          setCurrentTime(nextTime);
-        } else if (videoRef.current) {
-          videoRef.current.currentTime = nextTime;
-        }
-      } else if (e.code === "ArrowUp") {
+        console.warn("ArrowLeft backward skipping is disabled");
+      } else if (e.code === "ArrowUp" || e.code === "ArrowDown" || e.code === "KeyF") {
         e.preventDefault();
-        setVolume(v => {
-          const next = Math.min(1.0, v + 0.05);
-          if (isYouTube && ytPlayerRef.current) {
-            ytPlayerRef.current.setVolume(next * 100);
-          } else if (videoRef.current) {
-            videoRef.current.volume = next;
-          }
-          return next;
-        });
-      } else if (e.code === "ArrowDown") {
-        e.preventDefault();
-        setVolume(v => {
-          const next = Math.max(0.0, v - 0.05);
-          if (isYouTube && ytPlayerRef.current) {
-            ytPlayerRef.current.setVolume(next * 100);
-          } else if (videoRef.current) {
-            videoRef.current.volume = next;
-          }
-          return next;
-        });
-      } else if (e.code === "KeyF") {
-        e.preventDefault();
-        toggleFullscreen();
+        console.warn("Keyboard shortcut is disabled");
       }
     };
 
@@ -1018,7 +990,8 @@ export default function CoursePlayer({
                     onPlaying={handlePlaying}
                     onError={handleError}
                     onEnded={triggerLessonCompletion}
-                    className="w-full h-full object-cover"
+                    onClick={togglePlay}
+                    className="w-full h-full object-cover cursor-pointer"
                   />
                 )}
 
@@ -1099,17 +1072,15 @@ export default function CoursePlayer({
                 {/* Custom Controls Bar */}
                 {!videoError && !isLoading && (
                   <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent flex flex-col gap-2.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-300 z-20">
-                    {/* Time progress bar */}
+                    {/* Time progress bar (Non-interactive) */}
                     <div className="flex items-center gap-3 w-full">
                       <span className="text-[10px] text-slate-300 font-mono font-bold">{formatTime(currentTime)}</span>
-                      <input
-                        type="range"
-                        min={0}
-                        max={duration || 100}
-                        value={currentTime}
-                        onChange={handleSeekChange}
-                        className="flex-1 accent-indigo-500 h-1 rounded bg-slate-800 cursor-pointer outline-none transition-all hover:h-1.5"
-                      />
+                      <div className="flex-1 h-1 rounded bg-slate-800 relative overflow-hidden select-none pointer-events-none">
+                        <div 
+                          className="absolute top-0 left-0 h-full bg-indigo-500 transition-all duration-100"
+                          style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+                        />
+                      </div>
                       <span className="text-[10px] text-slate-300 font-mono font-bold">{formatTime(duration)}</span>
                     </div>
 
@@ -1118,39 +1089,7 @@ export default function CoursePlayer({
                         <button onClick={togglePlay} className="hover:text-indigo-400 transition-colors cursor-pointer outline-none">
                           {isPlaying ? <Pause size={16} /> : <Play size={16} />}
                         </button>
-
-                        <div className="flex items-center gap-2 group/volume">
-                          <button onClick={toggleMute} className="hover:text-indigo-400 transition-colors cursor-pointer outline-none">
-                            {isMuted || volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />}
-                          </button>
-                          <input
-                            type="range"
-                            min={0}
-                            max={1}
-                            step={0.05}
-                            value={isMuted ? 0 : volume}
-                            onChange={handleVolumeChange}
-                            className="w-14 h-1 accent-indigo-500 rounded bg-slate-800 cursor-pointer outline-none"
-                          />
-                        </div>
-
-                        {/* Speed selector */}
-                        <select
-                          value={playbackRate}
-                          onChange={handleSpeedChange}
-                          className="bg-slate-900 border border-slate-800 text-[10px] font-bold text-slate-300 py-0.5 px-1.5 rounded cursor-pointer outline-none"
-                        >
-                          <option value="0.5">0.5x</option>
-                          <option value="1.0">1.0x</option>
-                          <option value="1.25">1.25x</option>
-                          <option value="1.5">1.5x</option>
-                          <option value="2.0">2.0x</option>
-                        </select>
                       </div>
-
-                      <button onClick={toggleFullscreen} className="text-white hover:text-indigo-400 transition-colors cursor-pointer outline-none">
-                        {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-                      </button>
                     </div>
                   </div>
                 )}
