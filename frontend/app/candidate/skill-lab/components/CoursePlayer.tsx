@@ -973,9 +973,7 @@ export default function CoursePlayer({
                     {/* Transparent Click Overlay to intercept pointer events and toggle play/pause */}
                     <div 
                       onClick={togglePlay}
-                      className={`absolute inset-0 w-full h-full cursor-pointer z-15 bg-transparent ${
-                        isPlaying ? "pointer-events-auto" : "pointer-events-none"
-                      }`}
+                      className="absolute inset-0 w-full h-full cursor-pointer z-15 bg-transparent pointer-events-auto"
                     />
                   </div>
                 ) : (
@@ -1026,9 +1024,7 @@ export default function CoursePlayer({
                 {!isPlaying && !videoError && !isLoading && (
                   <button 
                     onClick={togglePlay}
-                    className={`absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/35 transition-all cursor-pointer animate-fade-in z-20 ${
-                      isYouTube ? "pointer-events-none" : "pointer-events-auto"
-                    }`}
+                    className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/35 transition-all cursor-pointer animate-fade-in z-20 pointer-events-auto"
                   >
                     <div className="w-16 h-16 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg transition-transform hover:scale-110">
                       <Play size={24} className="fill-current ml-1" />
