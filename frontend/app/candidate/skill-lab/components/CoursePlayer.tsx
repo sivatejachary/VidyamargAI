@@ -70,6 +70,13 @@ export default function CoursePlayer({
   const [videoError, setVideoError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // YouTube player state refs and helper
+  const isYouTube = useMemo(() => {
+    return !!(currentLesson?.video_url && (currentLesson.video_url.includes("youtube.com") || currentLesson.video_url.includes("youtu.be")));
+  }, [currentLesson?.video_url]);
+  const ytPlayerRef = useRef<any>(null);
+  const ytIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
   // Anti-Cheat & Resume Watching states
   const [watchedSegments, setWatchedSegments] = useState<number[]>([]);
   const [hasReportedLoad, setHasReportedLoad] = useState(false);
@@ -260,6 +267,145 @@ export default function CoursePlayer({
       setTimeout(loadResumeState, 300);
     }
   }, [currentLesson?.id]);
+
+  // Manage YouTube Player API and segment tracking
+  useEffect(() => {
+    if (ytIntervalRef.current) {
+      clearInterval(ytIntervalRef.current);
+      ytIntervalRef.current = null;
+    }
+    if (ytPlayerRef.current) {
+      try {
+        ytPlayerRef.current.destroy();
+      } catch (e) {
+        console.error("Error destroying YT player:", e);
+      }
+      ytPlayerRef.current = null;
+    }
+
+    if (!currentLesson || currentLesson.type !== "video" || !isYouTube) return;
+
+    setIsLoading(true);
+    setIsPlaying(false);
+    setVideoError(null);
+
+    const videoId = extractYouTubeId(currentLesson.video_url);
+    if (!videoId) {
+      setVideoError("Invalid YouTube URL");
+      setIsLoading(false);
+      return;
+    }
+
+    let checkInterval: NodeJS.Timeout | null = null;
+    let initialized = false;
+
+    const initializeYTPlayer = () => {
+      if (initialized) return;
+      if ((window as any).YT && (window as any).YT.Player) {
+        initialized = true;
+        if (checkInterval) clearInterval(checkInterval);
+        
+        try {
+          ytPlayerRef.current = new (window as any).YT.Player('youtube-player', {
+            videoId: videoId,
+            playerVars: {
+              autoplay: 0,
+              controls: 1,
+              modestbranding: 1,
+              rel: 0,
+              origin: typeof window !== "undefined" ? window.location.origin : "",
+            },
+            events: {
+              onReady: (event: any) => {
+                setDuration(event.target.getDuration());
+                setIsLoading(false);
+              },
+              onStateChange: (event: any) => {
+                const state = event.data;
+                // Playing is 1, Paused is 2
+                if (state === 1) {
+                  setIsPlaying(true);
+                  if (!ytIntervalRef.current) {
+                    ytIntervalRef.current = setInterval(() => {
+                      if (ytPlayerRef.current && ytPlayerRef.current.getCurrentTime) {
+                        const currTime = ytPlayerRef.current.getCurrentTime();
+                        setCurrentTime(currTime);
+                        updateWatchedSegments(currTime);
+
+                        const dur = ytPlayerRef.current.getDuration();
+                        if (dur > 0) {
+                          const progressRatio = currTime / dur;
+                          if (progressRatio >= 0.95 && !completedLessonIds.includes(currentLesson.id)) {
+                            // Anti-Cheat constraints validation
+                            const totalSegs = Math.ceil(dur / 5);
+                            const uniqueWatchedRatio = totalSegs > 0 ? watchedSegments.length / totalSegs : 0;
+                            const speedCheck = playbackRate <= 2.0;
+                            const tabCheck = typeof document !== "undefined" && document.visibilityState === "visible";
+                            const noCheatJumps = uniqueWatchedRatio >= 0.90;
+
+                            if (speedCheck && tabCheck && noCheatJumps) {
+                              triggerLessonCompletion();
+                              if (ytIntervalRef.current) {
+                                clearInterval(ytIntervalRef.current);
+                                ytIntervalRef.current = null;
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }, 1000);
+                  }
+                } else {
+                  setIsPlaying(false);
+                  if (ytIntervalRef.current) {
+                    clearInterval(ytIntervalRef.current);
+                    ytIntervalRef.current = null;
+                  }
+                }
+              },
+              onError: (event: any) => {
+                console.error("YouTube Player error:", event.data);
+                setVideoError("Unable to load YouTube video");
+                setIsLoading(false);
+              }
+            }
+          });
+        } catch (e) {
+          console.error("Error creating YT.Player:", e);
+          setVideoError("Unable to initialize video player");
+          setIsLoading(false);
+        }
+      }
+    };
+
+    // Load YouTube iframe API script if not present
+    if (!(window as any).YT) {
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+    }
+
+    // Set callback if script is loading
+    const previousCallback = (window as any).onYouTubeIframeAPIReady;
+    (window as any).onYouTubeIframeAPIReady = () => {
+      if (previousCallback) previousCallback();
+      initializeYTPlayer();
+    };
+
+    // Fallback polling check in case API is already loaded/loading
+    checkInterval = setInterval(initializeYTPlayer, 200);
+
+    return () => {
+      if (checkInterval) clearInterval(checkInterval);
+      if (ytIntervalRef.current) clearInterval(ytIntervalRef.current);
+      if (ytPlayerRef.current) {
+        try {
+          ytPlayerRef.current.destroy();
+        } catch (e) {}
+      }
+    };
+  }, [currentLesson?.id, isYouTube]);
 
   // Auto-Save notes every 3 seconds if modified
   useEffect(() => {
@@ -809,22 +955,24 @@ export default function CoursePlayer({
                 ref={playerContainerRef} 
                 className="relative aspect-video w-full bg-black group select-none"
               >
-                <video
-                  ref={videoRef}
-                  src={
-                    currentLesson.video_url && !currentLesson.video_url.includes("youtube.com") && !currentLesson.video_url.includes("youtu.be")
-                      ? currentLesson.video_url
-                      : "https://media.w3.org/2010/05/sintel/trailer_hd.mp4"
-                  }
-                  preload="metadata"
-                  onCanPlay={handleCanPlay}
-                  onLoadedMetadata={handleLoadedMetadata}
-                  onTimeUpdate={handleTimeUpdate}
-                  onWaiting={handleWaiting}
-                  onPlaying={handlePlaying}
-                  onError={handleError}
-                  className="w-full h-full object-cover"
-                />
+                {isYouTube ? (
+                  <div key={currentLesson.id} className="w-full h-full">
+                    <div id="youtube-player" className="w-full h-full" />
+                  </div>
+                ) : (
+                  <video
+                    ref={videoRef}
+                    src={currentLesson.video_url || "https://media.w3.org/2010/05/sintel/trailer_hd.mp4"}
+                    preload="metadata"
+                    onCanPlay={handleCanPlay}
+                    onLoadedMetadata={handleLoadedMetadata}
+                    onTimeUpdate={handleTimeUpdate}
+                    onWaiting={handleWaiting}
+                    onPlaying={handlePlaying}
+                    onError={handleError}
+                    className="w-full h-full object-cover"
+                  />
+                )}
 
                 {/* Loading State Overlay */}
                 {isLoading && (
@@ -854,7 +1002,7 @@ export default function CoursePlayer({
                 )}
 
                 {/* Centered Play Button Overlay when paused */}
-                {!isPlaying && !videoError && !isLoading && (
+                {!isPlaying && !videoError && !isLoading && !isYouTube && (
                   <button 
                     onClick={togglePlay}
                     className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/35 transition-all cursor-pointer animate-fade-in"
@@ -899,7 +1047,7 @@ export default function CoursePlayer({
                 )}
 
                 {/* Custom Controls Bar */}
-                {!videoError && !isLoading && (
+                {!videoError && !isLoading && !isYouTube && (
                   <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent flex flex-col gap-2.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-300 z-10">
                     {/* Time progress bar */}
                     <div className="flex items-center gap-3 w-full">
@@ -1695,4 +1843,11 @@ export default function CoursePlayer({
 
     </div>
   );
+}
+
+function extractYouTubeId(url: string): string | null {
+  if (!url) return null;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
 }
