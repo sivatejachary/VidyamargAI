@@ -244,7 +244,7 @@ export default function CandidateLogin() {
       </div>
 
       {/* RIGHT COLUMN: AUTH PANEL */}
-      <div className="flex-1 lg:auth-form-panel flex flex-col justify-between p-6 lg:p-8 xl:p-12 min-h-screen lg:h-screen lg:overflow-hidden bg-background relative z-10">
+      <div className="flex-1 lg:auth-form-panel flex flex-col justify-between p-6 lg:p-8 xl:p-12 min-h-screen lg:h-screen lg:overflow-y-auto bg-background relative z-10">
         
         {/* Top bar: Theme switcher */}
         <header className="flex justify-between items-center w-full mb-8 lg:mb-4 xl:mb-8 flex-shrink-0">
