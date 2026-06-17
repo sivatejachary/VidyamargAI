@@ -93,6 +93,7 @@ export default function CoursePlayer({
   // Countdown Next Lesson states
   const [autoNextCount, setAutoNextCount] = useState<number | null>(null);
   const autoNextTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [isNextUnlocked, setIsNextUnlocked] = useState(false);
 
   // Gamification stats
   const [userStats, setUserStats] = useState({ xp: 0, badges: [] as string[], streak: 0 });
@@ -180,6 +181,7 @@ export default function CoursePlayer({
     setIsLoading(true);
     setIsPlaying(false);
     setCurrentTime(0);
+    setIsNextUnlocked(false);
     setWatchedSegments([]);
     setHasReportedLoad(false);
     setBufferCount(0);
@@ -326,7 +328,7 @@ export default function CoursePlayer({
               },
               onStateChange: (event: any) => {
                 const state = event.data;
-                // Playing is 1, Paused is 2
+                // Playing is 1, Paused is 2, Ended is 0
                 if (state === 1) {
                   setIsPlaying(true);
                   if (!ytIntervalRef.current) {
@@ -338,27 +340,27 @@ export default function CoursePlayer({
 
                         const dur = ytPlayerRef.current.getDuration();
                         if (dur > 0) {
-                          const progressRatio = currTime / dur;
-                          if (progressRatio >= 0.95 && !completedLessonIds.includes(currentLesson.id)) {
-                            // Anti-Cheat constraints validation
-                            const totalSegs = Math.ceil(dur / 5);
-                            const uniqueWatchedRatio = totalSegs > 0 ? watchedSegments.length / totalSegs : 0;
-                            const speedCheck = playbackRate <= 2.0;
-                            const tabCheck = typeof document !== "undefined" && document.visibilityState === "visible";
-                            const noCheatJumps = uniqueWatchedRatio >= 0.90;
-
-                            if (speedCheck && tabCheck && noCheatJumps) {
-                              triggerLessonCompletion();
-                              if (ytIntervalRef.current) {
-                                clearInterval(ytIntervalRef.current);
-                                ytIntervalRef.current = null;
-                              }
+                          if (dur > 15) {
+                            if (currTime >= dur - 15) {
+                              setIsNextUnlocked(true);
+                            }
+                          } else {
+                            if (currTime / dur >= 0.95) {
+                              setIsNextUnlocked(true);
                             }
                           }
                         }
                       }
                     }, 1000);
                   }
+                } else if (state === 0) {
+                  // Ended
+                  setIsPlaying(false);
+                  if (ytIntervalRef.current) {
+                    clearInterval(ytIntervalRef.current);
+                    ytIntervalRef.current = null;
+                  }
+                  triggerLessonCompletion();
                 } else {
                   setIsPlaying(false);
                   if (ytIntervalRef.current) {
@@ -489,20 +491,16 @@ export default function CoursePlayer({
         }).catch(err => console.error("Auto-save position error:", err));
       }
 
-      // Check Video Completion (reaches 95%) with strict anti-cheat verification
-      const progressRatio = time / (duration || 1);
-      if (progressRatio >= 0.95 && !completedLessonIds.includes(currentLesson.id)) {
-        // Anti-Cheat constraints validation
-        const totalSegs = Math.ceil(duration / 5);
-        const uniqueWatchedRatio = totalSegs > 0 ? watchedSegments.length / totalSegs : 0;
-        const speedCheck = playbackRate <= 2.0;
-        const tabCheck = typeof document !== "undefined" && document.visibilityState === "visible";
-        const noCheatJumps = uniqueWatchedRatio >= 0.90; // must have viewed at least 90% unique segments
-
-        if (speedCheck && tabCheck && noCheatJumps) {
-          triggerLessonCompletion();
+      // Check for Next button unlock (15 seconds before the end of the video)
+      if (duration > 0) {
+        if (duration > 15) {
+          if (time >= duration - 15) {
+            setIsNextUnlocked(true);
+          }
         } else {
-          console.warn(`Anti-Cheat alert: Completion blocked. Watch Ratio: ${uniqueWatchedRatio}, Speed: ${playbackRate}, Tab Active: ${tabCheck}`);
+          if (time / duration >= 0.95) {
+            setIsNextUnlocked(true);
+          }
         }
       }
     }
@@ -587,6 +585,10 @@ export default function CoursePlayer({
 
   const handleSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseFloat(e.target.value);
+    if (val > currentTime) {
+      console.warn("Seeking forward is disabled");
+      return;
+    }
     setCurrentTime(val);
     if (isYouTube && ytPlayerRef.current) {
       ytPlayerRef.current.seekTo(val, true);
@@ -680,13 +682,7 @@ export default function CoursePlayer({
         togglePlay();
       } else if (e.code === "ArrowRight") {
         e.preventDefault();
-        const nextTime = Math.min(duration, currentTime + 5);
-        if (isYouTube && ytPlayerRef.current) {
-          ytPlayerRef.current.seekTo(nextTime, true);
-          setCurrentTime(nextTime);
-        } else if (videoRef.current) {
-          videoRef.current.currentTime = nextTime;
-        }
+        console.warn("ArrowRight forward skipping is disabled");
       } else if (e.code === "ArrowLeft") {
         e.preventDefault();
         const nextTime = Math.max(0, currentTime - 5);
@@ -1021,6 +1017,7 @@ export default function CoursePlayer({
                     onWaiting={handleWaiting}
                     onPlaying={handlePlaying}
                     onError={handleError}
+                    onEnded={triggerLessonCompletion}
                     className="w-full h-full object-cover"
                   />
                 )}
@@ -1632,10 +1629,22 @@ export default function CoursePlayer({
               <button
                 onClick={async () => {
                   if (nextLesson) {
+                    // Complete current lesson if not completed yet
+                    if (!completedLessonIds.includes(currentLesson.id)) {
+                      try {
+                        await apiService.completeLesson(currentLesson.id);
+                        setCompletedLessonIds([...completedLessonIds, currentLesson.id]);
+                        await fetchCurriculum(selectedCourse.id, currentLesson.id);
+                        await loadEnrollments();
+                        await loadData();
+                      } catch (err) {
+                        console.error("Error completing lesson on Next click:", err);
+                      }
+                    }
                     setCurrentLesson(nextLesson);
                   }
                 }}
-                disabled={!nextLesson || (nextLesson.is_locked && !completedLessonIds.includes(nextLesson.id))}
+                disabled={!nextLesson || (nextLesson.is_locked && !completedLessonIds.includes(nextLesson.id) && !isNextUnlocked)}
                 className="px-4 py-2 bg-slate-900 hover:bg-slate-850 text-slate-300 disabled:text-slate-600 disabled:bg-slate-950 disabled:border-transparent text-xs font-bold rounded-xl border border-slate-800 cursor-pointer disabled:cursor-not-allowed transition-all"
               >
                 Next
