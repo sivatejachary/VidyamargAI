@@ -61,9 +61,8 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode.
 
-    In this scenario we need to create an Engine
-    and associate a connection with the context.
-
+    Respects `disable_ddl_transaction = True` on individual migrations
+    so that CREATE INDEX CONCURRENTLY can run outside a transaction block.
     """
     from sqlalchemy import create_engine
     connectable = create_engine(
@@ -73,7 +72,10 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection,
+            target_metadata=target_metadata,
+            # Let each migration decide whether to use a transaction
+            transaction_per_migration=True,
         )
 
         with context.begin_transaction():
