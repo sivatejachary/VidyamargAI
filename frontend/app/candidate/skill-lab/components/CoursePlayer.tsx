@@ -310,9 +310,13 @@ export default function CoursePlayer({
             videoId: videoId,
             playerVars: {
               autoplay: 0,
-              controls: 1,
+              controls: 0,
+              disablekb: 1,
+              fs: 0,
+              iv_load_policy: 3,
               modestbranding: 1,
               rel: 0,
+              showinfo: 0,
               origin: typeof window !== "undefined" ? window.location.origin : "",
             },
             events: {
@@ -559,7 +563,15 @@ export default function CoursePlayer({
 
   // Video control triggers
   const togglePlay = () => {
-    if (videoRef.current) {
+    if (isYouTube && ytPlayerRef.current) {
+      if (isPlaying) {
+        ytPlayerRef.current.pauseVideo();
+        setIsPlaying(false);
+      } else {
+        ytPlayerRef.current.playVideo();
+        setIsPlaying(true);
+      }
+    } else if (videoRef.current) {
       if (isPlaying) {
         videoRef.current.pause();
         setIsPlaying(false);
@@ -576,7 +588,9 @@ export default function CoursePlayer({
   const handleSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseFloat(e.target.value);
     setCurrentTime(val);
-    if (videoRef.current) {
+    if (isYouTube && ytPlayerRef.current) {
+      ytPlayerRef.current.seekTo(val, true);
+    } else if (videoRef.current) {
       videoRef.current.currentTime = val;
     }
   };
@@ -585,7 +599,10 @@ export default function CoursePlayer({
     const val = parseFloat(e.target.value);
     setVolume(val);
     setIsMuted(val === 0);
-    if (videoRef.current) {
+    if (isYouTube && ytPlayerRef.current) {
+      ytPlayerRef.current.setVolume(val * 100);
+      ytPlayerRef.current.setMuted(val === 0);
+    } else if (videoRef.current) {
       videoRef.current.volume = val;
       videoRef.current.muted = val === 0;
     }
@@ -594,7 +611,9 @@ export default function CoursePlayer({
   const toggleMute = () => {
     const nextMuted = !isMuted;
     setIsMuted(nextMuted);
-    if (videoRef.current) {
+    if (isYouTube && ytPlayerRef.current) {
+      ytPlayerRef.current.setMuted(nextMuted);
+    } else if (videoRef.current) {
       videoRef.current.muted = nextMuted;
     }
   };
@@ -602,7 +621,9 @@ export default function CoursePlayer({
   const handleSpeedChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const speed = parseFloat(e.target.value);
     setPlaybackRate(speed);
-    if (videoRef.current) {
+    if (isYouTube && ytPlayerRef.current) {
+      ytPlayerRef.current.setPlaybackRate(speed);
+    } else if (videoRef.current) {
       videoRef.current.playbackRate = speed;
     }
   };
@@ -659,22 +680,42 @@ export default function CoursePlayer({
         togglePlay();
       } else if (e.code === "ArrowRight") {
         e.preventDefault();
-        if (videoRef.current) videoRef.current.currentTime = Math.min(duration, currentTime + 5);
+        const nextTime = Math.min(duration, currentTime + 5);
+        if (isYouTube && ytPlayerRef.current) {
+          ytPlayerRef.current.seekTo(nextTime, true);
+          setCurrentTime(nextTime);
+        } else if (videoRef.current) {
+          videoRef.current.currentTime = nextTime;
+        }
       } else if (e.code === "ArrowLeft") {
         e.preventDefault();
-        if (videoRef.current) videoRef.current.currentTime = Math.max(0, currentTime - 5);
+        const nextTime = Math.max(0, currentTime - 5);
+        if (isYouTube && ytPlayerRef.current) {
+          ytPlayerRef.current.seekTo(nextTime, true);
+          setCurrentTime(nextTime);
+        } else if (videoRef.current) {
+          videoRef.current.currentTime = nextTime;
+        }
       } else if (e.code === "ArrowUp") {
         e.preventDefault();
         setVolume(v => {
           const next = Math.min(1.0, v + 0.05);
-          if (videoRef.current) videoRef.current.volume = next;
+          if (isYouTube && ytPlayerRef.current) {
+            ytPlayerRef.current.setVolume(next * 100);
+          } else if (videoRef.current) {
+            videoRef.current.volume = next;
+          }
           return next;
         });
       } else if (e.code === "ArrowDown") {
         e.preventDefault();
         setVolume(v => {
           const next = Math.max(0.0, v - 0.05);
-          if (videoRef.current) videoRef.current.volume = next;
+          if (isYouTube && ytPlayerRef.current) {
+            ytPlayerRef.current.setVolume(next * 100);
+          } else if (videoRef.current) {
+            videoRef.current.volume = next;
+          }
           return next;
         });
       } else if (e.code === "KeyF") {
@@ -685,7 +726,7 @@ export default function CoursePlayer({
 
     window.addEventListener("keydown", handleKeys);
     return () => window.removeEventListener("keydown", handleKeys);
-  }, [isPlaying, currentTime, duration, currentLesson]);
+  }, [isPlaying, currentTime, duration, currentLesson, isYouTube]);
 
   // Speech Assessors
   const speakQuestion = (text: string) => {
@@ -956,8 +997,16 @@ export default function CoursePlayer({
                 className="relative aspect-video w-full bg-black group select-none"
               >
                 {isYouTube ? (
-                  <div key={currentLesson.id} className="w-full h-full">
-                    <div id="youtube-player" className="w-full h-full" />
+                  <div key={currentLesson.id} className="absolute inset-0 w-full h-full overflow-hidden">
+                    <div 
+                      id="youtube-player" 
+                      className="absolute w-full h-[130%] -top-[15%] left-0 right-0 pointer-events-none"
+                    />
+                    {/* Transparent Click Overlay to intercept pointer events and toggle play/pause */}
+                    <div 
+                      onClick={togglePlay}
+                      className="absolute inset-0 w-full h-full cursor-pointer z-15 bg-transparent"
+                    />
                   </div>
                 ) : (
                   <video
@@ -1002,10 +1051,10 @@ export default function CoursePlayer({
                 )}
 
                 {/* Centered Play Button Overlay when paused */}
-                {!isPlaying && !videoError && !isLoading && !isYouTube && (
+                {!isPlaying && !videoError && !isLoading && (
                   <button 
                     onClick={togglePlay}
-                    className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/35 transition-all cursor-pointer animate-fade-in"
+                    className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/35 transition-all cursor-pointer animate-fade-in z-20"
                   >
                     <div className="w-16 h-16 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg transition-transform hover:scale-110">
                       <Play size={24} className="fill-current ml-1" />
@@ -1047,8 +1096,8 @@ export default function CoursePlayer({
                 )}
 
                 {/* Custom Controls Bar */}
-                {!videoError && !isLoading && !isYouTube && (
-                  <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent flex flex-col gap-2.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-300 z-10">
+                {!videoError && !isLoading && (
+                  <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent flex flex-col gap-2.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-300 z-20">
                     {/* Time progress bar */}
                     <div className="flex items-center gap-3 w-full">
                       <span className="text-[10px] text-slate-300 font-mono font-bold">{formatTime(currentTime)}</span>
