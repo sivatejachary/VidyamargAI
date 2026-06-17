@@ -975,10 +975,14 @@ export default function CoursePlayer({
                   <div key={currentLesson.id} className="absolute inset-0 w-full h-full overflow-hidden">
                     <div 
                       id="youtube-player" 
-                      className={`absolute w-full h-[150%] -top-[25%] left-0 right-0 pointer-events-none transition-opacity duration-300 ${
-                        hasStarted ? "opacity-100" : "opacity-0"
-                      }`}
+                      className="absolute w-full h-[150%] -top-[25%] left-0 right-0 pointer-events-none"
                     />
+                    
+                    {/* Black cover overlay to hide cued YouTube video & logo before playback starts */}
+                    {!hasStarted && (
+                      <div className="absolute inset-0 bg-black z-10 pointer-events-none" />
+                    )}
+
                     {/* Transparent Click Overlay to intercept pointer events and toggle play/pause */}
                     <div 
                       onClick={togglePlay}
