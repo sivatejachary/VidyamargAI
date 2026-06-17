@@ -1,15 +1,27 @@
 import json
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+import time
+import logging
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import ORJSONResponse
+from fastapi.middleware.gzip import GZipMiddleware
 from app.core.config import settings
-from app.core.database import engine, Base
+from app.core.database import engine, Base, db_queries_var, cache_status_var
 from app.core.ws import manager
 from app.api.endpoints import router as api_router
 
 from sqlalchemy import text
 
+logger = logging.getLogger("app.api")
+
+
 # Startup database creation and migration helper
 def init_db_safely():
+    import sys
+    import os
+    if os.getenv("TESTING") == "true" or "pytest" in sys.modules:
+        print("Bypassing database initialization in testing environment.")
+        return
     try:
         print("Creating all tables via SQLAlchemy metadata...")
         Base.metadata.create_all(bind=engine)
@@ -301,8 +313,11 @@ def init_db_safely():
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    default_response_class=ORJSONResponse
 )
+
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 @app.on_event("startup")
 def startup_event():
@@ -330,12 +345,69 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Performance headers and logging middleware
+@app.middleware("http")
+async def add_performance_headers(request: Request, call_next):
+    db_queries_token = db_queries_var.set(0)
+    cache_status_token = cache_status_var.set("BYPASS")
+    
+    start_time = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception as e:
+        db_queries_var.reset(db_queries_token)
+        cache_status_var.reset(cache_status_token)
+        raise e
+        
+    elapsed_ms = (time.perf_counter() - start_time) * 1000
+    query_count = db_queries_var.get()
+    cache_status = cache_status_var.get()
+    
+    db_queries_var.reset(db_queries_token)
+    cache_status_var.reset(cache_status_token)
+    
+    response.headers["X-Response-Time"] = f"{elapsed_ms:.2f}ms"
+    response.headers["X-DB-Queries"] = str(query_count)
+    response.headers["X-Cache"] = cache_status
+    
+    path = request.url.path
+    if "/curriculum" in path and elapsed_ms > 300:
+        logger.warning(f"Performance Budget Exceeded: GET {path} took {elapsed_ms:.2f}ms (Budget: 300ms, DB Queries: {query_count})")
+    elif "/login" in path and elapsed_ms > 500:
+        logger.warning(f"Performance Budget Exceeded: POST {path} took {elapsed_ms:.2f}ms (Budget: 500ms, DB Queries: {query_count})")
+    elif "/dashboard" in path and elapsed_ms > 500:
+        logger.warning(f"Performance Budget Exceeded: GET {path} took {elapsed_ms:.2f}ms (Budget: 500ms, DB Queries: {query_count})")
+    elif "/search" in path and elapsed_ms > 800:
+        logger.warning(f"Performance Budget Exceeded: GET {path} took {elapsed_ms:.2f}ms (Budget: 800ms, DB Queries: {query_count})")
+        
+    return response
+
 # Attach all API routes
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+@app.get("/health/db")
+def health_db():
+    try:
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return {"status": "ok", "service": "database"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database connection error: {e}")
+
+@app.get("/health/redis")
+def health_redis():
+    import redis
+    try:
+        r = redis.Redis.from_url(settings.REDIS_URL, socket_connect_timeout=2)
+        r.ping()
+        return {"status": "ok", "service": "redis"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Redis connection error: {e}")
 
 @app.get("/db-test")
 def db_test():
@@ -362,6 +434,7 @@ def db_test():
 @app.get("/")
 def read_root():
     return {"message": "Welcome to HireAI Recruitment Engine"}
+
 
 # WebSocket endpoint
 @app.websocket("/ws/{client_id}")

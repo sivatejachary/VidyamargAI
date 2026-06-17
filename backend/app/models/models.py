@@ -13,6 +13,10 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     full_name = Column(String, nullable=False)
     role = Column(String, default="candidate")  # candidate, admin, super_admin
+    user_xp = Column(Integer, default=0)
+    user_badges = Column(Text, default='[]')
+    user_streaks = Column(Integer, default=0)
+    last_active_date = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -460,6 +464,55 @@ class UserPreference(Base):
     theme = Column(String, default="light")  # light, dark, system
     
     user = relationship("User", back_populates="preferences")
+
+
+class CourseProgress(Base):
+    __tablename__ = "course_progress"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    course_id = Column(String, nullable=False)
+    video_progress = Column(Float, default=0.0)
+    pdf_progress = Column(Float, default=0.0)
+    quiz_progress = Column(Float, default=0.0)
+    overall_progress = Column(Float, default=0.0)
+    last_lesson_id = Column(String, nullable=True)
+    last_activity = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class LearningEvent(Base):
+    __tablename__ = "learning_events"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    event_type = Column(String, nullable=False)
+    lesson_id = Column(String, nullable=True)
+    metadata_json = Column(Text, default="{}")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class VideoAnalytics(Base):
+    __tablename__ = "video_analytics"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    lesson_id = Column(String, nullable=False)
+    load_time = Column(Float, default=0.0)
+    buffer_count = Column(Integer, default=0)
+    buffer_duration = Column(Float, default=0.0)
+    playback_failures = Column(Integer, default=0)
+    device = Column(String, nullable=True)
+    browser = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class CourseAnalytics(Base):
+    __tablename__ = "course_analytics"
+    
+    course_id = Column(String, primary_key=True, index=True)
+    completion_rate = Column(Float, default=0.0)
+    avg_watch_time = Column(Float, default=0.0)
+    dropoff_point = Column(String, nullable=True)
+    avg_quiz_score = Column(Float, default=0.0)
+    certificate_rate = Column(Float, default=0.0)
+
 
 
 

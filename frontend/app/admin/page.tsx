@@ -21,6 +21,7 @@ export default function AdminDashboard() {
   const [funnel, setFunnel] = useState<any[]>([]);
   const [fraudTrends, setFraudTrends] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
+  const [videoAnalytics, setVideoAnalytics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   // Connect websocket for live logs & proctor alerts
@@ -33,6 +34,7 @@ export default function AdminDashboard() {
       setFunnel(data.funnel);
       setFraudTrends(data.fraud_trends);
       setLogs(data.logs);
+      setVideoAnalytics(data.video_analytics);
     } catch (err) {
       console.error(err);
     } finally {
@@ -113,6 +115,38 @@ export default function AdminDashboard() {
           );
         })}
       </div>
+
+      {/* Video Streaming & Delivery Performance Monitoring */}
+      {videoAnalytics && (
+        <div className="glass-panel p-6 rounded-2xl border border-gray-800 bg-card/40 flex flex-col gap-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-sm font-bold text-white flex items-center gap-2">
+              <Video size={16} className="text-indigo-405" />
+              <span>Video Playback & CDN Performance</span>
+            </h2>
+            <span className="text-[10px] font-mono text-gray-405 bg-gray-900 border border-gray-800 px-2 py-0.5 rounded uppercase font-bold tracking-wider">
+              Live Edge CDN metrics
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {[
+              { label: "Avg Load Time", value: `${videoAnalytics.avg_load_time}ms`, desc: "Target <300ms", status: videoAnalytics.avg_load_time < 300 ? "text-emerald-400" : "text-amber-400" },
+              { label: "Avg Buffer Time", value: `${videoAnalytics.avg_buffer_time}ms`, desc: "Minimal lag", status: "text-blue-400" },
+              { label: "Cache Hit Rate", value: `${videoAnalytics.cache_hit_rate}%`, desc: "Redis cache tier", status: "text-indigo-400" },
+              { label: "CDN Hit Rate", value: `${videoAnalytics.cdn_hit_rate}%`, desc: "Cloudflare edge", status: "text-purple-400" },
+              { label: "Playback Failures", value: videoAnalytics.total_failures, desc: "Zero errors", status: videoAnalytics.total_failures === 0 ? "text-emerald-400" : "text-red-400" }
+            ].map((stat, i) => (
+              <div key={i} className="p-4 rounded-xl border border-gray-800/40 bg-muted/20 flex flex-col justify-between gap-1">
+                <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">{stat.label}</span>
+                <span className={`text-lg font-black ${stat.status}`}>{stat.value}</span>
+                <span className="text-[9px] text-gray-500 font-medium">{stat.desc}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
 
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

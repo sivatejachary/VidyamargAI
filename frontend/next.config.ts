@@ -10,4 +10,10 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Enable bundle analyzer if ANALYZE env is true
+const config = process.env.ANALYZE === "true"
+  ? require("@next/bundle-analyzer")({ enabled: true })(nextConfig)
+  : nextConfig;
+
+export default config;
+

@@ -9,7 +9,7 @@ import {
   ArrowRight, ShieldCheck, HelpCircle, ChevronLeft, ChevronRight
 } from "lucide-react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+// Removed framer-motion
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -368,11 +368,8 @@ export default function CandidateJobs() {
                   const styles = getMatchStyles(job.match_score);
                   const isSaved = savedJobIds.has(job.id);
                   return (
-                    <motion.div
+                    <div
                       key={job.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: idx * 0.1 }}
                       className="bg-card text-card-foreground border border-border rounded-3xl p-6 shadow-xs hover:border-muted-foreground/30 hover:shadow-md transition-all duration-200 relative overflow-hidden flex flex-col justify-between"
                     >
                       {/* Match ribbon */}
@@ -499,7 +496,7 @@ export default function CandidateJobs() {
                           </a>
                         )}
                       </div>
-                    </motion.div>
+                    </div>
                   );
                 })}
               </div>

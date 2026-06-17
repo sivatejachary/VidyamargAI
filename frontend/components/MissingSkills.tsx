@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { AlertCircle, TrendingUp, BookOpen, Check } from "lucide-react";
 
 interface SkillGap {
@@ -18,38 +17,48 @@ interface MissingSkillsProps {
 
 export default function MissingSkills({ skillGaps, selectedSkill = null, onSelectSkill }: MissingSkillsProps) {
   if (!skillGaps || skillGaps.length === 0) {
-    return null;
+    return (
+      <div className="bg-white rounded-2xl p-6 border border-slate-100 flex flex-col items-center justify-center text-center min-h-[300px]">
+        <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 mb-3">
+          <BookOpen className="w-5 h-5" />
+        </div>
+        <p className="text-sm font-semibold text-slate-700">No missing skills identified</p>
+        <p className="text-xs text-slate-550 mt-1 max-w-[220px]">
+          You have all the required skills for the matched job opportunities!
+        </p>
+      </div>
+    );
   }
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "High":
         return {
-          badge: "bg-red-50 text-red-700 border-red-200",
-          bar: "bg-gradient-to-r from-red-500 to-rose-600",
-          bg: "hover:border-red-200"
+          bg: "hover:border-red-200 hover:bg-red-50/10",
+          badge: "bg-red-50 text-red-700 border-red-100",
+          bar: "bg-red-500",
         };
       case "Medium":
         return {
-          badge: "bg-amber-50 text-amber-700 border-amber-200",
-          bar: "bg-gradient-to-r from-amber-500 to-yellow-600",
-          bg: "hover:border-amber-200"
+          bg: "hover:border-amber-200 hover:bg-amber-50/10",
+          badge: "bg-amber-50 text-amber-700 border-amber-100",
+          bar: "bg-amber-500",
         };
       default:
         return {
-          badge: "bg-sky-50 text-sky-700 border-sky-200",
-          bar: "bg-gradient-to-r from-sky-500 to-blue-600",
-          bg: "hover:border-sky-200"
+          bg: "hover:border-slate-200 hover:bg-slate-50/20",
+          badge: "bg-slate-50 text-slate-650 border-slate-100",
+          bar: "bg-slate-400",
         };
     }
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-xl bg-violet-50 flex items-center justify-center">
-            <TrendingUp className="w-5 h-5 text-violet-600" />
+    <div className="bg-white rounded-2xl p-6 border border-slate-100">
+      <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="flex gap-3">
+          <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-550 border border-slate-100 shrink-0">
+            <AlertCircle className="w-5 h-5" />
           </div>
           <div>
             <h3 className="text-lg font-bold text-slate-800">Skill Gap Analysis</h3>
@@ -63,11 +72,8 @@ export default function MissingSkills({ skillGaps, selectedSkill = null, onSelec
           const colors = getPriorityColor(gap.priority);
           const isSelected = selectedSkill === gap.skill;
           return (
-            <motion.div
+            <div
               key={gap.skill}
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: index * 0.05 }}
               onClick={() => onSelectSkill && onSelectSkill(gap.skill)}
               className={`p-4 rounded-xl border cursor-pointer transition-all duration-200 ${
                 isSelected
@@ -99,15 +105,13 @@ export default function MissingSkills({ skillGaps, selectedSkill = null, onSelec
                   <span className="font-bold">{gap.missing_in_percentage}%</span>
                 </div>
                 <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${gap.missing_in_percentage}%` }}
-                    transition={{ duration: 0.6, delay: index * 0.08, ease: "easeOut" }}
-                    className={`h-full rounded-full ${colors.bar}`}
+                  <div
+                    style={{ width: `${gap.missing_in_percentage}%` }}
+                    className={`h-full rounded-full transition-all duration-500 ${colors.bar}`}
                   />
                 </div>
               </div>
-            </motion.div>
+            </div>
           );
         })}
       </div>

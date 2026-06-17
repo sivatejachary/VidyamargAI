@@ -9,7 +9,11 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@next/bundle-analyzer": "^16.2.9",
+    "@tanstack/query-sync-storage-persister": "^5.101.0",
     "@tanstack/react-query": "^5.101.0",
+    "@tanstack/react-query-persist-client": "^5.101.0",
+    "@tanstack/react-virtual": "^3.14.3",
     "framer-motion": "^12.40.0",
     "lucide-react": "^1.17.0",
     "next": "16.2.9",

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { apiService } from "@/services/api";
 import { useAuthStore } from "@/store/authStore";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { 
   GraduationCap
 } from "lucide-react";
@@ -174,7 +175,6 @@ export default function SkillLab() {
   };
 
   const [activeView, setActiveView] = useState<"explore" | "course-details" | "course-player" | "my-learning" | "certificates" | "ai-mentor">("explore");
-  const [courses, setCourses] = useState<any[]>(() => getCachedValue("skill_lab_courses", []));
   const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
   const [activeMediaTab, setActiveMediaTab] = useState<"video" | "pdf">("video");
   
@@ -183,18 +183,122 @@ export default function SkillLab() {
   const [courseCategoryFilter, setCourseCategoryFilter] = useState("All");
   const [showAllCourses, setShowAllCourses] = useState(false);
 
-  // Dynamic LMS Curriculum States
-  const [curriculum, setCurriculum] = useState<any>(() => getCachedValue("skill_lab_curriculum", null));
-  const [loadingCurriculum, setLoadingCurriculum] = useState(false);
-  const [currentLesson, setCurrentLesson] = useState<any>(null);
-  const [completedLessonIds, setCompletedLessonIds] = useState<number[]>([]);
-  const [enrollments, setEnrollments] = useState<any[]>(() => getCachedValue("skill_lab_enrollments", []));
-  const [certificates, setCertificates] = useState<any[]>(() => getCachedValue("skill_lab_certificates", []));
-  const [enrolledCourseIds, setEnrolledCourseIds] = useState<any[]>(() => getCachedValue("skill_lab_enrolledCourseIds", []));
+  // Auth Store details
+  const [profile, setProfile] = useState<any>(null);
+  const { email, fullName } = useAuthStore();
+
+  // React Query cached fetches
+  const queryClient = useQueryClient();
+
+  const { data: courses = [] } = useQuery({
+    queryKey: ["courses"],
+    queryFn: () => apiService.getCourses(),
+    placeholderData: keepPreviousData,
+  });
+
+  const { data: enrollments = [] } = useQuery({
+    queryKey: ["enrollments", email],
+    queryFn: () => apiService.getEnrollments(),
+    enabled: !!email,
+    placeholderData: keepPreviousData,
+  });
+
+  const { data: certificates = [] } = useQuery({
+    queryKey: ["certificates", email],
+    queryFn: () => apiService.getCertificates(),
+    enabled: !!email,
+    placeholderData: keepPreviousData,
+  });
+
+  const { data: rawCurriculum = null, isLoading: loadingCurriculum } = useQuery({
+    queryKey: ["curriculum", selectedCourse?.id],
+    queryFn: () => {
+      if (!selectedCourse?.id) return null;
+      return apiService.getCourseCurriculum(selectedCourse.id);
+    },
+    enabled: !!selectedCourse?.id,
+    placeholderData: keepPreviousData,
+  });
+
+  const curriculum = useMemo(() => {
+    return transformNewCurriculumToOld(rawCurriculum);
+  }, [rawCurriculum]);
+
+  const enrolledCourseIds = useMemo(() => enrollments.map((e: any) => e.course_id), [enrollments]);
 
   // Background active enrollment tracking for Continue LearningStepper
-  const [activeEnrollmentCurriculum, setActiveEnrollmentCurriculum] = useState<any>(() => getCachedValue("skill_lab_activeEnrollmentCurriculum", null));
-  const [activeEnrollmentCourse, setActiveEnrollmentCourse] = useState<any>(() => getCachedValue("skill_lab_activeEnrollmentCourse", null));
+  const activeEnrollmentCourse = useMemo(() => {
+    if (enrollments && enrollments.length > 0) {
+      const activeEnroll = enrollments[0];
+      return (courses as any[]).find((c: any) => c.id === activeEnroll.course_id) || activeEnroll.course;
+    }
+    return null;
+  }, [enrollments, courses]);
+
+  const { data: rawActiveEnrollmentCurriculum = null } = useQuery({
+    queryKey: ["curriculum", activeEnrollmentCourse?.id],
+    queryFn: () => {
+      if (!activeEnrollmentCourse?.id) return null;
+      return apiService.getCourseCurriculum(activeEnrollmentCourse.id);
+    },
+    enabled: !!activeEnrollmentCourse?.id,
+    placeholderData: keepPreviousData,
+  });
+
+  const activeEnrollmentCurriculum = useMemo(() => {
+    return transformNewCurriculumToOld(rawActiveEnrollmentCurriculum);
+  }, [rawActiveEnrollmentCurriculum]);
+
+  // Local state for current selections
+  const [currentLesson, setCurrentLesson] = useState<any>(null);
+  const [completedLessonIds, setCompletedLessonIds] = useState<number[]>([]);
+  const [autoSelectLessonId, setAutoSelectLessonId] = useState<string | number | null>(null);
+  const [autoSelectType, setAutoSelectType] = useState<string | null>(null);
+
+  // Sync current lesson selection when curriculum changes
+  useEffect(() => {
+    if (!curriculum) return;
+    setCompletedLessonIds(curriculum.completed_lesson_ids || []);
+    
+    const flatLessons: any[] = [];
+    curriculum.sections?.forEach((sec: any) => {
+      sec.lessons?.forEach((les: any) => {
+        flatLessons.push(les);
+      });
+    });
+
+    if (flatLessons.length > 0) {
+      if (autoSelectLessonId) {
+        const match = flatLessons.find(l => l.id === autoSelectLessonId);
+        if (match) {
+          setCurrentLesson(match);
+          setActiveMediaTab(match.type === "pdf" ? "pdf" : "video");
+        }
+        setAutoSelectLessonId(null);
+      } else if (autoSelectType) {
+        const match = flatLessons.find(l => l.type === autoSelectType && !l.is_locked) ||
+                      flatLessons.find(l => l.type === autoSelectType);
+        if (match) {
+          setCurrentLesson(match);
+          setActiveMediaTab(match.type === "pdf" ? "pdf" : "video");
+        } else {
+          setCurrentLesson(flatLessons[0]);
+          setActiveMediaTab(flatLessons[0].type === "pdf" ? "pdf" : "video");
+        }
+        setAutoSelectType(null);
+      } else {
+        const currentLessonIsFromThisCourse = flatLessons.some(l => l.id === currentLesson?.id);
+        if (!currentLesson || !currentLessonIsFromThisCourse) {
+          const incomplete = flatLessons.find(l => !(curriculum.completed_lesson_ids || []).includes(l.id));
+          const selected = incomplete || flatLessons[0];
+          setCurrentLesson(selected);
+          setActiveMediaTab(selected.type === "pdf" ? "pdf" : "video");
+        }
+      }
+    } else {
+      setCurrentLesson(null);
+    }
+  }, [curriculum, autoSelectLessonId, autoSelectType]);
 
   // Gamification & Streak States
   const [xp, setXp] = useState<number>(() => getCachedValue("skill_lab_xp", 80));
@@ -209,180 +313,67 @@ export default function SkillLab() {
   const [notepadText, setNotepadText] = useState("");
   const [savedNotes, setSavedNotes] = useState<string[]>([]);
 
-  // Auth Store details
-  const [profile, setProfile] = useState<any>(null);
-  const { email, fullName } = useAuthStore();
-
-  const fetchCurriculum = async (courseId: string | number, autoSelectLessonId?: string | number) => {
-    setLoadingCurriculum(true);
-    try {
-      const rawData = await apiService.getCourseCurriculum(courseId);
-      const data = transformNewCurriculumToOld(rawData);
-      setCurriculum(data);
-      setCachedValue("skill_lab_curriculum", data);
-      setCompletedLessonIds(data.completed_lesson_ids || []);
-      
-      const flatLessons: any[] = [];
-      data.sections?.forEach((sec: any) => {
-        sec.lessons?.forEach((les: any) => {
-          flatLessons.push(les);
-        });
-      });
-
-      if (flatLessons.length > 0) {
-        if (autoSelectLessonId) {
-          const match = flatLessons.find(l => l.id === autoSelectLessonId);
-          if (match) {
-            setCurrentLesson(match);
-            setActiveMediaTab(match.type === "pdf" ? "pdf" : "video");
-          }
-        } else {
-          const incomplete = flatLessons.find(l => !(data.completed_lesson_ids || []).includes(l.id));
-          const selected = incomplete || flatLessons[0];
-          setCurrentLesson(selected);
-          setActiveMediaTab(selected.type === "pdf" ? "pdf" : "video");
-        }
-      } else {
-        setCurrentLesson(null);
-      }
-    } catch (err) {
-      console.error("Failed to fetch curriculum:", err);
-    } finally {
-      setLoadingCurriculum(false);
+  const fetchCurriculum = async (courseId: string | number, autoSelectLesId?: string | number) => {
+    if (autoSelectLesId) {
+      setAutoSelectLessonId(autoSelectLesId);
     }
+    queryClient.invalidateQueries({ queryKey: ["curriculum", courseId] });
   };
 
   const loadEnrollments = async () => {
-    try {
-      const data = await apiService.getEnrollments();
-      setEnrollments(data || []);
-      setCachedValue("skill_lab_enrollments", data || []);
-      if (data) {
-        const ids = data.map((e: any) => e.course_id);
-        setEnrolledCourseIds(ids);
-        setCachedValue("skill_lab_enrolledCourseIds", ids);
-      }
-    } catch (err) {
-      console.error("Failed to load enrollments", err);
-    }
+    queryClient.invalidateQueries({ queryKey: ["enrollments", email] });
   };
 
   const loadCertificates = async () => {
-    try {
-      const data = await apiService.getCertificates();
-      setCertificates(data || []);
-      setCachedValue("skill_lab_certificates", data || []);
-    } catch (err) {
-      console.error("Failed to load certificates", err);
-    }
+    queryClient.invalidateQueries({ queryKey: ["certificates", email] });
   };
 
   const loadData = async () => {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    const promises: Promise<any>[] = [];
+    if (token) {
+      apiService.getProfile()
+        .then((prof) => {
+          setProfile(prof);
+          setCachedValue("skill_lab_profile", prof);
+        })
+        .catch((err) => console.error("Failed to load profile", err));
 
-    // Always fetch course catalog in parallel
-    promises.push(
-      apiService.getCourses()
-        .then((fetchedCourses) => {
-          if (fetchedCourses && fetchedCourses.length > 0) {
-            setCourses(fetchedCourses);
-            setCachedValue("skill_lab_courses", fetchedCourses);
+      apiService.getCareerReadiness()
+        .then((cr) => {
+          if (cr) {
+            setStreak(cr.learning_streak);
+            setCachedValue("skill_lab_streak", cr.learning_streak);
+            setHoursLearned(cr.hours_learned);
+            setCachedValue("skill_lab_hoursLearned", cr.hours_learned);
+            setCompletedCoursesCount(cr.courses_completed);
+            setCachedValue("skill_lab_completedCoursesCount", cr.courses_completed);
+            setEarnedCertsCount(cr.certificates_earned);
+            setCachedValue("skill_lab_earnedCertsCount", cr.certificates_earned);
+            setReadinessScore(Math.round(cr.career_readiness_score));
+            setCachedValue("skill_lab_readinessScore", Math.round(cr.career_readiness_score));
+            if (cr.xp !== undefined) {
+              setXp(cr.xp);
+              setCachedValue("skill_lab_xp", cr.xp);
+            }
+            if (cr.level !== undefined) {
+              setLevel(cr.level);
+              setCachedValue("skill_lab_level", cr.level);
+            }
           }
         })
-        .catch((courseErr) => {
-          console.error("Failed to load courses from DB", courseErr);
-        })
-    );
-
-    // If authenticated, fetch candidate statistics and states in parallel
-    if (token) {
-      promises.push(
-        apiService.getProfile()
-          .then((prof) => {
-            setProfile(prof);
-            setCachedValue("skill_lab_profile", prof);
-          })
-          .catch((err) => console.error("Failed to load profile", err))
-      );
-
-      promises.push(
-        loadEnrollments()
-          .catch((err) => console.error("Failed to load enrollments", err))
-      );
-
-      promises.push(
-        loadCertificates()
-          .catch((err) => console.error("Failed to load certificates", err))
-      );
-
-      promises.push(
-        apiService.getCareerReadiness()
-          .then((cr) => {
-            if (cr) {
-              setStreak(cr.learning_streak);
-              setCachedValue("skill_lab_streak", cr.learning_streak);
-              setHoursLearned(cr.hours_learned);
-              setCachedValue("skill_lab_hoursLearned", cr.hours_learned);
-              setCompletedCoursesCount(cr.courses_completed);
-              setCachedValue("skill_lab_completedCoursesCount", cr.courses_completed);
-              setEarnedCertsCount(cr.certificates_earned);
-              setCachedValue("skill_lab_earnedCertsCount", cr.certificates_earned);
-              setReadinessScore(Math.round(cr.career_readiness_score));
-              setCachedValue("skill_lab_readinessScore", Math.round(cr.career_readiness_score));
-              if (cr.xp !== undefined) {
-                setXp(cr.xp);
-                setCachedValue("skill_lab_xp", cr.xp);
-              }
-              if (cr.level !== undefined) {
-                setLevel(cr.level);
-                setCachedValue("skill_lab_level", cr.level);
-              }
-            }
-          })
-          .catch((err) => console.error("Failed to load career readiness", err))
-      );
+        .catch((err) => console.error("Failed to load career readiness", err));
     }
-
-    await Promise.allSettled(promises);
   };
 
   useEffect(() => {
     loadData();
   }, [email]);
 
-  // Dynamically load active enrollment curriculum for the Continue Learning stepper in background
-  useEffect(() => {
-    if (enrollments && enrollments.length > 0) {
-      const activeEnroll = enrollments[0];
-      const courseObj = courses.find(c => c.id === activeEnroll.course_id) || activeEnroll.course;
-      if (courseObj) {
-        setActiveEnrollmentCourse(courseObj);
-        setCachedValue("skill_lab_activeEnrollmentCourse", courseObj);
-        apiService.getCourseCurriculum(courseObj.id)
-          .then(rawData => {
-            const data = transformNewCurriculumToOld(rawData);
-            setActiveEnrollmentCurriculum(data);
-            setCachedValue("skill_lab_activeEnrollmentCurriculum", data);
-          })
-          .catch(err => {
-            console.error("Error background fetching active curriculum", err);
-          });
-      }
-    } else {
-      setActiveEnrollmentCourse(null);
-      setActiveEnrollmentCurriculum(null);
-    }
-  }, [enrollments, courses]);
-
   const handleEnrollCourse = async (id: string | number) => {
     try {
       await apiService.enrollCourse(id);
-      if (!enrolledCourseIds.includes(id)) {
-        setEnrolledCourseIds([...enrolledCourseIds, id]);
-      }
       setXp(prev => prev + 50);
-      await loadEnrollments();
+      queryClient.invalidateQueries({ queryKey: ["enrollments", email] });
     } catch (err) {
       console.error("Failed to enroll in course:", err);
     }
@@ -391,41 +382,14 @@ export default function SkillLab() {
   const handleStartCourse = async (course: any) => {
     setSelectedCourse(course);
     await handleEnrollCourse(course.id);
-    await fetchCurriculum(course.id);
     setActiveView("course-player");
   };
 
   const handleGoToLesson = async (course: any, lessonType: string) => {
     setSelectedCourse(course);
-    setLoadingCurriculum(true);
+    setAutoSelectType(lessonType);
     setActiveView("course-player");
-    try {
-      await handleEnrollCourse(course.id);
-      const rawData = await apiService.getCourseCurriculum(course.id);
-      const data = transformNewCurriculumToOld(rawData);
-      setCurriculum(data);
-      setCompletedLessonIds(data.completed_lesson_ids || []);
-      
-      const flatLessons: any[] = [];
-      data.sections?.forEach((sec: any) => {
-        sec.lessons?.forEach((les: any) => {
-          flatLessons.push(les);
-        });
-      });
-      
-      const targetLesson = flatLessons.find(l => l.type === lessonType && !l.is_locked) || 
-                           flatLessons.find(l => l.type === lessonType) || 
-                           flatLessons[0];
-      
-      if (targetLesson) {
-        setCurrentLesson(targetLesson);
-        setActiveMediaTab(targetLesson.type === "pdf" ? "pdf" : "video");
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingCurriculum(false);
-    }
+    await handleEnrollCourse(course.id);
   };
 
   const isAiMentor = activeView === "ai-mentor";

@@ -675,5 +675,60 @@ export const apiService = {
     });
     if (!res.ok) throw new Error("Failed to update preferences");
     return res.json();
+  },
+
+  async saveResumeLearning(data: { courseId: string | number, lessonId: string, playbackPosition: number, watchedSegments: number[], completion: number }) {
+    const res = await customFetch(`${getBaseUrl()}/resume-learning`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getHeaders() },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Failed to save resume learning");
+    return res.json();
+  },
+
+  async getResumeLearning(courseId: string | number) {
+    const res = await customFetch(`${getBaseUrl()}/resume-learning/${courseId}`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to get resume learning");
+    return res.json();
+  },
+
+  async getContinueLearning() {
+    const res = await customFetch(`${getBaseUrl()}/continue-learning`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to get continue learning");
+    return res.json();
+  },
+
+  async saveVideoAnalytics(data: { lessonId: string, loadTime: number, bufferCount: number, bufferDuration: number, playbackFailures: number, device?: string, browser?: string }) {
+    const res = await customFetch(`${getBaseUrl()}/video-analytics`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getHeaders() },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Failed to save video analytics");
+    return res.json();
+  },
+
+  async saveLearningEvent(data: { eventType: string, lessonId: string, metadata?: any }) {
+    const res = await customFetch(`${getBaseUrl()}/learning-events`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getHeaders() },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Failed to save learning event");
+    return res.json();
+  },
+
+  async getUserStats() {
+    const res = await customFetch(`${getBaseUrl()}/user-stats`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to get user stats");
+    return res.json();
   }
 };
+

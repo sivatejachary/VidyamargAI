@@ -9,15 +9,13 @@ from app.core.database import Base, get_db
 from app.models.models import User, Candidate
 from app.core.security import get_password_hash
 
-# Setup test DB path
-DB_FILE = "test_courses_temp.db"
-if os.path.exists(DB_FILE):
-    try:
-        os.remove(DB_FILE)
-    except Exception:
-        pass
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL:
+    TEST_DATABASE_URL = DATABASE_URL.rsplit('/', 1)[0] + '/vidyamargai_test'
+else:
+    TEST_DATABASE_URL = "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@thomas.proxy.rlwy.net:20637/vidyamargai_test"
 
-engine = create_engine(f"sqlite:///{DB_FILE}", connect_args={"check_same_thread": False})
+engine = create_engine(TEST_DATABASE_URL)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Override get_db
@@ -33,6 +31,15 @@ app.dependency_overrides[get_db] = override_get_db
 class TestCoursesEndpoints(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        db = TestingSessionLocal()
+        for t in ["ai_interview_attempts", "written_assessment_attempts", "quiz_attempts", "certificates", "user_progress", "enrollments", "ai_interviews", "written_assessments", "quizzes", "pdfs", "lessons", "topics", "modules", "courses", "candidates", "users"]:
+            try:
+                db.execute(text(f"DROP TABLE IF EXISTS {t} CASCADE;"))
+            except Exception:
+                pass
+        db.commit()
+        db.close()
+
         Base.metadata.create_all(bind=engine)
         db = TestingSessionLocal()
         
@@ -48,7 +55,7 @@ class TestCoursesEndpoints(unittest.TestCase):
                 thumbnail TEXT,
                 description TEXT,
                 category TEXT,
-                totalModules INTEGER,
+                totalmodules INTEGER,
                 level TEXT,
                 status TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -57,59 +64,69 @@ class TestCoursesEndpoints(unittest.TestCase):
         db.execute(text("""
             CREATE TABLE IF NOT EXISTS modules (
                 id TEXT PRIMARY KEY,
-                courseId TEXT,
-                moduleNo INTEGER,
+                courseid TEXT,
+                moduleno INTEGER,
                 title TEXT,
-                unlockOrder INTEGER
+                unlockorder INTEGER
+            )
+        """))
+        db.execute(text("""
+            CREATE TABLE IF NOT EXISTS topics (
+                id TEXT PRIMARY KEY,
+                moduleid TEXT,
+                title TEXT,
+                description TEXT,
+                topicno INTEGER,
+                estimatedduration TEXT
             )
         """))
         db.execute(text("""
             CREATE TABLE IF NOT EXISTS lessons (
                 id TEXT PRIMARY KEY,
-                moduleId TEXT,
+                topicid TEXT,
                 title TEXT,
-                youtubeUrl TEXT,
+                youtubeurl TEXT,
                 duration TEXT
             )
         """))
         db.execute(text("""
             CREATE TABLE IF NOT EXISTS pdfs (
                 id TEXT PRIMARY KEY,
-                moduleId TEXT,
+                topicid TEXT,
                 title TEXT,
-                pdfUrl TEXT
+                pdfurl TEXT
             )
         """))
         db.execute(text("""
             CREATE TABLE IF NOT EXISTS quizzes (
                 id TEXT PRIMARY KEY,
-                moduleId TEXT,
+                "moduleId" TEXT,
                 title TEXT,
-                passPercentage REAL,
+                "passPercentage" REAL,
                 questions_json TEXT
             )
         """))
         db.execute(text("""
             CREATE TABLE IF NOT EXISTS written_assessments (
                 id TEXT PRIMARY KEY,
-                moduleId TEXT,
+                moduleid TEXT,
                 title TEXT,
-                passPercentage REAL,
+                passpercentage REAL,
                 questions_json TEXT
             )
         """))
         db.execute(text("""
             CREATE TABLE IF NOT EXISTS ai_interviews (
                 id TEXT PRIMARY KEY,
-                moduleId TEXT,
+                moduleid TEXT,
                 title TEXT,
-                passPercentage REAL,
+                passpercentage REAL,
                 questions_json TEXT
             )
         """))
         db.execute(text("""
             CREATE TABLE IF NOT EXISTS enrollments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 course_id TEXT,
                 user_id INTEGER,
                 progress REAL,
@@ -119,22 +136,22 @@ class TestCoursesEndpoints(unittest.TestCase):
         """))
         db.execute(text("""
             CREATE TABLE IF NOT EXISTS user_progress (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                userId INTEGER,
-                courseId TEXT,
-                moduleId TEXT,
-                videoCompleted INTEGER,
-                pdfCompleted INTEGER,
-                quizCompleted INTEGER,
-                writtenCompleted INTEGER,
-                interviewCompleted INTEGER,
-                moduleUnlocked INTEGER,
-                nextModuleUnlocked INTEGER
+                id SERIAL PRIMARY KEY,
+                "userId" INTEGER,
+                "courseId" TEXT,
+                "moduleId" TEXT,
+                "videoCompleted" BOOLEAN,
+                "pdfCompleted" BOOLEAN,
+                "quizCompleted" BOOLEAN,
+                "writtenCompleted" BOOLEAN,
+                "interviewCompleted" BOOLEAN,
+                "moduleUnlocked" BOOLEAN,
+                "nextModuleUnlocked" BOOLEAN
             )
         """))
         db.execute(text("""
             CREATE TABLE IF NOT EXISTS certificates (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 course_id TEXT,
                 user_id INTEGER,
                 code TEXT,
@@ -145,7 +162,7 @@ class TestCoursesEndpoints(unittest.TestCase):
         """))
         db.execute(text("""
             CREATE TABLE IF NOT EXISTS quiz_attempts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 user_id INTEGER,
                 quiz_id TEXT,
                 score REAL,
@@ -155,7 +172,7 @@ class TestCoursesEndpoints(unittest.TestCase):
         """))
         db.execute(text("""
             CREATE TABLE IF NOT EXISTS written_assessment_attempts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 user_id INTEGER,
                 written_assessment_id TEXT,
                 answers_json TEXT,
@@ -167,7 +184,7 @@ class TestCoursesEndpoints(unittest.TestCase):
         """))
         db.execute(text("""
             CREATE TABLE IF NOT EXISTS ai_interview_attempts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 user_id INTEGER,
                 ai_interview_id TEXT,
                 transcript_json TEXT,
@@ -198,32 +215,36 @@ class TestCoursesEndpoints(unittest.TestCase):
         
         # Populate test courses & modules tables
         db.execute(text(
-            "INSERT INTO courses (id, title, instructor, rating, reviews, duration, thumbnail, description, category, totalModules, level, status) VALUES "
+            "INSERT INTO courses (id, title, instructor, rating, reviews, duration, thumbnail, description, category, totalmodules, level, status) VALUES "
             "('course_001', 'Python Complete Bootcamp', 'Jose Portilla', 4.9, '14.5k', '12 Hours', 'python.jpg', 'Python description', 'Programming', 1, 'Beginner', 'published')"
         ))
         db.execute(text(
-            "INSERT INTO modules (id, courseId, moduleNo, title, unlockOrder) VALUES "
+            "INSERT INTO modules (id, courseid, moduleno, title, unlockorder) VALUES "
             "('module_course_001_1', 'course_001', 1, 'Basics', 1)"
         ))
         db.execute(text(
-            "INSERT INTO lessons (id, moduleId, title, youtubeUrl, duration) VALUES "
-            "('lesson_module_course_001_1', 'module_course_001_1', 'Python Intro', 'http://youtube.com', '15 min')"
+            "INSERT INTO topics (id, moduleid, title, description, topicno, estimatedduration) VALUES "
+            "('topic_module_course_001_1', 'module_course_001_1', 'Introduction to Python', 'Python topic desc', 1, '15 min')"
         ))
         db.execute(text(
-            "INSERT INTO pdfs (id, moduleId, title, pdfUrl) VALUES "
-            "('pdf_module_course_001_1', 'module_course_001_1', 'Python Cheatsheet', 'http://pdf.com')"
+            "INSERT INTO lessons (id, topicid, title, youtubeurl, duration) VALUES "
+            "('lesson_module_course_001_1', 'topic_module_course_001_1', 'Python Intro', 'http://youtube.com', '15 min')"
+        ))
+        db.execute(text(
+            "INSERT INTO pdfs (id, topicid, title, pdfurl) VALUES "
+            "('pdf_module_course_001_1', 'topic_module_course_001_1', 'Python Cheatsheet', 'http://pdf.com')"
         ))
         # Insert a real quiz question
         db.execute(text(
-            "INSERT INTO quizzes (id, moduleId, title, passPercentage, questions_json) VALUES "
+            'INSERT INTO quizzes (id, "moduleId", title, "passPercentage", questions_json) VALUES '
             "('quiz_module_course_001_1', 'module_course_001_1', 'Syntax Basics Quiz', 70, '[{\"question\": \"Q1\", \"options\": [\"A\", \"B\"], \"correct_option\": 1}]')"
         ))
         db.execute(text(
-            "INSERT INTO written_assessments (id, moduleId, title, passPercentage, questions_json) VALUES "
+            "INSERT INTO written_assessments (id, moduleid, title, passpercentage, questions_json) VALUES "
             "('written_module_course_001_1', 'module_course_001_1', 'Data Types Concept Test', 75, '[]')"
         ))
         db.execute(text(
-            "INSERT INTO ai_interviews (id, moduleId, title, passPercentage, questions_json) VALUES "
+            "INSERT INTO ai_interviews (id, moduleid, title, passpercentage, questions_json) VALUES "
             "('interview_module_course_001_1', 'module_course_001_1', 'Technical Assessment: Python Basics', 75, '[]')"
         ))
         db.commit()
@@ -232,13 +253,16 @@ class TestCoursesEndpoints(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        Base.metadata.drop_all(bind=engine)
-        engine.dispose()
-        if os.path.exists(DB_FILE):
+        db = TestingSessionLocal()
+        for t in ["ai_interview_attempts", "written_assessment_attempts", "quiz_attempts", "certificates", "user_progress", "enrollments", "ai_interviews", "written_assessments", "quizzes", "pdfs", "lessons", "topics", "modules", "courses"]:
             try:
-                os.remove(DB_FILE)
+                db.execute(text(f"DROP TABLE IF EXISTS {t} CASCADE;"))
             except Exception:
                 pass
+        db.commit()
+        db.close()
+        Base.metadata.drop_all(bind=engine)
+        engine.dispose()
 
     def test_01_get_courses(self):
         res = self.client.get("/api/v1/courses")
@@ -291,7 +315,7 @@ class TestCoursesEndpoints(unittest.TestCase):
         cur = res.json()
         self.assertTrue(cur["enrolled"])
         self.assertTrue(cur["modules"][0]["unlocked"])
-        self.assertFalse(cur["modules"][0]["video"]["completed"])
+        self.assertFalse(cur["modules"][0]["topics"][0]["video"]["completed"])
 
         # Complete lesson
         res = self.client.post("/api/v1/lessons/lesson_module_course_001_1/complete", headers=headers)
@@ -301,7 +325,7 @@ class TestCoursesEndpoints(unittest.TestCase):
         res = self.client.get("/api/v1/courses/course_001/curriculum", headers=headers)
         self.assertEqual(res.status_code, 200)
         cur = res.json()
-        self.assertTrue(cur["modules"][0]["video"]["completed"])
+        self.assertTrue(cur["modules"][0]["topics"][0]["video"]["completed"])
         # Total items: 5. 1 completed. Progress: 1/5 = 20%
         self.assertEqual(cur["progress"], 20.0)
 

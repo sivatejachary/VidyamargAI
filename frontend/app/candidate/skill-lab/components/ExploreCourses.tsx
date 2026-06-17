@@ -50,8 +50,11 @@ export default function ExploreCourses({
   activeView,
   setActiveView,
   setSelectedCourse,
+  activeEnrollmentCourse,
+  activeEnrollmentCurriculum,
   handleStartCourse,
   handleGoToLesson,
+  completedLessonIds,
   courseSearchQuery,
   setCourseSearchQuery,
   courseCategoryFilter,
@@ -341,15 +344,44 @@ export default function ExploreCourses({
         />
 
         {/* ── Section 1: Continue Learning ── */}
-        {continueLearning.length > 0 && (
-          <HorizontalCarousel
-            title="Continue Learning"
-            subtitle="Pick up where you left off"
-            items={continueLearning}
-            renderItem={renderContinueLearningCard}
-            variant="course"
-          />
+        {activeEnrollmentCourse && activeEnrollmentCurriculum && (
+          <div className="bg-gradient-to-r from-slate-900 via-indigo-950/90 to-slate-900 border border-indigo-500/20 rounded-3xl p-6.5 shadow-xl relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="relative z-10 space-y-2 max-w-lg">
+              <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold font-mono bg-indigo-500/20 text-indigo-400 border border-indigo-400/20 uppercase tracking-widest">
+                Continue Learning
+              </span>
+              <h2 className="text-lg font-black text-white leading-tight">
+                {activeEnrollmentCourse.title}
+              </h2>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
+                <span className="font-semibold text-slate-200">
+                  {(() => {
+                    const flat: any[] = [];
+                    activeEnrollmentCurriculum.sections?.forEach((s: any) => 
+                      s.lessons?.forEach((l: any) => flat.push({ section: s, lesson: l }))
+                    );
+                    const current = flat.find((f: any) => !(completedLessonIds || []).includes(f.lesson.id)) || flat[0];
+                    if (current) {
+                      return `${current.section.title.split(":")[0]} • ${current.lesson.title}`;
+                    }
+                    return "All completed";
+                  })()}
+                </span>
+              </div>
+            </div>
+            
+            <div className="relative z-10 shrink-0 flex items-center gap-3.5">
+              <button
+                className="px-6 py-2.8 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black shadow-md flex items-center gap-2 cursor-pointer transition-all hover:scale-105 active:scale-95"
+                onClick={() => handleGoToLesson(activeEnrollmentCourse, "video")}
+              >
+                <span>Resume →</span>
+              </button>
+            </div>
+          </div>
         )}
+
 
         {/* ── Section 2: Career Growth Paths ── */}
         <section>

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Providers from "@/components/Providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -95,7 +96,9 @@ export default function RootLayout({
             __html: `(function(){try{var t=localStorage.getItem('theme')||'system';var d=false;if(t==='system'){d=window.matchMedia('(prefers-color-scheme: dark)').matches;}else{d=(t==='dark');}if(d){document.documentElement.classList.add('dark');document.documentElement.classList.remove('light-theme');}else{document.documentElement.classList.remove('dark');document.documentElement.classList.add('light-theme');}}catch(e){}})()`,
           }}
         />
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );

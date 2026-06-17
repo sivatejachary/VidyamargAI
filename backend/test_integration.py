@@ -1,5 +1,6 @@
 import unittest
 import json
+import os
 from unittest.mock import patch
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -13,15 +14,79 @@ from app.services.orchestrator import orchestrator
 
 class TestHireAIEngine(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
-        # Create SQLite in-memory test database
-        self.engine = create_engine("sqlite:///:memory:")
+        # Create Postgres connection for tests
+        DATABASE_URL = os.getenv("DATABASE_URL")
+        if DATABASE_URL:
+            self.test_db_url = DATABASE_URL.rsplit('/', 1)[0] + '/vidyamargai_test'
+        else:
+            self.test_db_url = "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@thomas.proxy.rlwy.net:20637/vidyamargai_test"
+            
+        self.engine = create_engine(self.test_db_url)
         TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
         Base.metadata.create_all(bind=self.engine)
         self.db = TestingSessionLocal()
+        
+        # Start call_gemini patcher
+        def mock_call_gemini(prompt, json_mode=False):
+            prompt_lower = prompt.lower()
+            if "parse" in prompt_lower or "extract" in prompt_lower or "resume" in prompt_lower:
+                return json.dumps({
+                    "name": "Alex River",
+                    "email": "test@candidate.com",
+                    "phone": "1234567890",
+                    "skills": "Python, FastAPI, SQLite, React, PostgreSQL",
+                    "experience": [{"role": "Backend Developer", "years": 5}],
+                    "summary": "Experienced developer",
+                    "education": [],
+                    "projects": [],
+                    "certifications": "",
+                    "achievements": [],
+                    "languages": "",
+                    "github": "",
+                    "linkedin": "",
+                    "portfolio": ""
+                })
+            elif "screen" in prompt_lower or "screening" in prompt_lower:
+                return json.dumps({
+                    "skill_match": 90,
+                    "experience_match": 85,
+                    "education_match": 80,
+                    "project_match": 80,
+                    "overall_score": 85,
+                    "decision": "shortlist",
+                    "reasoning": "Fits criteria."
+                })
+            elif "evaluate" in prompt_lower or "assessment" in prompt_lower:
+                return json.dumps({
+                    "score": 85.0,
+                    "passed": True,
+                    "feedback": "Great work!"
+                })
+            elif "interview" in prompt_lower:
+                if "analyze" in prompt_lower or "analysis" in prompt_lower:
+                    return json.dumps({
+                        "knowledge_score": 80.0,
+                        "communication_score": 85.0,
+                        "confidence_score": 90.0,
+                        "overall_score": 85.0,
+                        "passed": True,
+                        "feedback": "Solid interview."
+                    })
+                else:
+                    return "Tell me about your Python experience."
+            elif "recommendation" in prompt_lower or "hiring" in prompt_lower:
+                return "Strong hire recommendation."
+            else:
+                return "{}"
+                
+        self.patcher = patch("app.services.orchestrator.call_gemini", side_effect=mock_call_gemini)
+        self.patcher.start()
 
     def tearDown(self):
+        self.patcher.stop()
         self.db.close()
         Base.metadata.drop_all(bind=self.engine)
+        self.engine.dispose()
 
     async def test_complete_recruitment_flow(self):
         # 1. Create User & Candidate

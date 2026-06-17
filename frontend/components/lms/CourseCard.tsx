@@ -6,6 +6,8 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/Progress";
+import { useQueryClient } from "@tanstack/react-query";
+import { apiService } from "@/services/api";
 import {
   LMSCourse,
   LMSEnrollment,
@@ -39,6 +41,39 @@ export function CourseCard({
     CATEGORY_GRADIENTS[course.category ?? ""] ?? DEFAULT_GRADIENT;
   const moduleCount = course.totalModules ?? course.modules ?? 0;
 
+  const queryClient = useQueryClient();
+  const prefetchTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleMouseEnter = () => {
+    if (typeof navigator !== "undefined" && (navigator as any).connection) {
+      const conn = (navigator as any).connection;
+      if (conn.saveData || /2g|3g/.test(conn.effectiveType)) {
+        return;
+      }
+    }
+
+    if (prefetchTimeoutRef.current) clearTimeout(prefetchTimeoutRef.current);
+    prefetchTimeoutRef.current = setTimeout(() => {
+      queryClient.prefetchQuery({
+        queryKey: ["curriculum", course.id],
+        queryFn: () => apiService.getCourseCurriculum(course.id),
+      });
+    }, 200);
+  };
+
+  const handleMouseLeave = () => {
+    if (prefetchTimeoutRef.current) {
+      clearTimeout(prefetchTimeoutRef.current);
+      prefetchTimeoutRef.current = null;
+    }
+  };
+
+  React.useEffect(() => {
+    return () => {
+      if (prefetchTimeoutRef.current) clearTimeout(prefetchTimeoutRef.current);
+    };
+  }, []);
+
   return (
     <Card
       className={
@@ -48,6 +83,8 @@ export function CourseCard({
         "motion-reduce:transition-none motion-reduce:hover:transform-none"
       }
       hoverEffect={false}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       {/* ── 1. Thumbnail ──────────────────────────────────── */}
       <div className="relative h-[120px] w-full shrink-0 overflow-hidden">
