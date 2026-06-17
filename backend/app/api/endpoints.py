@@ -5133,8 +5133,19 @@ def submit_interview(interview_id: str, data: dict, db: Session = Depends(get_db
                 import random
                 import string
                 code = "CERT-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
+                
+                # Check actual columns in db
+                try:
+                    cols_res = db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name = 'certificates'")).fetchall()
+                    cols = {r[0] for r in cols_res}
+                except Exception:
+                    cols = {"code"}
+                
+                code_col = "certificate_code" if "certificate_code" in cols else "code"
+                sql = f"INSERT INTO certificates (course_id, user_id, {code_col}, readiness_score, interview_score, earned_at) VALUES (:course_id, :user_id, :code, 85, 80, :earned_at)"
+                
                 db.execute(
-                    text("INSERT INTO certificates (course_id, user_id, code, readiness_score, interview_score, earned_at) VALUES (:course_id, :user_id, :code, 85, 80, :earned_at)"),
+                    text(sql),
                     {"course_id": course_id, "user_id": current_user.id, "code": code, "earned_at": now_str}
                 )
                 db.execute(
@@ -5194,24 +5205,44 @@ def get_enrollments(db: Session = Depends(get_db), current_user: User = Depends(
 
 @router.get("/certificates")
 def get_certificates(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    try:
+        cols_res = db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name = 'certificates'")).fetchall()
+        cols = {r[0] for r in cols_res}
+    except Exception:
+        cols = {"code", "readiness_score", "interview_score", "earned_at"}
+    
+    code_col = "certificate_code" if "certificate_code" in cols else "code"
+    
+    # Safely select columns that exist in the database table
+    select_fields = ["id", "course_id", "user_id", code_col]
+    if "readiness_score" in cols:
+        select_fields.append("readiness_score")
+    if "interview_score" in cols:
+        select_fields.append("interview_score")
+    if "earned_at" in cols:
+        select_fields.append("earned_at")
+        
+    select_str = ", ".join(select_fields)
+    
     res = db.execute(
-        text("SELECT id, course_id, user_id, code, readiness_score, interview_score, earned_at FROM certificates WHERE user_id=:user_id"),
+        text(f"SELECT {select_str} FROM certificates WHERE user_id=:user_id"),
         {"user_id": current_user.id}
     ).fetchall()
     
     certs = []
     for row in res:
-        course_id = row[1]
+        row_dict = dict(zip(select_fields, row))
+        course_id = row_dict.get("course_id")
         c_row = db.execute(text("SELECT title, instructor FROM courses WHERE id=:course_id"), {"course_id": course_id}).fetchone()
         
         certs.append({
-            "id": row[0],
-            "course_id": row[1],
-            "user_id": row[2],
-            "code": row[3],
-            "readiness_score": row[4],
-            "interview_score": row[5],
-            "earned_at": str(row[6]),
+            "id": row_dict.get("id"),
+            "course_id": course_id,
+            "user_id": row_dict.get("user_id"),
+            "code": row_dict.get(code_col),
+            "readiness_score": row_dict.get("readiness_score", 0.0),
+            "interview_score": row_dict.get("interview_score", 0.0),
+            "earned_at": str(row_dict.get("earned_at", "")),
             "course_title": c_row[0] if c_row else "Unknown Course",
             "instructor": c_row[1] if c_row else "Unknown Instructor"
         })
