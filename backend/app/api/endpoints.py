@@ -57,7 +57,8 @@ def test_resend_directly():
             data=json.dumps(req_data).encode("utf-8"),
             headers={
                 "Authorization": f"Bearer {resend_api_key}",
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "User-Agent": "VidyamargAI/1.0"
             }
         )
         with urllib.request.urlopen(req, timeout=10) as response:
@@ -869,7 +870,8 @@ def send_otp_html_email(email: str, code: str, db: Session):
                 data=json.dumps(req_data).encode("utf-8"),
                 headers={
                     "Authorization": f"Bearer {resend_api_key}",
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
+                    "User-Agent": "VidyamargAI/1.0"
                 }
             )
             with urllib.request.urlopen(req, timeout=10) as response:
@@ -896,7 +898,8 @@ def send_otp_html_email(email: str, code: str, db: Session):
                 data=json.dumps(req_data).encode("utf-8"),
                 headers={
                     "Authorization": f"Bearer {sendgrid_api_key}",
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
+                    "User-Agent": "VidyamargAI/1.0"
                 }
             )
             with urllib.request.urlopen(req, timeout=10) as response:
