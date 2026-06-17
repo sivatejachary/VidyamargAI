@@ -20,7 +20,7 @@ from app.models.models import (
     CandidateRanking, Offer, Notification, AuditLog, EmailNotification, Message,
     Company, Recruiter, LinkedInHiringPost, JobSource, JobMatch, SearchHistory, SavedJob,
     JobAgentRun, JobAgentLog, TelegramSource, CourseProgress, LearningEvent,
-    VideoAnalytics, CourseAnalytics
+    VideoAnalytics, CourseAnalytics, OTP
 )
 
 logger = logging.getLogger(__name__)
@@ -700,25 +700,199 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 def read_current_user(current_user: User = Depends(get_current_user)):
     return current_user
 
+# Rate limiting and OTP management helper functions
+def delete_expired_otps(db: Session):
+    try:
+        from datetime import datetime
+        db.query(OTP).filter(OTP.expiry_time < datetime.utcnow()).delete()
+        db.commit()
+    except Exception as e:
+        logger.error(f"Error deleting expired OTPs: {e}")
+
+def send_otp_html_email(email: str, code: str, db: Session):
+    # Professional HTML template
+    html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Verify Your Email</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #cbd5e1;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #0f172a; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" max-width="500px" border="0" cellspacing="0" cellpadding="0" style="max-width: 500px; background-color: #1e293b; border-radius: 16px; border: 1px solid #334155; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);">
+          <tr>
+            <td style="background-color: #4f46e5; padding: 30px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 800; letter-spacing: 0.05em; font-family: inherit;">VidyamargAI</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="margin: 0 0 16px 0; color: #ffffff; font-size: 18px; font-weight: 700;">Reset Your Password</h2>
+              <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.6; color: #94a3b8;">
+                You are receiving this email because you requested to reset the password for your VidyamargAI account. Use the following verification code to proceed:
+              </p>
+              
+              <div style="text-align: center; margin: 32px 0;">
+                <div style="display: inline-block; background-color: #0f172a; border: 1px solid #4f46e5; border-radius: 12px; padding: 16px 32px; font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #818cf8; font-family: monospace;">
+                  {code}
+                </div>
+              </div>
+              
+              <p style="margin: 0 0 24px 0; font-size: 12px; line-height: 1.6; color: #94a3b8; text-align: center;">
+                This code is valid for <strong>10 minutes</strong>.
+              </p>
+              
+              <hr style="border: 0; border-top: 1px solid #334155; margin: 30px 0;">
+              
+              <p style="margin: 0; font-size: 11px; line-height: 1.5; color: #64748b;">
+                Security Note: If you did not initiate this request, please ignore this email. Do not share this OTP code with anyone.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+"""
+
+    import os
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    try:
+        smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    except ValueError:
+        smtp_port = 587
+    smtp_user = os.getenv("SMTP_USER", "")
+    smtp_password = os.getenv("SMTP_PASSWORD", "")
+    smtp_from = os.getenv("SMTP_FROM_EMAIL", "noreply@vidyamargai.com")
+
+    subject = "Password Reset Verification Code - VidyamargAI"
+
+    if smtp_user and smtp_password:
+        try:
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = subject
+            msg["From"] = smtp_from
+            msg["To"] = email
+            
+            # Attach plain and HTML body
+            plain_body = f"Your VidyamargAI verification code is: {code}\nThis code is valid for 10 minutes."
+            msg.attach(MIMEText(plain_body, "plain"))
+            msg.attach(MIMEText(html_content, "html"))
+            
+            server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
+            server.starttls()
+            server.login(smtp_user, smtp_password)
+            server.sendmail(smtp_from, [email], msg.as_string())
+            server.quit()
+            logger.info(f"Password reset OTP sent via SMTP to {email}")
+        except Exception as e:
+            logger.error(f"SMTP failed to send OTP: {e}")
+    else:
+        logger.warning(f"SMTP credentials missing. Printed OTP for {email}: {code}")
+
+    # Create EmailNotification record so candidates can check their notifications in-app (for testing/logs copy)
+    try:
+        user = db.query(User).filter(User.email == email).first()
+        if user and user.role == "candidate":
+            candidate = user.candidate
+            if candidate:
+                email_notif = EmailNotification(
+                    candidate_id=candidate.id,
+                    sender=smtp_from,
+                    recipient=email,
+                    subject=subject,
+                    body=f"Your VidyamargAI verification code is: {code}\nThis code is valid for 10 minutes.",
+                    read=False
+                )
+                db.add(email_notif)
+                db.commit()
+    except Exception as e:
+        logger.error(f"Failed to create EmailNotification log: {e}")
+
 @router.post("/auth/forgot-password")
 def forgot_password(req: schemas.ForgotPasswordRequest, db: Session = Depends(get_db)):
+    # 1. Delete expired OTPs automatically
+    delete_expired_otps(db)
+
+    # 2. Check if email is registered
     user = db.query(User).filter(User.email == req.email).first()
     if not user:
         raise HTTPException(status_code=404, detail="Email not registered")
     
+    # 3. Rate limiting check (max 3 OTP requests per 15 minutes per email)
+    from datetime import datetime, timedelta
+    fifteen_minutes_ago = datetime.utcnow() - timedelta(minutes=15)
+    recent_otps = db.query(OTP).filter(
+        OTP.email == req.email,
+        OTP.created_at >= fifteen_minutes_ago
+    ).count()
+    
+    if recent_otps >= 3:
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded. Max 3 requests per 15 minutes. Please try again later."
+        )
+        
+    # 4. Generate random 6-digit OTP
     import random
     code = f"{random.randint(100000, 999999)}"
-    return {"message": "Verification code generated successfully", "code": code}
+    expiry = datetime.utcnow() + timedelta(minutes=10)
+    
+    # 5. Save OTP to DB (email, otp, expiry_time, used=False)
+    otp_entry = OTP(
+        email=req.email,
+        otp=code,
+        expiry_time=expiry,
+        used=False
+    )
+    db.add(otp_entry)
+    db.commit()
+    
+    # 6. Send OTP using SMTP
+    send_otp_html_email(req.email, code, db)
+    
+    # 7. Success response (NEVER return OTP in response body or UI)
+    return {"message": "A verification code has been sent to your registered email address."}
 
 @router.post("/auth/reset-password")
 def reset_password(req: schemas.ResetPasswordRequest, db: Session = Depends(get_db)):
+    # 1. Check if email is registered
     user = db.query(User).filter(User.email == req.email).first()
     if not user:
         raise HTTPException(status_code=404, detail="Email not registered")
+        
+    # 2. Check if there is a valid, unused, unexpired OTP for this email
+    from datetime import datetime
+    otp_record = db.query(OTP).filter(
+        OTP.email == req.email,
+        OTP.otp == req.code,
+        OTP.used == False,
+        OTP.expiry_time > datetime.utcnow()
+    ).first()
     
+    if not otp_record:
+        raise HTTPException(status_code=400, detail="Invalid or expired verification code")
+        
+    # 3. Hash password using bcrypt before saving
     hashed_pwd = get_password_hash(req.new_password)
     user.password_hash = hashed_pwd
+    
+    # 4. Mark OTP as used
+    otp_record.used = True
+    
     db.commit()
+    
+    # 5. Clean up expired OTPs
+    delete_expired_otps(db)
+    
     return {"message": "Password updated successfully"}
 
 

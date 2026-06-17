@@ -25,12 +25,35 @@ export default function Home() {
   const [forgotStep, setForgotStep] = useState(1); // 1 = Enter email, 2 = Enter code & new password
   const [resetCode, setResetCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const [simulatedCode, setSimulatedCode] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [theme, setTheme] = useState<"dark" | "light">("light");
 
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  // Handle URL reset query parameters and cooldown timer
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const resetEmail = params.get("reset_email");
+      const resetCodeParam = params.get("reset_code");
+      if (resetEmail && resetCodeParam) {
+        setEmail(resetEmail);
+        setResetCode(resetCodeParam);
+        setAuthMode("forgot_password");
+        setForgotStep(2);
+        setResendCooldown(60);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
 
   // Sync theme state with localStorage & document root
   useEffect(() => {
@@ -136,8 +159,9 @@ export default function Home() {
     try {
       if (forgotStep === 1) {
         const response = await apiService.forgotPassword(email);
-        setSimulatedCode(response.code);
+        setError(response.message || "A verification code has been sent to your registered email address.");
         setForgotStep(2);
+        setResendCooldown(60);
       } else {
         await apiService.resetPassword({
           email,
@@ -149,7 +173,6 @@ export default function Home() {
         setForgotStep(1);
         setResetCode("");
         setNewPassword("");
-        setSimulatedCode("");
         setError("Password updated successfully! Please log in.");
       }
     } catch (err: any) {
@@ -302,14 +325,8 @@ export default function Home() {
 
               <form onSubmit={handleForgotPasswordSubmit} className="flex flex-col gap-4 lg:gap-3 xl:gap-4">
                 {error && (
-                  <Alert variant={error.includes("successfully") ? "success" : "error"}>
+                  <Alert variant={error.includes("successfully") || error.includes("verification code has been sent") ? "success" : "error"}>
                     {error}
-                  </Alert>
-                )}
-
-                {simulatedCode && (
-                  <Alert variant="success">
-                    [Simulation] Verification code sent: <strong className="font-mono text-sm underline">{simulatedCode}</strong>
                   </Alert>
                 )}
 
@@ -328,7 +345,29 @@ export default function Home() {
                 {forgotStep === 2 && (
                   <>
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-11 font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Verification Code</label>
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="text-11 font-bold text-muted-foreground uppercase tracking-wider block">Verification Code</label>
+                        <button
+                          type="button"
+                          disabled={resendCooldown > 0 || loading}
+                          onClick={async () => {
+                            setError("");
+                            setLoading(true);
+                            try {
+                              const response = await apiService.forgotPassword(email);
+                              setError(response.message || "A verification code has been sent to your registered email address.");
+                              setResendCooldown(60);
+                            } catch (err: any) {
+                              setError(err.message || "Failed to resend verification code.");
+                            } finally {
+                              setLoading(false);
+                            }
+                          }}
+                          className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline font-bold disabled:text-muted-foreground disabled:no-underline disabled:cursor-not-allowed cursor-pointer"
+                        >
+                          {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend OTP"}
+                        </button>
+                      </div>
                       <Input
                         type="text"
                         required
@@ -378,7 +417,6 @@ export default function Home() {
                     setError("");
                     setAuthMode("login");
                     setForgotStep(1);
-                    setSimulatedCode("");
                   }}
                   className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-bold cursor-pointer"
                 >
@@ -509,7 +547,6 @@ export default function Home() {
                         setError("");
                         setAuthMode("forgot_password");
                         setForgotStep(1);
-                        setSimulatedCode("");
                       }}
                       className="text-10 text-purple-600 dark:text-purple-400 hover:underline font-bold cursor-pointer"
                     >

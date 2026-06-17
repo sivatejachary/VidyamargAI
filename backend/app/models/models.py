@@ -513,6 +513,16 @@ class CourseAnalytics(Base):
     avg_quiz_score = Column(Float, default=0.0)
     certificate_rate = Column(Float, default=0.0)
 
+class OTP(Base):
+    __tablename__ = "otps"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, index=True, nullable=False)
+    otp = Column(String, nullable=False)
+    expiry_time = Column(DateTime, nullable=False)
+    used = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 
 
 
