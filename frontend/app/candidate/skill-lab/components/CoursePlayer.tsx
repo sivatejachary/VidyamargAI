@@ -69,6 +69,7 @@ export default function CoursePlayer({
   const [playbackRate, setPlaybackRate] = useState(1.0);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasStarted, setHasStarted] = useState(false);
 
   // YouTube player state refs and helper
   const isYouTube = useMemo(() => {
@@ -180,6 +181,7 @@ export default function CoursePlayer({
     setVideoError(null);
     setIsLoading(true);
     setIsPlaying(false);
+    setHasStarted(false);
     setCurrentTime(0);
     setIsNextUnlocked(false);
     setWatchedSegments([]);
@@ -331,6 +333,7 @@ export default function CoursePlayer({
                 // Playing is 1, Paused is 2, Ended is 0
                 if (state === 1) {
                   setIsPlaying(true);
+                  setHasStarted(true);
                   if (!ytIntervalRef.current) {
                     ytIntervalRef.current = setInterval(() => {
                       if (ytPlayerRef.current && ytPlayerRef.current.getCurrentTime) {
@@ -361,7 +364,8 @@ export default function CoursePlayer({
                     ytIntervalRef.current = null;
                   }
                   triggerLessonCompletion();
-                } else {
+                } else if (state === 2) {
+                  // Paused
                   setIsPlaying(false);
                   if (ytIntervalRef.current) {
                     clearInterval(ytIntervalRef.current);
@@ -568,6 +572,7 @@ export default function CoursePlayer({
       } else {
         ytPlayerRef.current.playVideo();
         setIsPlaying(true);
+        setHasStarted(true);
       }
     } else if (videoRef.current) {
       if (isPlaying) {
@@ -579,6 +584,7 @@ export default function CoursePlayer({
           setVideoError("Autoplay blocked or load failed.");
         });
         setIsPlaying(true);
+        setHasStarted(true);
       }
     }
   };
@@ -664,6 +670,7 @@ export default function CoursePlayer({
   };
 
   const handlePlaying = () => {
+    setHasStarted(true);
     if (bufferStartTime) {
       const elapsed = Date.now() - bufferStartTime;
       setBufferDuration(prev => prev + elapsed);
@@ -968,7 +975,9 @@ export default function CoursePlayer({
                   <div key={currentLesson.id} className="absolute inset-0 w-full h-full overflow-hidden">
                     <div 
                       id="youtube-player" 
-                      className="absolute w-full h-[150%] -top-[25%] left-0 right-0 pointer-events-none"
+                      className={`absolute w-full h-[150%] -top-[25%] left-0 right-0 pointer-events-none transition-opacity duration-300 ${
+                        hasStarted ? "opacity-100" : "opacity-0"
+                      }`}
                     />
                     {/* Transparent Click Overlay to intercept pointer events and toggle play/pause */}
                     <div 
@@ -1026,7 +1035,7 @@ export default function CoursePlayer({
                     onClick={togglePlay}
                     className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/35 transition-all cursor-pointer animate-fade-in z-20 pointer-events-auto"
                   >
-                    <div className="w-16 h-16 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg transition-transform hover:scale-110">
+                    <div className="w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 border border-white/30 text-white flex items-center justify-center shadow-lg backdrop-blur-sm transition-transform hover:scale-110">
                       <Play size={24} className="fill-current ml-1" />
                     </div>
                   </button>
