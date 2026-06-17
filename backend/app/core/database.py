@@ -1,16 +1,12 @@
-import contextvars
 import time
 import logging
 import os
 from sqlalchemy import create_engine, text, event
 from sqlalchemy.orm import declarative_base, sessionmaker
 from app.core.config import settings
+from app.core.monitoring import db_queries_var, db_query_time_var, cache_status_var
 
 logger = logging.getLogger("app.db")
-
-# Performance tracking ContextVars
-db_queries_var = contextvars.ContextVar("db_queries", default=0)
-cache_status_var = contextvars.ContextVar("cache_status", default="BYPASS")
 
 # Connection pool settings safe for Railway
 engine = create_engine(
@@ -18,7 +14,11 @@ engine = create_engine(
     pool_size=20,
     max_overflow=40,
     pool_pre_ping=True,
-    pool_recycle=3600
+    pool_recycle=3600,
+    pool_timeout=30,
+    connect_args={
+        "options": "-c idle_in_transaction_session_timeout=30000 -c lock_timeout=5000"
+    }
 )
 
 # Slow Query Monitoring Listeners
@@ -35,10 +35,22 @@ def before_cursor_execute(conn, cursor, statement, parameters, context, executem
 @event.listens_for(engine, "after_cursor_execute")
 def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     duration = time.perf_counter() - context._query_start_time
+    try:
+        # Accumulate DB query execution time
+        current_time = db_query_time_var.get()
+        db_query_time_var.set(current_time + duration)
+    except Exception:
+        pass
+
     if duration > 0.2:
         logger.warning(f"Slow Query ({duration:.2f}s): {statement[:200]}")
         # Run EXPLAIN ANALYZE only in development to prevent overhead in production
-        if os.getenv("ENV") != "production" and os.getenv("TESTING") != "true":
+        is_prod = (
+            os.getenv("ENV") == "production" or 
+            os.getenv("ENVIRONMENT") == "production"
+        )
+        is_testing = os.getenv("TESTING") == "true"
+        if not is_prod and not is_testing:
             try:
                 with engine.connect() as explain_conn:
                     explain_res = explain_conn.execute(text(f"EXPLAIN ANALYZE {statement}"), parameters).fetchall()

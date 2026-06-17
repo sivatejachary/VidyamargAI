@@ -74,6 +74,72 @@ services:
       minio:
         condition: service_healthy
 
+  worker-high:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hireai-worker-high
+    command: ["python", "-m", "rq", "worker", "high", "--url", "redis://redis:6379/0"]
+    environment:
+      - DATABASE_URL=postgresql://postgres:password123@postgres:5432/hireai
+      - REDIS_URL=redis://redis:6379/0
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET=hireai
+      - SECRET_KEY=super-secret-recruit-tara-key-987654321
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker-default:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hireai-worker-default
+    command: ["python", "-m", "rq", "worker", "default", "--url", "redis://redis:6379/0"]
+    environment:
+      - DATABASE_URL=postgresql://postgres:password123@postgres:5432/hireai
+      - REDIS_URL=redis://redis:6379/0
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET=hireai
+      - SECRET_KEY=super-secret-recruit-tara-key-987654321
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker-low:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hireai-worker-low
+    command: ["python", "-m", "rq", "worker", "low", "--url", "redis://redis:6379/0"]
+    environment:
+      - DATABASE_URL=postgresql://postgres:password123@postgres:5432/hireai
+      - REDIS_URL=redis://redis:6379/0
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET=hireai
+      - SECRET_KEY=super-secret-recruit-tara-key-987654321
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
   frontend:
     build:
       context: ./frontend

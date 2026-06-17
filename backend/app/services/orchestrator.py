@@ -396,7 +396,8 @@ class AgentOrchestrator:
             except Exception:
                 pass
                 
-        if not res:
+        required_keys = ["skill_match", "experience_match", "education_match", "project_match", "overall_score", "decision", "raw_reasoning"]
+        if not res or not isinstance(res, dict) or not all(k in res for k in required_keys):
             # Simulated robust scoring
             skill_score = 85.0 if any(sk.strip().lower() in (candidate.skills or "").lower() for sk in (job.required_skills or "").split(",")) else 70.0
             overall = (skill_score + 80.0 + 85.0 + 78.0) / 4.0

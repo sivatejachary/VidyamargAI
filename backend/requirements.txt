@@ -17,3 +17,10 @@ beautifulsoup4>=4.12.0
 googlesearch-python
 kubernetes>=29.0.0
 orjson
+rq>=1.16.0
+slowapi>=0.1.9
+sentry-sdk[fastapi]>=2.0.0
+prometheus-fastapi-instrumentator>=7.0.0
+opentelemetry-api>=1.20.0
+opentelemetry-sdk>=1.20.0
+opentelemetry-instrumentation-fastapi>=0.41b0

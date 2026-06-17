@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/Progress";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiService } from "@/services/api";
+import Image from "next/image";
+
 import {
   LMSCourse,
   LMSEnrollment,
@@ -89,12 +91,14 @@ export function CourseCard({
       {/* ── 1. Thumbnail ──────────────────────────────────── */}
       <div className="relative h-[120px] w-full shrink-0 overflow-hidden">
         {course.thumbnailUrl ? (
-          <img
+          <Image
             src={course.thumbnailUrl}
             alt={course.title}
-            loading="lazy"
-            className="h-full w-full object-cover"
+            fill
+            sizes="(max-width: 768px) 100vw, 400px"
+            className="object-cover"
           />
+
         ) : (
           <div
             className={`h-full w-full bg-gradient-to-br ${gradient} flex items-center justify-center`}

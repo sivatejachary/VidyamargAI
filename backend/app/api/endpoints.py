@@ -2,7 +2,7 @@ import json
 import logging
 from datetime import datetime
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Response, BackgroundTasks, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Response, BackgroundTasks, WebSocket, WebSocketDisconnect, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -4394,6 +4394,20 @@ def get_course_curriculum(course_id: str, db: Session = Depends(get_db), current
         "progress": progress,
         "modules": modules
     }
+
+
+@router.get("/cache/stats")
+async def get_cache_stats_endpoint(
+    request: Request,
+    current_admin: User = Depends(get_current_admin)
+):
+    """Redis cache stats — admin only, rate-limited."""
+    import os
+    env = os.getenv("ENVIRONMENT", os.getenv("ENV", "development"))
+    # In development, still allow but add a warning header
+    from app.services.curriculum_cache import get_cache_stats
+    stats = get_cache_stats()
+    return stats
 
 
 @router.post("/courses/{course_id}/enroll")

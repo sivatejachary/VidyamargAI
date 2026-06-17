@@ -4,9 +4,13 @@ import { useEffect, useState } from "react";
 import { apiService } from "@/services/api";
 import { useWebSockets } from "@/hooks/useWebSockets";
 import { Users, ClipboardList, CheckCircle, XCircle, Video, FileSignature, Terminal, Sparkles } from "lucide-react";
-import { 
-  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell
-} from "recharts";
+import dynamic from "next/dynamic";
+
+const FunnelChart = dynamic(
+  () => import("@/components/admin/AdminCharts").then((m) => m.FunnelChart),
+  { ssr: false, loading: () => <div className="h-64 animate-pulse bg-gray-800/40 rounded-xl" /> }
+);
+
 
 export default function AdminDashboard() {
   const [metrics, setMetrics] = useState<any>({
@@ -67,7 +71,8 @@ export default function AdminDashboard() {
     return () => removeListener();
   }, [addMessageListener]);
 
-  const COLORS = ["#8b5cf6", "#6366f1", "#4f46e5", "#3b82f6", "#10b981", "#059669"];
+
+
 
   if (loading) {
     return (
@@ -155,24 +160,9 @@ export default function AdminDashboard() {
         <div className="lg:col-span-2 glass-panel p-6 rounded-2xl border border-gray-800 flex flex-col gap-4 bg-card/40">
           <h2 className="text-sm font-bold text-white">Recruitment Funnel Conversion</h2>
           <div className="h-64 mt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={funnel} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
-                <XAxis dataKey="stage" stroke="#9ca3af" fontSize={10} />
-                <YAxis stroke="#9ca3af" fontSize={10} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: "#0f1019", border: "1px solid #374151" }} 
-                  labelStyle={{ color: "#fff", fontSize: 11 }}
-                  itemStyle={{ color: "#a78bfa", fontSize: 11 }}
-                />
-                <Bar dataKey="count" radius={[8, 8, 0, 0]}>
-                  {funnel.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            <FunnelChart data={funnel} />
           </div>
+
         </div>
 
         {/* Fraud Trends Panel */}

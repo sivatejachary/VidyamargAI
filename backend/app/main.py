@@ -1,10 +1,13 @@
+import asyncio
 import json
-import time
 import logging
+import os
+import time
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 from fastapi.middleware.gzip import GZipMiddleware
+from starlette.concurrency import run_in_threadpool
 from app.core.config import settings
 from app.core.database import engine, Base, db_queries_var, cache_status_var
 from app.core.ws import manager
@@ -317,11 +320,47 @@ app = FastAPI(
     default_response_class=ORJSONResponse
 )
 
+# Sentry initialization (Phase 0)
+try:
+    import sentry_sdk
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+    _sentry_dsn = os.getenv("SENTRY_DSN", "")
+    if _sentry_dsn:
+        sentry_sdk.init(
+            dsn=_sentry_dsn,
+            environment=os.getenv("ENVIRONMENT", "development"),
+            release=os.getenv("GIT_SHA", "local"),
+            traces_sample_rate=0.05,
+            profiles_sample_rate=0.02,
+            integrations=[FastApiIntegration(), SqlalchemyIntegration()],
+        )
+        logger.info("Sentry initialized")
+except ImportError:
+    logger.warning("sentry-sdk not installed; Sentry disabled")
+
+# Prometheus metrics (Phase 0)
+try:
+    from prometheus_fastapi_instrumentator import Instrumentator
+    Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+except ImportError:
+    logger.warning("prometheus-fastapi-instrumentator not installed; /metrics disabled")
+
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 @app.on_event("startup")
 def startup_event():
     init_db_safely()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Close shared httpx client on application shutdown to release connections."""
+    try:
+        from app.core.http import http_client
+        await http_client.aclose()
+    except Exception:
+        pass
 
 
 origins = [
@@ -382,6 +421,19 @@ async def add_performance_headers(request: Request, call_next):
         
     return response
 
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; "
+        "font-src 'self' data: https:"
+    )
+    return response
+
 # Attach all API routes
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
@@ -389,25 +441,53 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 def health():
     return {"status": "ok"}
 
-@app.get("/health/db")
-def health_db():
+@app.get("/health/live")
+async def health_live():
+    return {"status": "live"}
+
+@app.get("/health/ready")
+async def health_ready():
+    checks = {}
+    # DB check
     try:
-        from sqlalchemy import text
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
+        await asyncio.wait_for(
+            run_in_threadpool(lambda: engine.connect().execute(text("SELECT 1")).close()),
+            timeout=2.0
+        )
+        checks["db"] = "ok"
+    except Exception as e:
+        checks["db"] = f"error: {e}"
+    # Redis check
+    try:
+        import redis as _redis
+        r = _redis.Redis.from_url(settings.REDIS_URL, socket_connect_timeout=2)
+        await asyncio.wait_for(run_in_threadpool(r.ping), timeout=2.0)
+        checks["redis"] = "ok"
+    except Exception as e:
+        checks["redis"] = f"error: {e}"
+    overall = "ready" if all(v == "ok" for v in checks.values()) else "degraded"
+    return {"status": overall, "checks": checks}
+
+@app.get("/health/db")
+async def health_db():
+    try:
+        await asyncio.wait_for(
+            run_in_threadpool(lambda: engine.connect().execute(text("SELECT 1")).close()),
+            timeout=2.0
+        )
         return {"status": "ok", "service": "database"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database connection error: {e}")
+        raise HTTPException(status_code=503, detail=f"Database error: {e}")
 
 @app.get("/health/redis")
-def health_redis():
-    import redis
+async def health_redis():
     try:
-        r = redis.Redis.from_url(settings.REDIS_URL, socket_connect_timeout=2)
-        r.ping()
+        import redis as _redis
+        r = _redis.Redis.from_url(settings.REDIS_URL, socket_connect_timeout=2)
+        await asyncio.wait_for(run_in_threadpool(r.ping), timeout=2.0)
         return {"status": "ok", "service": "redis"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Redis connection error: {e}")
+        raise HTTPException(status_code=503, detail=f"Redis error: {e}")
 
 @app.get("/db-test")
 def db_test():
