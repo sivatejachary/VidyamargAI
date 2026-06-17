@@ -340,12 +340,8 @@ try:
 except ImportError:
     logger.warning("sentry-sdk not installed; Sentry disabled")
 
-# Prometheus metrics (Phase 0)
-try:
-    from prometheus_fastapi_instrumentator import Instrumentator
-    Instrumentator().instrument(app).expose(app, endpoint="/metrics")
-except ImportError:
-    logger.warning("prometheus-fastapi-instrumentator not installed; /metrics disabled")
+# Prometheus metrics configuration moved to run after router inclusion to prevent routing resolution errors
+
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
@@ -437,6 +433,13 @@ async def add_security_headers(request: Request, call_next):
 
 # Attach all API routes
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+# Prometheus metrics (Phase 0) - Instrument after all routes are attached to prevent router matching issues
+try:
+    from prometheus_fastapi_instrumentator import Instrumentator
+    Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+except ImportError:
+    logger.warning("prometheus-fastapi-instrumentator not installed; /metrics disabled")
 
 @app.get("/health")
 def health():
