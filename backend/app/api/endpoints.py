@@ -30,44 +30,6 @@ from app.services.storage import storage_service
 
 router = APIRouter()
 
-@router.get("/auth/test-smtp-env-check")
-def test_smtp_env_check():
-    import os
-    import smtplib
-    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
-    smtp_port = os.getenv("SMTP_PORT", "587")
-    smtp_user = os.getenv("SMTP_USER", "")
-    smtp_password = os.getenv("SMTP_PASSWORD", "")
-    smtp_from = os.getenv("SMTP_FROM_EMAIL", "")
-
-    pwd_masked = f"{smtp_password[0]}...{smtp_password[-1]} (len={len(smtp_password)})" if smtp_password else "None"
-    
-    result = {
-        "smtp_host": smtp_host,
-        "smtp_port": smtp_port,
-        "smtp_user": smtp_user,
-        "smtp_password_masked": pwd_masked,
-        "smtp_from": smtp_from,
-        "env_vars_present": bool(smtp_user and smtp_password)
-    }
-    
-    if smtp_user and smtp_password:
-        try:
-            server = smtplib.SMTP(smtp_host, int(smtp_port), timeout=10)
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-            server.login(smtp_user, smtp_password)
-            server.quit()
-            result["smtp_connection"] = "SUCCESS"
-        except Exception as e:
-            result["smtp_connection"] = f"FAILED: {str(e)}"
-    else:
-        result["smtp_connection"] = "SKIPPED (missing credentials)"
-        
-    return result
-
-
 # Import new real-time job services
 from app.services.job_connectors import (
     linkedin_jobs, naukri, foundit, internshala, wellfound, hiring_posts
@@ -823,6 +785,8 @@ def send_otp_html_email(email: str, code: str, db: Session):
 
     import os
     import smtplib
+    import urllib.request
+    import json
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
 
@@ -837,6 +801,61 @@ def send_otp_html_email(email: str, code: str, db: Session):
 
     subject = "Password Reset Verification Code - VidyamargAI"
 
+    # Method 1: Try Resend HTTPS API (Port 443)
+    resend_api_key = os.getenv("RESEND_API_KEY", "")
+    if resend_api_key:
+        try:
+            # Resend requires a verified domain sender or onboarding@resend.dev
+            from_sender = smtp_from if (smtp_from and not smtp_from.endswith("@gmail.com")) else "onboarding@resend.dev"
+            req_data = {
+                "from": f"VidyamargAI <{from_sender}>",
+                "to": [email],
+                "subject": subject,
+                "html": html_content
+            }
+            req = urllib.request.Request(
+                "https://api.resend.com/emails",
+                method="POST",
+                data=json.dumps(req_data).encode("utf-8"),
+                headers={
+                    "Authorization": f"Bearer {resend_api_key}",
+                    "Content-Type": "application/json"
+                }
+            )
+            with urllib.request.urlopen(req, timeout=10) as response:
+                res_body = json.loads(response.read().decode())
+                logger.info(f"OTP sent successfully via Resend API to {email}: {res_body}")
+                return
+        except Exception as e:
+            logger.error(f"Resend API sending failed, trying fallback: {e}")
+
+    # Method 2: Try SendGrid HTTPS API (Port 443)
+    sendgrid_api_key = os.getenv("SENDGRID_API_KEY", "")
+    if sendgrid_api_key:
+        try:
+            from_sender = smtp_from if smtp_from else "noreply@vidyamargai.com"
+            req_data = {
+                "personalizations": [{"to": [{"email": email}]}],
+                "from": {"email": from_sender, "name": "VidyamargAI"},
+                "subject": subject,
+                "content": [{"type": "text/html", "value": html_content}]
+            }
+            req = urllib.request.Request(
+                "https://api.sendgrid.com/v3/mail/send",
+                method="POST",
+                data=json.dumps(req_data).encode("utf-8"),
+                headers={
+                    "Authorization": f"Bearer {sendgrid_api_key}",
+                    "Content-Type": "application/json"
+                }
+            )
+            with urllib.request.urlopen(req, timeout=10) as response:
+                logger.info(f"OTP sent successfully via SendGrid API to {email}")
+                return
+        except Exception as e:
+            logger.error(f"SendGrid API sending failed, trying fallback: {e}")
+
+    # Method 3: Fallback to standard SMTP (Port 587)
     if smtp_user and smtp_password:
         try:
             msg = MIMEMultipart("alternative")
@@ -858,7 +877,7 @@ def send_otp_html_email(email: str, code: str, db: Session):
         except Exception as e:
             logger.error(f"SMTP failed to send OTP: {e}")
     else:
-        logger.warning(f"SMTP credentials missing. Printed OTP for {email}: {code}")
+        logger.warning(f"No email API keys or SMTP credentials configured. Printed OTP for {email}: {code}")
 
     # Create EmailNotification record so candidates can check their notifications in-app (for testing/logs copy)
     try:
