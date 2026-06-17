@@ -291,8 +291,8 @@ export default function ExploreCourses({
     [handleGoToLesson]
   );
 
-  /* ─── Course Detail View ─── */
-  if (activeView === "course-details") return null;
+  /* ─── Course Detail View Fallback ─── */
+  // If activeView is course-details, let it fall through to render the explore course list rather than showing an empty screen.
 
   /* ─── Search results mode ─── */
   if (isSearchActive) {

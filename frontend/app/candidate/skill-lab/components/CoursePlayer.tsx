@@ -901,10 +901,10 @@ export default function CoursePlayer({
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-105 dark:border-slate-850 pb-5">
         <div className="space-y-1">
           <button 
-            onClick={() => setActiveView("course-details")}
+            onClick={() => setActiveView("explore")}
             className="text-[10px] font-extrabold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer uppercase tracking-wider"
           >
-            <span>← Back to course roadmap</span>
+            <span>← Back to Explore Courses</span>
           </button>
           <h2 className="text-lg font-black text-slate-800 dark:text-white leading-tight">
             {selectedCourse.title}
@@ -968,7 +968,7 @@ export default function CoursePlayer({
                   <div key={currentLesson.id} className="absolute inset-0 w-full h-full overflow-hidden">
                     <div 
                       id="youtube-player" 
-                      className="absolute w-full h-[130%] -top-[15%] left-0 right-0 pointer-events-none"
+                      className="absolute w-full h-[150%] -top-[25%] left-0 right-0 pointer-events-none"
                     />
                     {/* Transparent Click Overlay to intercept pointer events and toggle play/pause */}
                     <div 
