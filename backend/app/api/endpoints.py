@@ -30,6 +30,56 @@ from app.services.storage import storage_service
 
 router = APIRouter()
 
+@router.get("/auth/test-resend-directly")
+def test_resend_directly():
+    import os
+    import urllib.request
+    import json
+    resend_api_key = os.getenv("RESEND_API_KEY", "")
+    smtp_from = os.getenv("SMTP_FROM_EMAIL", "")
+    
+    if not resend_api_key:
+        return {"error": "RESEND_API_KEY is not set in environment"}
+        
+    from_sender = smtp_from if (smtp_from and not smtp_from.endswith("@gmail.com")) else "onboarding@resend.dev"
+    
+    req_data = {
+        "from": f"VidyamargAI <{from_sender}>",
+        "to": ["anusha.chegg12@gmail.com"],
+        "subject": "VidyamargAI - Resend Direct Test",
+        "html": "<p>This is a direct diagnostics test from VidyamargAI.</p>"
+    }
+    
+    try:
+        req = urllib.request.Request(
+            "https://api.resend.com/emails",
+            method="POST",
+            data=json.dumps(req_data).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {resend_api_key}",
+                "Content-Type": "application/json"
+            }
+        )
+        with urllib.request.urlopen(req, timeout=10) as response:
+            status = response.status
+            body = json.loads(response.read().decode())
+            return {
+                "success": True,
+                "status": status,
+                "body": body,
+                "from_sender": from_sender
+            }
+    except Exception as e:
+        err_msg = str(e)
+        if hasattr(e, "read"):
+            err_msg += " | " + e.read().decode()
+        return {
+            "success": False,
+            "error": err_msg,
+            "from_sender": from_sender
+        }
+
+
 # Import new real-time job services
 from app.services.job_connectors import (
     linkedin_jobs, naukri, foundit, internshala, wellfound, hiring_posts
