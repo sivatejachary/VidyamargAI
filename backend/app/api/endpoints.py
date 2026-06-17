@@ -908,7 +908,35 @@ def send_otp_html_email(email: str, code: str, db: Session):
         except Exception as e:
             logger.error(f"SendGrid API sending failed, trying fallback: {e}")
 
-    # Method 3: Fallback to standard SMTP (Port 587)
+    # Method 3: Try Brevo HTTPS API (Port 443)
+    brevo_api_key = os.getenv("BREVO_API_KEY", "")
+    if brevo_api_key:
+        try:
+            from_sender = smtp_from if smtp_from else "noreply@vidyamargai.com"
+            req_data = {
+                "sender": {"name": "VidyamargAI", "email": from_sender},
+                "to": [{"email": email}],
+                "subject": subject,
+                "htmlContent": html_content
+            }
+            req = urllib.request.Request(
+                "https://api.brevo.com/v3/smtp/email",
+                method="POST",
+                data=json.dumps(req_data).encode("utf-8"),
+                headers={
+                    "api-key": brevo_api_key,
+                    "Content-Type": "application/json",
+                    "User-Agent": "VidyamargAI/1.0"
+                }
+            )
+            with urllib.request.urlopen(req, timeout=10) as response:
+                res_body = json.loads(response.read().decode())
+                logger.info(f"OTP sent successfully via Brevo API to {email}: {res_body}")
+                return
+        except Exception as e:
+            logger.error(f"Brevo API sending failed, trying fallback: {e}")
+
+    # Method 4: Fallback to standard SMTP (Port 587)
     if smtp_user and smtp_password:
         try:
             msg = MIMEMultipart("alternative")
