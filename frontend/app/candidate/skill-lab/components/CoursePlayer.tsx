@@ -814,7 +814,7 @@ export default function CoursePlayer({
                   src={
                     currentLesson.video_url && !currentLesson.video_url.includes("youtube.com") && !currentLesson.video_url.includes("youtu.be")
                       ? currentLesson.video_url
-                      : "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+                      : "https://media.w3.org/2010/05/sintel/trailer_hd.mp4"
                   }
                   preload="metadata"
                   onCanPlay={handleCanPlay}
