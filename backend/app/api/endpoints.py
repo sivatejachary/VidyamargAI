@@ -30,6 +30,44 @@ from app.services.storage import storage_service
 
 router = APIRouter()
 
+@router.get("/auth/test-smtp-env-check")
+def test_smtp_env_check():
+    import os
+    import smtplib
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = os.getenv("SMTP_PORT", "587")
+    smtp_user = os.getenv("SMTP_USER", "")
+    smtp_password = os.getenv("SMTP_PASSWORD", "")
+    smtp_from = os.getenv("SMTP_FROM_EMAIL", "")
+
+    pwd_masked = f"{smtp_password[0]}...{smtp_password[-1]} (len={len(smtp_password)})" if smtp_password else "None"
+    
+    result = {
+        "smtp_host": smtp_host,
+        "smtp_port": smtp_port,
+        "smtp_user": smtp_user,
+        "smtp_password_masked": pwd_masked,
+        "smtp_from": smtp_from,
+        "env_vars_present": bool(smtp_user and smtp_password)
+    }
+    
+    if smtp_user and smtp_password:
+        try:
+            server = smtplib.SMTP(smtp_host, int(smtp_port), timeout=10)
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            server.login(smtp_user, smtp_password)
+            server.quit()
+            result["smtp_connection"] = "SUCCESS"
+        except Exception as e:
+            result["smtp_connection"] = f"FAILED: {str(e)}"
+    else:
+        result["smtp_connection"] = "SKIPPED (missing credentials)"
+        
+    return result
+
+
 # Import new real-time job services
 from app.services.job_connectors import (
     linkedin_jobs, naukri, foundit, internshala, wellfound, hiring_posts
