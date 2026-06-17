@@ -25,9 +25,16 @@ logger = logging.getLogger("app.storage")
 # Constants
 # ---------------------------------------------------------------------------
 STORAGE_DIR = Path("storage")
-STORAGE_DIR.mkdir(exist_ok=True)
-for _sub in ("resumes", "interview-recordings", "offer-letters", "reports", "thumbnails"):
-    (STORAGE_DIR / _sub).mkdir(exist_ok=True)
+
+
+def _ensure_storage_dirs() -> None:
+    """Create local storage directories on first use (lazy, Railway-safe)."""
+    try:
+        STORAGE_DIR.mkdir(exist_ok=True)
+        for _sub in ("resumes", "interview-recordings", "offer-letters", "reports", "thumbnails"):
+            (STORAGE_DIR / _sub).mkdir(exist_ok=True)
+    except OSError as exc:
+        logger.warning("Could not create storage directories: %s", exc)
 
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB hard limit
 
@@ -171,6 +178,7 @@ class StorageService:
                 logger.warning("MinIO upload failed (%s); falling back to local", exc)
 
         # Local Storage Fallback
+        _ensure_storage_dirs()
         target_dir = STORAGE_DIR / folder
         target_dir.mkdir(parents=True, exist_ok=True)
         target_path = target_dir / filename
