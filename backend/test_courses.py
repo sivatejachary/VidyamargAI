@@ -26,11 +26,11 @@ def override_get_db():
     finally:
         db.close()
 
-app.dependency_overrides[get_db] = override_get_db
 
 class TestCoursesEndpoints(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        app.dependency_overrides[get_db] = override_get_db
         db = TestingSessionLocal()
         for t in ["ai_interview_attempts", "written_assessment_attempts", "quiz_attempts", "certificates", "user_progress", "enrollments", "ai_interviews", "written_assessments", "quizzes", "pdfs", "lessons", "topics", "modules", "courses", "candidates", "users"]:
             try:
@@ -253,6 +253,7 @@ class TestCoursesEndpoints(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        app.dependency_overrides.pop(get_db, None)
         db = TestingSessionLocal()
         for t in ["ai_interview_attempts", "written_assessment_attempts", "quiz_attempts", "certificates", "user_progress", "enrollments", "ai_interviews", "written_assessments", "quizzes", "pdfs", "lessons", "topics", "modules", "courses"]:
             try:

@@ -1,6 +1,7 @@
+import uuid
 from datetime import datetime
 from sqlalchemy import (
-    Column, Integer, String, Text, Boolean, DateTime, Float, ForeignKey
+    Column, Integer, String, Text, Boolean, DateTime, Float, ForeignKey, Index, JSON
 )
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -522,6 +523,93 @@ class OTP(Base):
     expiry_time = Column(DateTime, nullable=False)
     used = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class AIMentorSession(Base):
+    __tablename__ = "ai_mentor_sessions"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    title = Column(String, nullable=False)
+    metadata_json = Column(JSON, default=dict)
+    is_deleted = Column(Boolean, default=False)
+    deleted_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+Index("idx_ai_mentor_session_user", AIMentorSession.user_id)
+
+
+class AIMentorMessage(Base):
+    __tablename__ = "ai_mentor_messages"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    session_id = Column(String, ForeignKey("ai_mentor_sessions.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    sender = Column(String, nullable=False)  # "user" or "ai"
+    message = Column(Text, nullable=False)
+    metadata_json = Column(JSON, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+Index("idx_ai_mentor_message_session", AIMentorMessage.session_id)
+Index("idx_ai_mentor_message_user", AIMentorMessage.user_id)
+
+
+class AIMentorStudyPlan(Base):
+    __tablename__ = "ai_mentor_study_plans"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    duration = Column(String, nullable=False)  # "7-day", "30-day", "90-day"
+    title = Column(String, nullable=False)
+    content = Column(Text, nullable=False)
+    metadata_json = Column(JSON, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+Index("idx_ai_mentor_studyplan_user", AIMentorStudyPlan.user_id)
+
+
+class AIMentorInsight(Base):
+    __tablename__ = "ai_mentor_insights"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    insight_type = Column(String, nullable=False)  # "achievement", "warning", "recommendation"
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+Index("idx_ai_mentor_insight_user", AIMentorInsight.user_id)
+
+
+class AIMentorArtifact(Base):
+    __tablename__ = "ai_mentor_artifacts"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    artifact_type = Column(String, nullable=False)  # "quiz", "notes", "challenge", "questions"
+    title = Column(String, nullable=False)
+    content = Column(Text, nullable=False)
+    version = Column(Integer, default=1)
+    metadata_json = Column(JSON, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+Index("idx_ai_mentor_artifact_user", AIMentorArtifact.user_id)
+
+
+class AIMentorUsage(Base):
+    __tablename__ = "ai_mentor_usage"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    model_name = Column(String, nullable=False)
+    prompt_tokens = Column(Integer, default=0)
+    completion_tokens = Column(Integer, default=0)
+    total_tokens = Column(Integer, default=0)
+    estimated_cost = Column(Float, default=0.0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+Index("idx_ai_mentor_usage_user", AIMentorUsage.user_id)
 
 
 

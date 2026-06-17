@@ -56,6 +56,16 @@ class TestHireAIEngine(unittest.IsolatedAsyncioTestCase):
                     "decision": "shortlist",
                     "reasoning": "Fits criteria."
                 })
+            elif "generator" in prompt_lower or "mcqs" in prompt_lower:
+                return json.dumps({
+                    "mcqs": [
+                        {"id": 1, "question": "Q1?", "options": ["A", "B", "C", "D"], "correct_option": 1},
+                        {"id": 2, "question": "Q2?", "options": ["A", "B", "C", "D"], "correct_option": 1},
+                        {"id": 3, "question": "Q3?", "options": ["A", "B", "C", "D"], "correct_option": 1}
+                    ],
+                    "coding_challenges": [{"id": 1, "title": "C", "description": "D", "template": "def solve(): pass", "test_cases": [{"input": "i", "output": "o"}]}],
+                    "english_test": [{"id": 1, "question": "E?"}]
+                })
             elif "evaluate" in prompt_lower or "assessment" in prompt_lower:
                 return json.dumps({
                     "score": 85.0,

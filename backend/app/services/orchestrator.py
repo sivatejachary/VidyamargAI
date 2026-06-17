@@ -523,7 +523,7 @@ class AgentOrchestrator:
                 except Exception:
                     pass
             
-            if not res:
+            if not res or not isinstance(res, dict) or "mcqs" not in res or "coding_challenges" not in res or "english_test" not in res:
                 # Mock structure
                 res = {
                     "mcqs": [

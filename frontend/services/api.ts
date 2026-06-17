@@ -729,6 +729,122 @@ export const apiService = {
     });
     if (!res.ok) throw new Error("Failed to get user stats");
     return res.json();
+  },
+
+  // AI Mentor Endpoints
+  async getAIMentorProfile() {
+    const res = await customFetch(`${getBaseUrl()}/ai-mentor/profile`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to get AI mentor profile");
+    return res.json();
+  },
+
+  async getAIMentorRiskAnalysis() {
+    const res = await customFetch(`${getBaseUrl()}/ai-mentor/risk-analysis`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to get AI mentor risk analysis");
+    return res.json();
+  },
+
+  async getAIMentorAnalytics() {
+    const res = await customFetch(`${getBaseUrl()}/ai-mentor/analytics`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to get AI mentor analytics");
+    return res.json();
+  },
+
+  async getAIMentorSessions() {
+    const res = await customFetch(`${getBaseUrl()}/ai-mentor/sessions`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to get AI mentor sessions");
+    return res.json();
+  },
+
+  async createAIMentorSession(title: string) {
+    const res = await customFetch(`${getBaseUrl()}/ai-mentor/sessions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getHeaders() },
+      body: JSON.stringify({ title }),
+    });
+    if (!res.ok) throw new Error("Failed to create AI mentor session");
+    return res.json();
+  },
+
+  async renameAIMentorSession(sessionId: string, title: string) {
+    const res = await customFetch(`${getBaseUrl()}/ai-mentor/sessions/${sessionId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...getHeaders() },
+      body: JSON.stringify({ title }),
+    });
+    if (!res.ok) throw new Error("Failed to rename AI mentor session");
+    return res.json();
+  },
+
+  async deleteAIMentorSession(sessionId: string) {
+    const res = await customFetch(`${getBaseUrl()}/ai-mentor/sessions/${sessionId}`, {
+      method: "DELETE",
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to delete AI mentor session");
+    return res.json();
+  },
+
+  async getAIMentorMessages(sessionId: string) {
+    const res = await customFetch(`${getBaseUrl()}/ai-mentor/sessions/${sessionId}/messages`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to get AI mentor messages");
+    return res.json();
+  },
+
+  async sendAIMentorChat(sessionId: string, message: string, mode: string = "tutor") {
+    const res = await customFetch(`${getBaseUrl()}/ai-mentor/sessions/${sessionId}/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getHeaders() },
+      body: JSON.stringify({ message, mode }),
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || "Failed to send chat message");
+    return res.json();
+  },
+
+  async generateAIMentorStudyPlan(duration: string, title?: string) {
+    const res = await customFetch(`${getBaseUrl()}/ai-mentor/study-plan`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getHeaders() },
+      body: JSON.stringify({ duration, title }),
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || "Failed to generate study plan");
+    return res.json();
+  },
+
+  async getAIMentorStudyPlans() {
+    const res = await customFetch(`${getBaseUrl()}/ai-mentor/study-plans`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to get AI mentor study plans");
+    return res.json();
+  },
+
+  async getAIMentorArtifacts() {
+    const res = await customFetch(`${getBaseUrl()}/ai-mentor/artifacts`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to get AI mentor artifacts");
+    return res.json();
+  },
+
+  async createAIMentorArtifact(data: { artifact_type: string; title: string; content: string; metadata_json?: any }) {
+    const res = await customFetch(`${getBaseUrl()}/ai-mentor/artifacts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getHeaders() },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Failed to create AI mentor artifact");
+    return res.json();
   }
 };
 

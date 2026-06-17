@@ -485,4 +485,121 @@ class ResetPasswordRequest(BaseModel):
     code: str
 
 
+class AIMentorSessionCreateUpdate(BaseModel):
+    title: str
+
+class AIMentorSessionResponse(BaseModel):
+    id: str
+    user_id: int
+    title: str
+    metadata_json: Optional[Any] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class AIMentorMessageResponse(BaseModel):
+    id: str
+    session_id: str
+    user_id: int
+    sender: str
+    message: str
+    metadata_json: Optional[Any] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class AIMentorChatRequest(BaseModel):
+    message: str
+    mode: Optional[str] = "tutor"  # "tutor" | "quiz" | "challenge" | "revision" | "interview"
+
+class AIMentorChatResponse(BaseModel):
+    response: str
+    session_id: str
+
+class AIMentorStudyPlanRequest(BaseModel):
+    duration: str  # "7-day" | "30-day" | "90-day"
+    title: Optional[str] = None
+
+class AIMentorStudyPlanResponse(BaseModel):
+    id: str
+    user_id: int
+    duration: str
+    title: str
+    content: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class AIMentorInsightResponse(BaseModel):
+    id: str
+    user_id: int
+    insight_type: str
+    title: str
+    description: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class AIMentorArtifactResponse(BaseModel):
+    id: str
+    user_id: int
+    artifact_type: str
+    title: str
+    content: str
+    version: int
+    metadata_json: Optional[Any] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class AIMentorArtifactCreate(BaseModel):
+    artifact_type: str
+    title: str
+    content: str
+    metadata_json: Optional[Any] = None
+
+class AIMentorCourseProgressInfo(BaseModel):
+    course_id: str
+    title: str
+    progress: float
+    status: str
+
+class AIMentorStatsResponse(BaseModel):
+    health_score: float
+    health_status: str  # "At Risk" | "Improving" | "Good Progress" | "Excellent"
+    strengths: List[str]
+    weaknesses: List[str]
+    next_best_actions: List[str]
+    estimated_time: str
+    xp: int
+    level: int
+    streak: int
+    weekly_progress: float
+    courses_in_progress: int
+    completed_courses: int
+    completed_lessons_count: int
+    avg_quiz_score: float
+    upcoming_assessments: List[str]
+    insights: List[AIMentorInsightResponse]
+    enrolled_courses: List[AIMentorCourseProgressInfo]
+
+class AIMentorRiskResponse(BaseModel):
+    risk_level: str  # "Low" | "Medium" | "High"
+    reason: str
+
+class AIMentorAnalyticsResponse(BaseModel):
+    average_health_score: float
+    difficult_topics: List[dict]
+    most_requested_actions: List[dict]
+    total_artifacts_generated: int
+    engagement_rate: float
+
+
+
 

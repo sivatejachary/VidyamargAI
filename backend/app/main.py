@@ -308,6 +308,93 @@ def init_db_safely():
                 )
             """))
             
+            # ai_mentor_sessions table
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS ai_mentor_sessions (
+                    id VARCHAR PRIMARY KEY,
+                    user_id INTEGER NOT NULL,
+                    title VARCHAR NOT NULL,
+                    metadata_json JSONB DEFAULT '{{}}'::jsonb,
+                    is_deleted BOOLEAN DEFAULT false,
+                    deleted_at TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_ai_mentor_session_user ON ai_mentor_sessions(user_id)"))
+
+            # ai_mentor_messages table
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS ai_mentor_messages (
+                    id VARCHAR PRIMARY KEY,
+                    session_id VARCHAR NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    sender VARCHAR NOT NULL,
+                    message TEXT NOT NULL,
+                    metadata_json JSONB DEFAULT '{{}}'::jsonb,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_ai_mentor_message_session ON ai_mentor_messages(session_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_ai_mentor_message_user ON ai_mentor_messages(user_id)"))
+
+            # ai_mentor_study_plans table
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS ai_mentor_study_plans (
+                    id VARCHAR PRIMARY KEY,
+                    user_id INTEGER NOT NULL,
+                    duration VARCHAR NOT NULL,
+                    title VARCHAR NOT NULL,
+                    content TEXT NOT NULL,
+                    metadata_json JSONB DEFAULT '{{}}'::jsonb,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_ai_mentor_studyplan_user ON ai_mentor_study_plans(user_id)"))
+
+            # ai_mentor_insights table
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS ai_mentor_insights (
+                    id VARCHAR PRIMARY KEY,
+                    user_id INTEGER NOT NULL,
+                    insight_type VARCHAR NOT NULL,
+                    title VARCHAR NOT NULL,
+                    description TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_ai_mentor_insight_user ON ai_mentor_insights(user_id)"))
+
+            # ai_mentor_artifacts table
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS ai_mentor_artifacts (
+                    id VARCHAR PRIMARY KEY,
+                    user_id INTEGER NOT NULL,
+                    artifact_type VARCHAR NOT NULL,
+                    title VARCHAR NOT NULL,
+                    content TEXT NOT NULL,
+                    version INTEGER DEFAULT 1,
+                    metadata_json JSONB DEFAULT '{{}}'::jsonb,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_ai_mentor_artifact_user ON ai_mentor_artifacts(user_id)"))
+
+            # ai_mentor_usage table
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS ai_mentor_usage (
+                    id VARCHAR PRIMARY KEY,
+                    user_id INTEGER NOT NULL,
+                    model_name VARCHAR NOT NULL,
+                    prompt_tokens INTEGER DEFAULT 0,
+                    completion_tokens INTEGER DEFAULT 0,
+                    total_tokens INTEGER DEFAULT 0,
+                    estimated_cost REAL DEFAULT 0.0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_ai_mentor_usage_user ON ai_mentor_usage(user_id)"))
+
             print("Migration: courses/modules/enrollments/certificates and curriculum tables ensured.")
     except Exception as e:
         print(f"Migration error: {e}")
