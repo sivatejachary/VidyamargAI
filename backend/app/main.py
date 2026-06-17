@@ -9,7 +9,8 @@ from fastapi.responses import ORJSONResponse
 from fastapi.middleware.gzip import GZipMiddleware
 from starlette.concurrency import run_in_threadpool
 from app.core.config import settings
-from app.core.database import engine, Base, db_queries_var, cache_status_var
+from app.core.database import engine, Base
+from app.core.monitoring import db_queries_var, cache_status_var
 from app.core.ws import manager
 from app.api.endpoints import router as api_router
 

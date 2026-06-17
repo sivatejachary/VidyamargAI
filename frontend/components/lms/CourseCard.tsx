@@ -90,15 +90,15 @@ export function CourseCard({
     >
       {/* ── 1. Thumbnail ──────────────────────────────────── */}
       <div className="relative h-[120px] w-full shrink-0 overflow-hidden">
-        {course.thumbnailUrl ? (
+        {course.thumbnailUrl && course.thumbnailUrl.startsWith("http") ? (
           <Image
             src={course.thumbnailUrl}
             alt={course.title}
             fill
             sizes="(max-width: 768px) 100vw, 400px"
             className="object-cover"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
           />
-
         ) : (
           <div
             className={`h-full w-full bg-gradient-to-br ${gradient} flex items-center justify-center`}
