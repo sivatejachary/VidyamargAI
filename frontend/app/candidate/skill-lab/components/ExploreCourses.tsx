@@ -60,8 +60,6 @@ export default function ExploreCourses({
   showAllCourses,
   setShowAllCourses,
 }: ExploreCoursesProps) {
-  const [searchDebounced, setSearchDebounced] = useState(courseSearchQuery);
-  const [debounceTimer, setDebounceTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [modalPath, setModalPath] = useState<CareerPath | null>(null);
   
   // Real-time backend stats states
@@ -124,25 +122,21 @@ export default function ExploreCourses({
     return () => { document.body.style.overflow = ""; };
   }, [modalPath]);
 
-  /* ─── Search with debounce ─── */
+  /* ─── Search action ─── */
   const handleSearchChange = useCallback(
     (value: string) => {
       setCourseSearchQuery(value);
-      if (debounceTimer) clearTimeout(debounceTimer);
-      const timer = setTimeout(() => setSearchDebounced(value), 300);
-      setDebounceTimer(timer);
     },
-    [setCourseSearchQuery, debounceTimer]
+    [setCourseSearchQuery]
   );
 
   const handleSearchClear = useCallback(() => {
     setCourseSearchQuery("");
-    setSearchDebounced("");
   }, [setCourseSearchQuery]);
 
-  /* ─── Filter courses by search ─── */
+  /* ─── Filter courses by search (Instant) ─── */
   const filteredCourses = useMemo(() => {
-    const query = searchDebounced.toLowerCase();
+    const query = courseSearchQuery.trim().toLowerCase();
     if (!query) return courses;
     return courses.filter((c: any) =>
       c.title?.toLowerCase().includes(query) ||
@@ -150,9 +144,9 @@ export default function ExploreCourses({
       c.category?.toLowerCase().includes(query) ||
       (c.skills || []).some((s: string) => s.toLowerCase().includes(query))
     );
-  }, [courses, searchDebounced]);
+  }, [courses, courseSearchQuery]);
 
-  const isSearchActive = searchDebounced.trim().length > 0;
+  const isSearchActive = courseSearchQuery.trim().length > 0;
 
   /* ─── Recommended For You ─── */
   const recommended = useMemo(() => {
@@ -285,7 +279,7 @@ export default function ExploreCourses({
         <LMSSearchBar value={courseSearchQuery} onChange={handleSearchChange} onClear={handleSearchClear} />
         {filteredCourses.length > 0 ? (
           <div>
-            <h3 className="text-base font-bold text-foreground mb-1">Results for &ldquo;{searchDebounced}&rdquo;</h3>
+            <h3 className="text-base font-bold text-foreground mb-1">Results for &ldquo;{courseSearchQuery}&rdquo;</h3>
             <p className="text-xs text-muted-foreground mb-4">{filteredCourses.length} course{filteredCourses.length !== 1 ? "s" : ""} found</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {filteredCourses.map((c: any) => (
@@ -304,7 +298,7 @@ export default function ExploreCourses({
             <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
               <BookOpen size={28} className="text-muted-foreground" />
             </div>
-            <p className="text-sm font-semibold text-muted-foreground">No courses found for &ldquo;{searchDebounced}&rdquo;</p>
+            <p className="text-sm font-semibold text-muted-foreground">No courses found for &ldquo;{courseSearchQuery}&rdquo;</p>
             <Button variant="outline" size="sm" onClick={handleSearchClear}>Browse all courses</Button>
           </div>
         )}
