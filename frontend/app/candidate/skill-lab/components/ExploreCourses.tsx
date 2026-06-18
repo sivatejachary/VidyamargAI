@@ -492,18 +492,27 @@ export default function ExploreCourses({
             <p className="text-[11px] text-muted-foreground">Choose your goal path and let the AI system direct your learning</p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
             {careerPaths.map((path) => {
               const isActive = careerGoal.toLowerCase() === path.name.toLowerCase();
               return (
                 <div
                   key={path.id}
-                  className={`relative overflow-hidden rounded-xl border p-3.5 flex flex-col justify-between gap-3 transition-all duration-300 hover:shadow-sm cursor-pointer ${
+                  className={`relative overflow-hidden rounded-xl border p-3 flex flex-col justify-between gap-2.5 transition-all duration-300 hover:shadow-md cursor-pointer ${
                     isActive 
                       ? "border-indigo-500 bg-indigo-500/5 shadow-sm"
                       : "border-border hover:border-indigo-500/40 bg-card"
                   }`}
-                  onClick={() => handleSelectGoal(path.name)}
+                  onClick={() => {
+                    handleSelectGoal(path.name);
+                    const matchedCp = CAREER_PATHS.find(cp => 
+                      cp.title.toLowerCase().includes(path.name.split(" ")[0].toLowerCase()) ||
+                      path.name.toLowerCase().includes(cp.title.split(" ")[0].toLowerCase())
+                    );
+                    if (matchedCp) {
+                      setModalPath(matchedCp);
+                    }
+                  }}
                 >
                   <div className="space-y-2">
                     <div className="flex justify-between items-start">
