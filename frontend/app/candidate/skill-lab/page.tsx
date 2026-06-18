@@ -15,7 +15,7 @@ import Certificates from "./components/Certificates";
 import AiMentor from "./components/AiMentor";
 
 function transformNewCurriculumToOld(newCur: any) {
-  if (!newCur || !newCur.modules) return newCur;
+  if (!newCur || !newCur.modules || !Array.isArray(newCur.modules)) return newCur;
   
   const sections: any[] = [];
   const completedLessonIds: string[] = [];
@@ -224,13 +224,17 @@ export default function SkillLab() {
     return transformNewCurriculumToOld(rawCurriculum);
   }, [rawCurriculum]);
 
-  const enrolledCourseIds = useMemo(() => enrollments.map((e: any) => e.course_id), [enrollments]);
+  const enrolledCourseIds = useMemo(() => {
+    if (!Array.isArray(enrollments)) return [];
+    return enrollments.map((e: any) => e.course_id);
+  }, [enrollments]);
 
   // Background active enrollment tracking for Continue LearningStepper
   const activeEnrollmentCourse = useMemo(() => {
-    if (enrollments && enrollments.length > 0) {
+    if (Array.isArray(enrollments) && enrollments.length > 0) {
       const activeEnroll = enrollments[0];
-      return (courses as any[]).find((c: any) => c.id === activeEnroll.course_id) || activeEnroll.course;
+      const coursesArray = Array.isArray(courses) ? courses : [];
+      return coursesArray.find((c: any) => c.id === activeEnroll.course_id) || activeEnroll.course;
     }
     return null;
   }, [enrollments, courses]);

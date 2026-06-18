@@ -17,7 +17,7 @@ export default function Certificates({ certificates }: CertificatesProps) {
       <div className="bg-card border border-border rounded-3xl p-5 shadow-sm">
         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">Your Verified Badges</h3>
         
-        {certificates.length > 0 ? (
+        {Array.isArray(certificates) && certificates.length > 0 ? (
           <div className="flex flex-col gap-3">
             {certificates.map((c, i) => (
               <div 

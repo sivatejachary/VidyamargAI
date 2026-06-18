@@ -618,10 +618,10 @@ export default function ExploreCourses({
           <div className="flex-1 space-y-1">
             <h5 className="text-[10px] uppercase font-bold text-indigo-400 tracking-wider">AI Mentor Recommendation</h5>
             <p className="text-xs font-bold text-white line-clamp-2">
-              {stats.next_best_actions[0]}
+              {stats?.next_best_actions?.[0]}
             </p>
             <p className="text-[10px] text-indigo-200">
-              Estimated duration: {stats.estimated_time || "35 Minutes"}
+              Estimated duration: {stats?.estimated_time || "35 Minutes"}
             </p>
             <button
               onClick={() => setActiveView("ai-mentor")}

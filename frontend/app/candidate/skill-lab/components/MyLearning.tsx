@@ -21,10 +21,11 @@ export default function MyLearning({
         <p className="text-xs text-slate-500 mt-1 font-medium">Track your ongoing courses, progress, and upcoming assessments</p>
       </div>
 
-      {enrollments.length > 0 ? (
+      {Array.isArray(enrollments) && enrollments.length > 0 ? (
         <div className="flex flex-col gap-6">
           {enrollments.map((enroll) => {
-            const courseObj = courses.find(c => c.id === enroll.course_id) || enroll.course;
+            const coursesArray = Array.isArray(courses) ? courses : [];
+            const courseObj = coursesArray.find(c => c.id === enroll.course_id) || enroll.course;
             if (!courseObj) return null;
             
             const nextAssessmentType = enroll.progress >= 100 
