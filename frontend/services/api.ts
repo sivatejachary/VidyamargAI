@@ -977,6 +977,111 @@ export const apiService = {
     });
     if (!res.ok) throw new Error("Failed to update user consent");
     return res.json();
-  }
+  },
+
+  // ── Human Action Queue (HAQ) ─────────────────────────────────────────────
+  async getHAQPending() {
+    const res = await customFetch(`${getBaseUrl()}/haq/pending`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) return [];
+    return res.json();
+  },
+
+  async completeHAQItem(callbackKey: string, data: Record<string, unknown> = {}) {
+    const res = await customFetch(`${getBaseUrl()}/haq/${callbackKey}/complete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getHeaders() },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Failed to complete HAQ item");
+    return res.json();
+  },
+
+  async dismissHAQItem(callbackKey: string) {
+    const res = await customFetch(`${getBaseUrl()}/haq/${callbackKey}/dismiss`, {
+      method: "POST",
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to dismiss HAQ item");
+    return res.json();
+  },
+
+  // ── Job Pool (pre-collected, < 100ms) ────────────────────────────────────
+  async getJobPool(params: {
+    minScore?: number;
+    source?: string;
+    workMode?: string;
+    limit?: number;
+    offset?: number;
+  } = {}) {
+    const query = new URLSearchParams();
+    if (params.minScore !== undefined) query.set("min_score", String(params.minScore));
+    if (params.source) query.set("source", params.source);
+    if (params.workMode) query.set("work_mode", params.workMode);
+    if (params.limit !== undefined) query.set("limit", String(params.limit));
+    if (params.offset !== undefined) query.set("offset", String(params.offset));
+    const res = await customFetch(`${getBaseUrl()}/candidate/jobs/pool?${query}`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) return [];
+    return res.json();
+  },
+
+  // ── Auto Apply ────────────────────────────────────────────────────────────
+  async autoApplyJob(jobId: string) {
+    const res = await customFetch(`${getBaseUrl()}/candidate/agent/auto-apply/${jobId}`, {
+      method: "POST",
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to queue auto-apply");
+    return res.json();
+  },
+
+  async getAutoApplyStatus(jobId: string) {
+    const res = await customFetch(
+      `${getBaseUrl()}/candidate/agent/auto-apply/status/${jobId}`,
+      { headers: getHeaders() }
+    );
+    if (!res.ok) return { status: "unknown" };
+    return res.json();
+  },
+
+  // ── Autonomous Tasks ──────────────────────────────────────────────────────
+  async getAutonomousTasks() {
+    const res = await customFetch(`${getBaseUrl()}/autonomous/tasks`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) return [];
+    return res.json();
+  },
+
+  async createAutonomousTask(task: Record<string, unknown>) {
+    const res = await customFetch(`${getBaseUrl()}/autonomous/tasks`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getHeaders() },
+      body: JSON.stringify(task),
+    });
+    if (!res.ok) throw new Error("Failed to create task");
+    return res.json();
+  },
+
+  async runAutonomousTaskNow(taskId: number) {
+    const res = await customFetch(
+      `${getBaseUrl()}/autonomous/tasks/${taskId}/run`,
+      { method: "POST", headers: getHeaders() }
+    );
+    if (!res.ok) throw new Error("Failed to run task");
+    return res.json();
+  },
+
+  // ── Career Health ─────────────────────────────────────────────────────────
+  async getCareerHealth() {
+    const res = await customFetch(`${getBaseUrl()}/candidate/career-health`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) return null;
+    return res.json();
+  },
 };
 

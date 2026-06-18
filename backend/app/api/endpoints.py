@@ -2054,6 +2054,58 @@ def unsave_job(
     db.commit()
     return {"message": "Job unsaved successfully"}
 
+@router.get("/candidate/jobs/pool")
+def get_job_pool(
+    min_score: Optional[float] = None,
+    source: Optional[str] = None,
+    work_mode: Optional[str] = None,
+    limit: int = 20,
+    offset: int = 0,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    from app.models.pool_models import JobPool, JobPoolMatch
+    candidate = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+        
+    query = db.query(JobPoolMatch, JobPool).join(
+        JobPool, JobPoolMatch.job_pool_id == JobPool.id
+    ).filter(
+        JobPoolMatch.candidate_id == candidate.id
+    )
+    
+    if min_score is not None:
+        query = query.filter(JobPoolMatch.opportunity_score >= min_score)
+    if source:
+        query = query.filter(JobPool.source == source)
+    if work_mode:
+        query = query.filter(JobPool.work_mode == work_mode)
+        
+    query = query.order_by(JobPoolMatch.opportunity_score.desc())
+    results = query.offset(offset).limit(limit).all()
+    
+    return [
+        {
+            "id": job.id,
+            "title": job.title,
+            "company": job.company,
+            "location": job.location,
+            "experience": job.experience,
+            "skills": job.skills,
+            "apply_url": job.apply_url,
+            "posted_date": job.posted_date,
+            "source": job.source,
+            "description": job.description,
+            "work_mode": job.work_mode,
+            "match_score": match.match_score,
+            "opportunity_score": match.opportunity_score,
+            "skills_gap": match.skills_gap,
+            "should_apply": match.should_apply,
+        }
+        for match, job in results
+    ]
+
 @router.get("/candidate/jobs/search-history", response_model=List[schemas.SearchHistoryResponse])
 def get_search_history(
     current_user: User = Depends(get_current_user),

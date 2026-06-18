@@ -3,6 +3,7 @@ Intelligence Agent — generates company research briefs, salary benchmarks, and
 Utilizes LLM services and external query tools.
 """
 import logging
+from typing import Dict, Any
 from sqlalchemy.orm import Session
 from app.mcp.servers import LLMServer
 

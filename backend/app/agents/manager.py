@@ -194,7 +194,7 @@ async def run_agent_flow(run_id: int, candidate_id: int):
         run.status = "completed"
         run.completed_at = datetime.utcnow()
         db.commit()
-        log_step(db, run_id, "Completed", f"Top {len(ranked_jobs)} opportunities generated successfully.", "success")
+        log_step(db, run_id, "Completed", f"[Completed] Agent run successful. Top {len(ranked_jobs)} opportunities matched and ready.", "success")
 
     except Exception as e:
         logger.exception("Error in autonomous agent flow")

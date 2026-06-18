@@ -3,6 +3,7 @@ Tracking Agent — monitors and updates job application statuses.
 Parses email notifications, updates logs, and flags interview requests.
 """
 import logging
+from typing import Dict, Any
 from sqlalchemy.orm import Session
 from app.models.models import Application
 from app.core.events import subscribe

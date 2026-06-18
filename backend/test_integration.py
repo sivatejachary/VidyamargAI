@@ -47,6 +47,16 @@ class TestHireAIEngine(unittest.IsolatedAsyncioTestCase):
                     "portfolio": ""
                 })
             elif "screen" in prompt_lower or "screening" in prompt_lower:
+                if "user1@candidate.com" in prompt_lower or "user one" in prompt_lower or "java, php" in prompt_lower:
+                    return json.dumps({
+                        "skill_match": 40,
+                        "experience_match": 50,
+                        "education_match": 50,
+                        "project_match": 40,
+                        "overall_score": 45,
+                        "decision": "reject",
+                        "raw_reasoning": "Skills do not match React requirements."
+                    })
                 return json.dumps({
                     "skill_match": 90,
                     "experience_match": 85,
@@ -54,7 +64,7 @@ class TestHireAIEngine(unittest.IsolatedAsyncioTestCase):
                     "project_match": 80,
                     "overall_score": 85,
                     "decision": "shortlist",
-                    "reasoning": "Fits criteria."
+                    "raw_reasoning": "Fits criteria."
                 })
             elif "generator" in prompt_lower or "mcqs" in prompt_lower:
                 return json.dumps({

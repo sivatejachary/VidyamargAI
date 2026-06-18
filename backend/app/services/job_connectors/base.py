@@ -66,17 +66,57 @@ def google_search(query: str, num_results: int = 15) -> List[dict]:
 # yahoo_search / extract_yahoo_results continue to work unchanged.
 # ---------------------------------------------------------------------------
 
+def clean_query_for_yahoo(query: str) -> str:
+    """Translate Google-specific query formats into Yahoo-friendly formats."""
+    # site:naukri.com/job-listings- -> site:naukri.com
+    query = re.sub(r'site:naukri\.com/job-listings-?', 'site:naukri.com', query)
+    
+    # site:in.linkedin.com/jobs/view/ -> site:linkedin.com/jobs/view
+    query = re.sub(r'site:in\.linkedin\.com/jobs/view/?', 'site:linkedin.com/jobs/view', query)
+    
+    # site:indeed.com/viewjob OR site:in.indeed.com/rc/clk -> site:indeed.com
+    query = re.sub(r'site:indeed\.com/viewjob\s+OR\s+site:in\.indeed\.com/rc/clk', 'site:indeed.com', query)
+    
+    # site:instahyre.com/jobs/ OR site:instahyre.com/job- -> site:instahyre.com
+    query = re.sub(r'site:instahyre\.com/jobs/?\s+OR\s+site:instahyre\.com/job-?', 'site:instahyre.com', query)
+    
+    # site:cutshort.io/job/ OR site:cutshort.io/jobs -> site:cutshort.io
+    query = re.sub(r'site:cutshort\.io/job/?\s+OR\s+site:cutshort\.io/jobs', 'site:cutshort.io', query)
+    
+    # site:hirist.tech/jobs/ OR site:hirist.com/job/ -> site:hirist.tech
+    query = re.sub(r'site:hirist\.tech/jobs/?\s+OR\s+site:hirist\.com/job/?', 'site:hirist.tech', query)
+    
+    return query
+
+
 class _GoogleSoupShim:
     """Wraps google results so existing extract_yahoo_results callers still work."""
     def __init__(self, results: List[dict]):
         self._results = results
 
 
-def yahoo_search(query: str, headers: dict = None, timeout: int = 10) -> "_GoogleSoupShim":
+def yahoo_search(query: str, headers: dict = None, timeout: int = 10):
     """
-    Backward-compat shim — delegates to google_search.
-    The `headers` and `timeout` params are ignored.
+    Execute a Yahoo search query and return a BeautifulSoup object.
+    If it fails, falls back to Google search.
     """
+    import requests
+    from bs4 import BeautifulSoup
+    
+    translated_query = clean_query_for_yahoo(query)
+    url = f"https://search.yahoo.com/search?p={urllib.parse.quote(translated_query)}&n=15"
+    req_headers = headers or COMMON_HEADERS
+    
+    try:
+        resp = requests.get(url, headers=req_headers, timeout=timeout)
+        if resp.status_code == 200:
+            logger.info(f"Yahoo search returned status 200 for: {translated_query[:60]}")
+            return BeautifulSoup(resp.text, "html.parser")
+        else:
+            logger.warning(f"Yahoo search returned status {resp.status_code} for query: {translated_query[:60]}. Falling back to Google.")
+    except Exception as e:
+        logger.warning(f"Yahoo search failed for query '{translated_query[:60]}': {e}. Falling back to Google.")
+        
     return _GoogleSoupShim(google_search(query, num_results=15))
 
 

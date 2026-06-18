@@ -1,15 +1,8 @@
-"""
-Discovery Agent — aggregates listings, deduplicates, filters, and publishes discovery events.
-"""
 import logging
 import asyncio
 from typing import List, Dict, Any
 from sqlalchemy.orm import Session
 
-from app.agents.connectors import (
-    LinkedInConnector, NaukriConnector, IndeedConnector,
-    WellfoundConnector, TelegramConnector
-)
 from app.core.events import publish_event_sync
 
 logger = logging.getLogger("app.agents.discovery")
@@ -17,34 +10,59 @@ logger = logging.getLogger("app.agents.discovery")
 
 class DiscoveryAgent:
     def __init__(self):
-        self.connectors = [
-            LinkedInConnector(),
-            NaukriConnector(),
-            IndeedConnector(),
-            WellfoundConnector(),
-            TelegramConnector()
-        ]
+        self.connectors = []
 
     async def discover_jobs(self, user_id: int, query: str, skills: List[str], db: Session, log_cb=None) -> List[Dict[str, Any]]:
         """Scans all registered connectors for new job opportunities."""
         if log_cb:
-            log_cb(f"Starting job discovery scan for query: '{query}'", "info")
+            log_cb(f"Starting real job discovery scan for query: '{query}'", "info")
 
-        # Execute connectors concurrently
-        tasks = []
-        for conn in self.connectors:
-            # We run in executors or simply as tasks
-            tasks.append(self._run_connector_safe(conn, query, skills))
+        from app.agents.search import SearchAgent
+        from app.agents.telegram import TelegramCommunityAgent
 
-        results = await asyncio.gather(*tasks)
-        
-        # Flatten results
+        search_agent = SearchAgent([query], skills, 1.0)
+        telegram_agent = TelegramCommunityAgent(db)
+
+        loop = asyncio.get_event_loop()
+
+        def run_portal():
+            try:
+                # search_agent.execute_search returns List[LiveJob]
+                return search_agent.execute_search(lambda m, s="info": log_cb(f"[Portal] {m}", s) if log_cb else None)
+            except Exception as e:
+                logger.error(f"Portal search crawler failed: {e}")
+                return []
+
+        def run_telegram():
+            try:
+                return telegram_agent.collect_jobs(lambda m, s="info": log_cb(f"[Telegram] {m}", s) if log_cb else None)
+            except Exception as e:
+                logger.error(f"Telegram collector failed: {e}")
+                return []
+
+        portal_jobs, tg_jobs = await asyncio.gather(
+            loop.run_in_executor(None, run_portal),
+            loop.run_in_executor(None, run_telegram)
+        )
+
         raw_jobs = []
-        for r in results:
-            raw_jobs.extend(r)
+        for j in (portal_jobs + tg_jobs):
+            if hasattr(j, "title"):
+                raw_jobs.append({
+                    "title": j.title,
+                    "company": j.company,
+                    "location": j.location,
+                    "experience": j.experience,
+                    "skills": j.skills,
+                    "apply_url": j.apply_url,
+                    "source": j.source,
+                    "description": j.description
+                })
+            else:
+                raw_jobs.append(j)
 
         if log_cb:
-            log_cb(f"Aggregated {len(raw_jobs)} raw jobs from connectors. Starting deduplication...", "info")
+            log_cb(f"Aggregated {len(raw_jobs)} raw jobs from portals & Telegram. Starting deduplication...", "info")
 
         # Call Deduplicator Tool (in-process)
         deduplicated = self._deduplicate_jobs(raw_jobs)
@@ -71,14 +89,6 @@ class DiscoveryAgent:
             publish_event_sync("job_discovered", {"user_id": user_id, "job": job})
 
         return final_jobs
-
-    async def _run_connector_safe(self, connector, query: str, skills: List[str]) -> List[Dict[str, Any]]:
-        try:
-            # Connectors are synchronous simulations in Phase 1
-            return connector.search(query, skills)
-        except Exception as e:
-            logger.error(f"Connector {connector.name} failed during discovery: {e}")
-            return []
 
     def _deduplicate_jobs(self, jobs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Deduplicates jobs based on title and company hash."""

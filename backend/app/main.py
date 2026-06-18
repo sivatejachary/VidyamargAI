@@ -28,7 +28,7 @@ def init_db_safely():
         return
     try:
         print("Creating all tables via SQLAlchemy metadata...")
-        from app.models import mcp_models
+        import app.models
         Base.metadata.create_all(bind=engine)
         print("Database tables created successfully.")
     except Exception as e:
@@ -507,6 +507,31 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 async def startup_event():
     init_db_safely()
     
+    # Initialize Event Bus
+    try:
+        from app.core.event_bus import event_bus
+        from app.core.config import settings
+        await event_bus.connect(settings.REDIS_URL)
+        logger.info("Event Bus connected successfully.")
+    except Exception as e:
+        logger.error(f"Failed to connect Event Bus: {e}")
+
+    # Initialize Workflow Recovery
+    try:
+        from app.core.workflow_engine import workflow_engine
+        await workflow_engine.recover_on_startup()
+        logger.info("Interrupted workflows recovery triggered successfully.")
+    except Exception as e:
+        logger.error(f"Failed to run workflow recovery: {e}")
+    
+    # Initialize Browser Fleet
+    try:
+        from app.services.auto_apply.browser_fleet import fleet_manager
+        await fleet_manager.start()
+        logger.info("Browser Fleet Manager initialized successfully.")
+    except Exception as e:
+        logger.error(f"Failed to start Browser Fleet: {e}")
+
     try:
         from app.core.browser_pool import browser_pool
         await browser_pool.start()
@@ -537,11 +562,27 @@ async def startup_event():
     except Exception as e:
         logger.error(f"Failed to initialize local MCP servers: {e}")
 
+    try:
+        from app.core.scheduler import start_scheduler
+        start_scheduler()
+    except Exception as e:
+        logger.error(f"Failed to start scheduler on startup: {e}")
+
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Close shared httpx client on application shutdown to release connections."""
+    try:
+        from app.core.scheduler import shutdown_scheduler
+        shutdown_scheduler()
+    except Exception:
+        pass
+    try:
+        from app.services.auto_apply.browser_fleet import fleet_manager
+        await fleet_manager.shutdown()
+    except Exception:
+        pass
     try:
         from app.core.browser_pool import browser_pool
         await browser_pool.shutdown()
