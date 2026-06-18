@@ -508,6 +508,13 @@ async def startup_event():
     init_db_safely()
     
     try:
+        from app.core.browser_pool import browser_pool
+        await browser_pool.start()
+        logger.info("Browser Pool Manager initialized successfully.")
+    except Exception as e:
+        logger.error(f"Failed to start Browser Pool: {e}")
+    
+    try:
         from app.core.queue import recover_queued_jobs_on_startup
         recover_queued_jobs_on_startup()
     except Exception as e:
@@ -535,6 +542,11 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Close shared httpx client on application shutdown to release connections."""
+    try:
+        from app.core.browser_pool import browser_pool
+        await browser_pool.shutdown()
+    except Exception:
+        pass
     try:
         from app.core.http import http_client
         await http_client.aclose()

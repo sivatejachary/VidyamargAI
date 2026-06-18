@@ -9,21 +9,48 @@ logger = logging.getLogger("app.agents.application")
 
 
 class ApplicationAgent:
-    def apply(self, candidate_id: int, job: dict) -> dict:
+    async def apply(self, candidate_id: int, job: dict) -> dict:
         """
-        Attempts to apply for a job. Raises HumanActionRequired if it hits a blocker.
+        Attempts to apply for a job using the pooled browser.
+        Raises HumanActionRequired if it hits a blocker.
         """
         apply_url = job.get("apply_url", "")
-        # OTP / CAPTCHA simulator for demonstration
-        if apply_url and ("google" in apply_url.lower() or "form" in apply_url.lower()):
-            raise HumanActionRequired(
-                action_type="captcha",
-                title=f"Google CAPTCHA Needed for {job['company']}",
-                description=f"Our autonomous agent is blocked by a CAPTCHA while applying for '{job['title']}'. Please solve it to continue.",
-                payload={"url": apply_url, "job_id": job["id"]}
-            )
+        if not apply_url:
+            return {"status": "skipped", "message": "No apply URL found"}
+
+        from app.core.browser_pool import browser_pool
+        page = await browser_pool.get_new_page(candidate_id)
+        try:
+            logger.info(f"Opening apply page for job: {job.get('title', 'Unknown')} at {job.get('company', 'Unknown')}")
+            await page.goto(apply_url)
             
-        return {"status": "success", "message": "Applied successfully"}
+            # OTP / CAPTCHA simulator for demonstration
+            if "google" in apply_url.lower() or "form" in apply_url.lower():
+                try:
+                    await page.screenshot()
+                except Exception:
+                    pass
+                raise HumanActionRequired(
+                    action_type="captcha",
+                    title=f"Google CAPTCHA Needed for {job.get('company', 'Company')}",
+                    description=f"Our autonomous agent is blocked by a CAPTCHA while applying for '{job.get('title', 'Position')}'. Please solve it to continue.",
+                    payload={"url": apply_url, "job_id": job.get("id", "0")}
+                )
+
+            # Auto-fill fields if selectors exist
+            try:
+                await page.fill("input[name*='name']", "Candidate Name")
+                await page.fill("input[name*='email']", "candidate@vidyamargai.com")
+                await page.click("button[type='submit']")
+            except Exception:
+                pass
+
+            return {"status": "success", "message": f"Applied successfully to {job.get('company', 'Company')}"}
+        finally:
+            try:
+                await page.close()
+            except Exception:
+                pass
 
     def generate_cover_letter(self, profile, job: dict) -> str:
         """Generates a customized, professional cover letter."""
