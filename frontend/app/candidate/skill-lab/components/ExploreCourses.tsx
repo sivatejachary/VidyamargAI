@@ -399,28 +399,26 @@ export default function ExploreCourses({
             <p className="text-[11px] text-muted-foreground">Real-time stats from your autonomous learning logs</p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5">
             {[
               { label: "Courses Enrolled", val: enrollments.length, change: "+1 this week", type: "info" },
               { label: "Courses Completed", val: stats?.completed_courses || 0, change: "100% finished", type: "success" },
               { label: "Hours Learned", val: `${stats?.hours_learned || 0}h`, change: "Active this week", type: "info" },
-              { label: "Certificates Earned", val: stats?.completed_certs || 0, change: "Verified PDF", type: "success" },
               { label: "Current Streak", val: `${streakDays} days`, change: "Daily habit active", type: "success" },
-              { label: "XP Earned", val: `${xpPoints} XP`, change: "+150 XP today", type: "success" },
               { label: "Weekly Progress", val: `${Math.round(stats?.weekly_progress || 0)}%`, change: "Goal: 100%", type: "info" },
               { label: "Learning Health Score", val: `${healthScore}%`, change: "Good Progress", type: "success" },
             ].map((stat, idx) => (
               <Card
                 key={idx}
-                className="relative overflow-hidden border border-border/80 p-3 rounded-xl flex flex-col justify-between hover:scale-[1.02] hover:shadow-sm transition-all duration-350 cursor-default"
+                className="relative overflow-hidden border border-border/80 p-2.5 sm:p-3 rounded-xl flex flex-col justify-between hover:scale-[1.02] hover:shadow-sm transition-all duration-350 cursor-default"
               >
                 <div className="space-y-0.5">
-                  <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider">{stat.label}</p>
-                  <h3 className="text-base sm:text-lg font-black text-foreground">{stat.val}</h3>
+                  <p className="text-[8px] sm:text-[9px] uppercase font-bold text-muted-foreground tracking-wider line-clamp-1">{stat.label}</p>
+                  <h3 className="text-sm sm:text-base font-black text-foreground">{stat.val}</h3>
                 </div>
-                <div className="flex items-center gap-1 mt-2 text-[9px] text-muted-foreground font-semibold">
-                  <TrendingUp size={11} className={stat.type === "success" ? "text-emerald-500" : "text-indigo-500"} />
-                  <span>{stat.change}</span>
+                <div className="flex items-center gap-1 mt-2 text-[8px] sm:text-[9px] text-muted-foreground font-semibold">
+                  <TrendingUp size={10} className={stat.type === "success" ? "text-emerald-500" : "text-indigo-500"} />
+                  <span className="truncate">{stat.change}</span>
                 </div>
               </Card>
             ))}
@@ -428,16 +426,16 @@ export default function ExploreCourses({
         </section>
 
         {/* ── Section 3: Continue Learning (Netflix-Style Carousel) ── */}
-        {enrollments.filter(e => e.progress > 0 && e.progress < 100).length > 0 && (
-          <section className="space-y-4">
+        {enrollments.filter(e => e.progress >= 0 && e.progress < 100).length > 0 && (
+          <section className="space-y-3">
             <div>
-              <h3 className="text-lg font-bold text-foreground">Continue Learning</h3>
-              <p className="text-xs text-muted-foreground">Pick up right where you left off</p>
+              <h3 className="text-base font-bold text-foreground">Continue Learning</h3>
+              <p className="text-[11px] text-muted-foreground">Pick up right where you left off</p>
             </div>
 
             <div className="flex gap-4 overflow-x-auto pb-3 pt-1 scrollbar-hide -mx-4 px-4 sm:-mx-6 sm:px-6">
               {enrollments
-                .filter(e => e.progress > 0 && e.progress < 100)
+                .filter(e => e.progress >= 0 && e.progress < 100)
                 .map((enrollment: any) => {
                   const course = courses.find((c: any) => c.id === enrollment.course_id) || enrollment.course;
                   if (!course) return null;
@@ -449,34 +447,34 @@ export default function ExploreCourses({
                   return (
                     <div
                       key={enrollment.id}
-                      className="min-w-[240px] sm:min-w-[280px] max-w-[280px] bg-card border border-border/75 rounded-2xl overflow-hidden shadow-sm hover:scale-[1.03] hover:shadow-md transition-all flex flex-col"
+                      className="min-w-[200px] sm:min-w-[240px] max-w-[240px] bg-card border border-border/75 rounded-xl overflow-hidden shadow-sm hover:scale-[1.03] hover:shadow-md transition-all flex flex-col"
                     >
-                      <div className={`h-24 w-full bg-gradient-to-br ${gradient} flex items-center justify-center relative`}>
-                        <Brain size={30} className="text-white/20" />
-                        <span className="absolute bottom-2 left-2 text-[9px] font-bold text-white bg-black/40 backdrop-blur-md px-2 py-0.5 rounded-full">
+                      <div className={`h-20 w-full bg-gradient-to-br ${gradient} flex items-center justify-center relative`}>
+                        <Brain size={24} className="text-white/20" />
+                        <span className="absolute bottom-1.5 left-1.5 text-[8px] font-bold text-white bg-black/40 backdrop-blur-md px-1.5 py-0.5 rounded-md">
                           {progress}% complete
                         </span>
                       </div>
                       
-                      <div className="p-4 flex-1 flex flex-col justify-between gap-3">
-                        <div className="space-y-1">
+                      <div className="p-3 flex-1 flex flex-col justify-between gap-2.5">
+                        <div className="space-y-0.5">
                           <h4 className="text-xs font-bold text-foreground line-clamp-1 leading-snug">
                             {course.title}
                           </h4>
-                          <p className="text-[10px] text-muted-foreground">
+                          <p className="text-[9px] text-muted-foreground">
                             Estimated {remainingHours} hrs remaining
                           </p>
                         </div>
                         
-                        <div className="space-y-2">
-                          <ProgressBar value={progress} className="h-1.5" />
+                        <div className="space-y-1.5">
+                          <ProgressBar value={progress} className="h-1" />
                           <Button
                             variant="primary"
                             size="xs"
-                            className="w-full font-bold"
+                            className="w-full font-bold text-[9px] py-1 h-auto"
                             onClick={() => handleGoToLesson(course, "video")}
                           >
-                            Resume
+                            {progress > 0 ? "Resume" : "Start Learning"}
                           </Button>
                         </div>
                       </div>
