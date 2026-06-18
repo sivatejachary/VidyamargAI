@@ -23,44 +23,7 @@ interface Message {
   memory_updated?: boolean;
 }
 
-const MCP_TOOLS = [
-  {
-    id: "resume",
-    title: "Resume MCP",
-    description: "AI-powered resume optimization, ATS scoring & career coaching",
-    href: "/candidate/resume",
-    icon: FileText,
-    color: "text-violet-600 dark:text-violet-400",
-    bg: "bg-violet-50 dark:bg-violet-950/30",
-    border: "border-violet-200 dark:border-violet-800/30",
-    gradient: "from-violet-600 to-purple-600",
-    features: ["ATS Optimization", "Resume Scoring", "Career Coaching"],
-  },
-  {
-    id: "skill-lab",
-    title: "Skill Lab MCP",
-    description: "Personalized learning paths, course guidance & skill development",
-    href: "/candidate/skill-lab",
-    icon: GraduationCap,
-    color: "text-emerald-600 dark:text-emerald-400",
-    bg: "bg-emerald-50 dark:bg-emerald-950/30",
-    border: "border-emerald-200 dark:border-emerald-800/30",
-    gradient: "from-emerald-600 to-teal-600",
-    features: ["Course Guidance", "Learning Plans", "Skill Analysis"],
-  },
-  {
-    id: "job-agent",
-    title: "Job Agent MCP",
-    description: "Intelligent job search, interview prep & salary negotiation",
-    href: "/candidate/jobs",
-    icon: Briefcase,
-    color: "text-blue-600 dark:text-blue-400",
-    bg: "bg-blue-50 dark:bg-blue-950/30",
-    border: "border-blue-200 dark:border-blue-800/30",
-    gradient: "from-blue-600 to-indigo-600",
-    features: ["Job Matching", "Interview Prep", "Salary Negotiation"],
-  },
-];
+
 
 const quickSuggestions = [
   {
@@ -277,7 +240,7 @@ export default function TushAIChat() {
             How can <span className="text-blue-600 dark:text-blue-400">Tush AI</span> help you today?
           </h1>
           <p className="text-xs text-app-text-muted text-center mb-8">
-            Your AI-powered career companion — now with MCP tools on every page
+            Your AI-powered career companion
           </p>
 
           {/* Input */}
@@ -285,57 +248,7 @@ export default function TushAIChat() {
             <InputBox isLanding={true} />
           </div>
 
-          {/* MCP Tools Cards */}
-          <div className="w-full max-w-3xl mb-8">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="h-px flex-1 bg-app-border" />
-              <p className="text-xs font-bold text-app-text-muted uppercase tracking-widest px-3 flex items-center gap-1.5">
-                <Zap size={12} className="text-blue-500" /> MCP Tools
-              </p>
-              <div className="h-px flex-1 bg-app-border" />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {MCP_TOOLS.map((tool) => {
-                const Icon = tool.icon;
-                return (
-                  <Link
-                    key={tool.id}
-                    href={tool.href}
-                    className={`
-                      group relative flex flex-col gap-3 p-4 rounded-2xl border bg-app-card
-                      ${tool.border} hover:shadow-lg hover:scale-[1.02]
-                      transition-all duration-200 cursor-pointer overflow-hidden
-                    `}
-                  >
-                    {/* Gradient accent top bar */}
-                    <div className={`absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r ${tool.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-200`} />
 
-                    <div className="flex items-start gap-3">
-                      <div className={`p-2.5 rounded-xl ${tool.bg} shrink-0`}>
-                        <Icon size={18} className={tool.color} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-app-text leading-tight">{tool.title}</p>
-                        <p className="text-xs text-app-text-muted mt-0.5 leading-snug">{tool.description}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-1.5">
-                      {tool.features.map((f) => (
-                        <span key={f} className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${tool.bg} ${tool.color} border ${tool.border}`}>
-                          {f}
-                        </span>
-                      ))}
-                    </div>
-
-                    <div className={`flex items-center gap-1 text-xs font-semibold ${tool.color} mt-auto`}>
-                      Open {tool.title} <ChevronRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
 
           {/* Quick Suggestions */}
           <div className="w-full max-w-3xl">
@@ -381,13 +294,6 @@ export default function TushAIChat() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <div className="hidden md:flex gap-2">
-                  {MCP_TOOLS.map((tool) => (
-                    <Link key={tool.id} href={tool.href} className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg border ${tool.border} ${tool.color} ${tool.bg} hover:opacity-80 transition-opacity flex items-center gap-1`}>
-                      <tool.icon size={10} /> {tool.title}
-                    </Link>
-                  ))}
-                </div>
                 <button
                   onClick={() => { setIsChatActive(false); setMessages([]); }}
                   className="text-xs font-semibold text-app-text-secondary hover:text-app-text px-3 py-1.5 rounded-lg border border-app-border hover:bg-app-surface transition-colors cursor-pointer"
@@ -447,7 +353,7 @@ export default function TushAIChat() {
             <div className="pt-2 pb-1">
               <InputBox isLanding={false} />
               <p className="text-[10px] text-app-text-muted text-center mt-2">
-                Tush AI · Personalized career guidance · Open MCP tools for deeper AI assistance
+                Tush AI · Personalized career guidance
               </p>
             </div>
           </div>

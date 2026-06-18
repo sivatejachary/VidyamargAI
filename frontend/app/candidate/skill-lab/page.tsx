@@ -13,7 +13,6 @@ import CoursePlayer from "./components/CoursePlayer";
 import MyLearning from "./components/MyLearning";
 import Certificates from "./components/Certificates";
 import AiMentor from "./components/AiMentor";
-import MCPChat from "@/components/MCPChat";
 
 
 function transformNewCurriculumToOld(newCur: any) {
@@ -529,16 +528,6 @@ export default function SkillLab() {
         )}
 
       </div>
-      {/* Skill Lab MCP AI Assistant */}
-      <MCPChat
-        mode="skill-lab"
-        contextHint={enrollments.length > 0
-          ? `Currently enrolled in ${enrollments.length} course(s). Total available courses: ${courses.length}`
-          : courses.length > 0
-          ? `${courses.length} courses available in the skill lab`
-          : undefined
-        }
-      />
     </div>
   );
 }
