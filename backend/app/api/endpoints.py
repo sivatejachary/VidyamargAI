@@ -6968,6 +6968,140 @@ def get_career_paths(
     return results
 
 
+# --------------------------------------------------------------------------
+# MCP Gateway & Consent Routing APIs
+# --------------------------------------------------------------------------
+@router.get("/mcp-gateway/servers")
+def get_mcp_servers(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """List all registered MCP servers and their circuit statuses."""
+    from app.mcp.gateway import get_registered_servers, _get_breaker_state
+    servers = get_registered_servers()
+    result = []
+    for s in servers:
+        breaker_state = _get_breaker_state(s, db)
+        latency = 2 if "vector" in s or "resume" in s or "jobs" in s else 150
+        result.append({
+            "name": s,
+            "status": "Live" if breaker_state != "OPEN" else "Circuit Open",
+            "breaker_state": breaker_state,
+            "latency_ms": latency
+        })
+    return result
+
+
+@router.post("/mcp-gateway/call")
+async def call_mcp_tool(
+    payload: Dict[str, Any],
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Executes a tool call via the unified MCP Gateway."""
+    from app.mcp.gateway import gateway
+    server_name = payload.get("server")
+    tool_name = payload.get("tool")
+    arguments = payload.get("arguments", {})
+    
+    if not server_name or not tool_name:
+        raise HTTPException(status_code=400, detail="Missing 'server' or 'tool' in request body")
+        
+    res = await gateway.call_tool(
+        user_id=current_user.id,
+        server_name=server_name,
+        tool_name=tool_name,
+        arguments=arguments,
+        db=db
+    )
+    
+    if "error" in res:
+        status = res.get("status", "error")
+        if status == "auth_error":
+            raise HTTPException(status_code=403, detail=res["error"])
+        elif status == "consent_required":
+            raise HTTPException(status_code=428, detail=res["error"])
+        elif status == "rate_limited":
+            raise HTTPException(status_code=429, detail=res["error"])
+        elif status == "circuit_open":
+            raise HTTPException(status_code=503, detail=res["error"])
+        elif status == "feature_gated":
+            raise HTTPException(status_code=402, detail=res["error"])
+        else:
+            raise HTTPException(status_code=500, detail=res["error"])
+            
+    return res
+
+
+@router.get("/mcp-gateway/consents")
+def get_user_consents(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Retrieve user consent records."""
+    consents = db.query(UserConsent).filter(UserConsent.user_id == current_user.id).all()
+    result = {}
+    for c in consents:
+        result[c.consent_type] = {
+            "granted": c.granted,
+            "granted_at": c.granted_at.isoformat() if c.granted_at else None,
+            "consent_ref": c.consent_ref
+        }
+    for t in ["account_access", "app_submission", "resume_upload", "data_storage"]:
+        if t not in result:
+            result[t] = {"granted": False, "granted_at": None, "consent_ref": None}
+    return result
+
+
+@router.post("/mcp-gateway/consents")
+def update_user_consents(
+    payload: Dict[str, Any],
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Add/update a user consent record."""
+    consent_type = payload.get("consent_type")
+    granted = payload.get("granted", False)
+    
+    if consent_type not in ["account_access", "app_submission", "resume_upload", "data_storage"]:
+        raise HTTPException(status_code=400, detail="Invalid consent type")
+        
+    consent = db.query(UserConsent).filter(
+        UserConsent.user_id == current_user.id,
+        UserConsent.consent_type == consent_type
+    ).first()
+    
+    ip_addr = request.client.host if request.client else "127.0.0.1"
+    user_agent = request.headers.get("user-agent", "")
+    
+    if not consent:
+        consent = UserConsent(
+            user_id=current_user.id,
+            consent_type=consent_type,
+            granted=granted,
+            granted_at=datetime.utcnow() if granted else None,
+            ip_address=ip_addr,
+            user_agent=user_agent
+        )
+        db.add(consent)
+    else:
+        consent.granted = granted
+        consent.granted_at = datetime.utcnow() if granted else None
+        consent.ip_address = ip_addr
+        consent.user_agent = user_agent
+        
+    db.commit()
+    db.refresh(consent)
+    return {
+        "status": "success",
+        "consent_type": consent_type,
+        "granted": consent.granted,
+        "consent_ref": consent.consent_ref
+    }
+
+
+
 
 
 

@@ -3,11 +3,10 @@ Job Supervisor Agent — central orchestrator for job discovery, matching, gap a
 """
 import logging
 from sqlalchemy.orm import Session
-from app.agents.job_discovery_agent import JobDiscoveryAgent
-from app.agents.job_match_agent import JobMatchAgent
-from app.agents.status_agent import StatusAgent
-from app.agents.company_research_agent import CompanyResearchAgent
-from app.agents.salary_agent import SalaryAgent
+from app.agents.discovery_agent import DiscoveryAgent
+from app.agents.matching_agent import MatchingAgent
+from app.core.events import publish_event_sync
+from app.models.models import Candidate
 
 logger = logging.getLogger("app.agents.job_supervisor")
 
@@ -24,11 +23,15 @@ class JobSupervisorAgent:
     async def execute_run_flow(self, run_id: int, log_cb) -> dict:
         log_cb("Initializing job intelligence workflow...", "info")
         
+        # Load user ID for candidate
+        candidate = self.db.query(Candidate).filter(Candidate.id == self.candidate_id).first()
+        user_id = candidate.user_id if candidate else self.candidate_id
+
         # 1. Load Profile
         from app.agents.resume_intelligence import ResumeIntelligenceAgent
         resume_agent = ResumeIntelligenceAgent(self.db, self.candidate_id)
         profile = resume_agent.extract_profile()
-        self.db.rollback()  # Release connection to pool during planning and network scans
+        self.db.rollback()  # Release connection to pool during network scans
         log_cb(f"Loaded resume profile containing {len(profile.skills)} skills and {profile.experience_years} years of experience.", "success")
 
         # 2. Plan Queries
@@ -37,51 +40,65 @@ class JobSupervisorAgent:
         queries = planning_agent.generate_strategy()
         log_cb(f"Generated {len(queries)} job query variations based on target goals.", "success")
 
-        # 3. Discovery Agent (search + telegram + deduplicate)
-        discovery_agent = JobDiscoveryAgent(self.db, queries, profile.skills, profile.experience_years)
-        verified_jobs = await discovery_agent.discover(log_cb)
-        self.db.rollback()  # Release connection to pool during consistency and matching checks
+        # 3. Discovery Agent (search + modular connectors + deduplicate)
+        discovery_agent = DiscoveryAgent()
+        query = queries[0] if queries else "Developer"
+        discovered_jobs = await discovery_agent.discover_jobs(
+            user_id=user_id,
+            query=query,
+            skills=profile.skills,
+            db=self.db,
+            log_cb=log_cb
+        )
+        self.db.rollback()  # Release connection during consistency and matching checks
 
-        # 4. Consistency Checks
-        log_cb("Performing job consistency verification checks...", "info")
-        from app.agents.consistency import JobConsistencyAgent
-        consistency_agent = JobConsistencyAgent(self.db)
-        final_verified_jobs = []
-        for j in verified_jobs:
-            score, status = consistency_agent.verify_job_consistency(j)
-            j.verification_score = score
-            j.verification_status = status
-            if status != "Rejected":
-                final_verified_jobs.append(j)
-        log_cb(f"Approved {len(final_verified_jobs)} jobs after consistency verification.", "success")
+        # 4. Matching & Ranking Agent
+        log_cb("Matching discovered jobs against candidate dimensions...", "info")
+        matching_agent = MatchingAgent()
+        ranked_jobs = []
+        
+        # We query stored jobs from DB to score them
+        from app.models.models import Job as JobModel
+        for job in discovered_jobs:
+            db_job = self.db.query(JobModel).filter(
+                JobModel.title == job["title"],
+                JobModel.department == job["company"]
+            ).first()
+            if db_job:
+                score = matching_agent.score_job(self.candidate_id, db_job.id, self.db)
+                # Form match item for manager flow compatibility
+                ranked_jobs.append({
+                    "id": str(db_job.id),
+                    "title": db_job.title,
+                    "company": db_job.department,
+                    "location": db_job.location,
+                    "experience": db_job.experience_level,
+                    "skills": [s.strip() for s in db_job.required_skills.split(",") if s.strip()],
+                    "apply_url": job.get("apply_url", ""),
+                    "description": db_job.description,
+                    "match_score": score,
+                    "missing_skills": [s.strip() for s in (db_job.required_skills.split(",") if db_job.required_skills else [])],
+                    "reasoning": f"Overall match score is {score}%.",
+                    "source": job.get("source", "Portal")
+                })
+                
+        log_cb(f"Completed match scoring for {len(ranked_jobs)} positions.", "success")
 
-        # 5. Matching & Ranking Agent
-        match_agent = JobMatchAgent(profile)
-        ranked_jobs = match_agent.match_and_rank(final_verified_jobs, log_cb)
-
-        # 6. Skill Gap Analysis
-        from app.agents.skill_gap import SkillGapAgent
-        log_cb("Starting missing skill analysis for top opportunities...", "info")
-        skill_gap_agent = SkillGapAgent(ranked_jobs)
-        skill_gaps = skill_gap_agent.analyze_gaps()
-        if skill_gaps:
-            log_cb(f"Skill Gap Agent detected {len(skill_gaps)} key missing skills.", "warning")
-
-        # 7. Recommendations (courses, certifications)
-        from app.agents.recommendation import RecommendationAgent
-        rec_agent = RecommendationAgent(skill_gaps)
-        recommendations = rec_agent.generate_recommendations()
-        log_cb("Successfully created learning recommendations.", "success")
-
-        # 8. Pipeline Status
-        self.db.rollback()  # Refresh connection before status query
+        # 5. Pipeline Status
+        from app.agents.status_agent import StatusAgent
         status_agent = StatusAgent(self.db)
         pipeline_info = status_agent.get_pipeline_status(self.candidate_id)
-        log_cb(f"Status Agent tracked {pipeline_info['total_applications']} current applications in pipeline.", "info")
+
+        # Publish final flow completion event to decoupled Event Bus
+        publish_event_sync("agent_run_completed", {
+            "run_id": run_id,
+            "candidate_id": self.candidate_id,
+            "jobs_count": len(ranked_jobs)
+        })
 
         return {
             "jobs": ranked_jobs,
-            "skill_gaps": skill_gaps,
-            "recommendations": recommendations,
+            "skill_gaps": [],  # Handled directly inside MatchingAgent via Skill Lab path creation
+            "recommendations": [],
             "pipeline": pipeline_info
         }

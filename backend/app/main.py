@@ -508,6 +508,15 @@ async def startup_event():
     except Exception as e:
         logger.error(f"Failed to launch background workers: {e}")
 
+    try:
+        import app.mcp.servers
+        from app.mcp.gateway import audit_logger_worker as gateway_audit_worker
+        asyncio.create_task(gateway_audit_worker())
+        logger.info("Local MCP Servers registered and gateway audit logger started.")
+    except Exception as e:
+        logger.error(f"Failed to initialize local MCP servers: {e}")
+
+
 
 @app.on_event("shutdown")
 async def shutdown_event():

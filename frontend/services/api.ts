@@ -941,6 +941,42 @@ export const apiService = {
     });
     if (!res.ok) throw new Error("Failed to get career paths");
     return res.json();
+  },
+
+  async getMCPServers() {
+    const res = await customFetch(`${getBaseUrl()}/mcp-gateway/servers`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to fetch MCP servers");
+    return res.json();
+  },
+
+  async callMCPTool(server: string, tool: string, args: Record<string, any> = {}) {
+    const res = await customFetch(`${getBaseUrl()}/mcp-gateway/call`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getHeaders() },
+      body: JSON.stringify({ server, tool, arguments: args }),
+    });
+    if (!res.ok) throw new Error("MCP Tool call failed");
+    return res.json();
+  },
+
+  async getUserConsents() {
+    const res = await customFetch(`${getBaseUrl()}/mcp-gateway/consents`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to fetch user consents");
+    return res.json();
+  },
+
+  async updateUserConsent(consentType: string, granted: boolean) {
+    const res = await customFetch(`${getBaseUrl()}/mcp-gateway/consents`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getHeaders() },
+      body: JSON.stringify({ consent_type: consentType, granted }),
+    });
+    if (!res.ok) throw new Error("Failed to update user consent");
+    return res.json();
   }
 };
 

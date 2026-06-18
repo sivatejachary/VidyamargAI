@@ -1,5 +1,6 @@
 """
 Cost Controller Agent — tracks and limits LLM token/character usage budgets.
+Routes prompt requests to optimal models dynamically based on task and usage.
 """
 import logging
 from datetime import datetime, date
@@ -52,7 +53,12 @@ class CostControllerAgent:
             logger.error(f"Error recording usage: {e}")
 
     def select_model(self, prompt_text: str, user_id: int, db: Session) -> str:
-        """Selects cheapest model (e.g. nvidia fallback) if daily usage is high."""
+        """
+        Dynamically selects model based on character counts and user budgets:
+        - Near budget limit (>70%) ➔ nvidia (Groq Llama fallback)
+        - Complex reasoning / long prompt (>20,000 chars) ➔ nvidia (Nvidia Nemotron/Claude)
+        - Simple request ➔ gemini (Gemini Flash)
+        """
         try:
             prompt_chars = len(prompt_text)
             today_start = datetime.combine(date.today(), datetime.min.time())
@@ -63,8 +69,17 @@ class CostControllerAgent:
                 AIMentorUsage.created_at >= today_start
             ).scalar()
             
-            if chars_sum > (DAILY_CHAR_LIMIT * 0.7) or prompt_chars > 10000:
+            # Near budget limit (70%+ limit used)
+            if chars_sum > (DAILY_CHAR_LIMIT * 0.70):
+                logger.info(f"User {user_id} is near budget limit. Selecting cheaper model (nvidia).")
                 return "nvidia"
+                
+            # Complex reasoning or high input size
+            if prompt_chars > 20000:
+                logger.info(f"Prompt is large ({prompt_chars} chars). Selecting high-capacity model (nvidia).")
+                return "nvidia"
+                
+            # Default cheap model
             return "gemini"
         except Exception:
             return "gemini"

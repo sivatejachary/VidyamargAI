@@ -637,6 +637,24 @@ class UserCareerProfile(Base):
 Index("idx_user_career_profile_user", UserCareerProfile.user_id)
 
 
+class UserConsent(Base):
+    __tablename__ = "user_consents"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    consent_type = Column(String, nullable=False)  # "account_access", "app_submission", "resume_upload", "data_storage"
+    granted = Column(Boolean, default=False, nullable=False)
+    granted_at = Column(DateTime, nullable=True)
+    ip_address = Column(String, nullable=True)
+    user_agent = Column(String, nullable=True)
+    consent_ref = Column(String, nullable=False, default=lambda: str(uuid.uuid4()))
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+Index("idx_user_consent_user_type", UserConsent.user_id, UserConsent.consent_type)
+
+
+
 
 
 

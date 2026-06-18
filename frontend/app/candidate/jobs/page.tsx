@@ -147,6 +147,38 @@ export default function CandidateJobs() {
   // Selected job details modal
   const [selectedJob, setSelectedJob] = useState<LiveJob | null>(null);
 
+  // Legal Consents & MCP Servers Health
+  const [consents, setConsents] = useState<Record<string, { granted: boolean, consent_ref: string | null }>>({});
+  const [mcpServers, setMcpServers] = useState<any[]>([]);
+
+  const fetchConsentsAndServers = useCallback(async () => {
+    try {
+      const cData = await apiService.getUserConsents();
+      setConsents(cData);
+      const sData = await apiService.getMCPServers();
+      setMcpServers(sData);
+    } catch (e) {
+      console.error("Failed to load consents/servers", e);
+    }
+  }, []);
+
+  const handleConsentToggle = async (type: string) => {
+    const isGranted = consents[type]?.granted || false;
+    try {
+      const res = await apiService.updateUserConsent(type, !isGranted);
+      setConsents(prev => ({
+        ...prev,
+        [type]: { granted: res.granted, consent_ref: res.consent_ref }
+      }));
+    } catch (err) {
+      console.error("Failed to update consent:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchConsentsAndServers();
+  }, [fetchConsentsAndServers]);
+
   // Trigger a fresh agent run
   const triggerAgentRun = async () => {
     try {
@@ -338,6 +370,78 @@ export default function CandidateJobs() {
             onStartAgent={triggerAgentRun}
             onRunComplete={handleRunComplete}
           />
+        </div>
+
+        {/* Section 1.5: Legal Consent & MCP Server Health */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* User Consents Card */}
+          <Card className="p-6 space-y-4">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-blue-600" />
+                Legal Consents & Authorizations
+              </h3>
+              <p className="text-11 text-slate-500 mt-0.5">Authorize actions before autonomous agents execute them.</p>
+            </div>
+            <div className="space-y-3">
+              {[
+                { id: "account_access", label: "Account Access", desc: "Authorize log into career portals using credentials you provide." },
+                { id: "app_submission", label: "Application Submission", desc: "Authorize submit job applications using your profile details." },
+                { id: "resume_upload", label: "Resume Upload", desc: "Authorize upload your resume PDF to third-party portals." },
+                { id: "data_storage", label: "Data Storage", desc: "Authorize store application history and portal session cookies." }
+              ].map(item => (
+                <div key={item.id} className="flex items-start justify-between gap-4 p-3 rounded-2xl bg-slate-50 border border-slate-100/60">
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-bold text-slate-800">{item.label}</p>
+                    <p className="text-10 text-slate-500 leading-normal">{item.desc}</p>
+                  </div>
+                  <button
+                    onClick={() => handleConsentToggle(item.id)}
+                    className={`px-3 py-1.5 rounded-lg text-10 font-bold transition cursor-pointer shrink-0 uppercase tracking-wider ${
+                      consents[item.id]?.granted
+                        ? "bg-emerald-500 hover:bg-emerald-600 text-white"
+                        : "bg-slate-200 hover:bg-slate-300 text-slate-700"
+                    }`}
+                  >
+                    {consents[item.id]?.granted ? "Authorized ✓" : "Authorize →"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* MCP Server Health Card */}
+          <Card className="p-6 space-y-4">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <Laptop className="w-4 h-4 text-indigo-600" />
+                MCP Server Health Panel
+              </h3>
+              <p className="text-11 text-slate-500 mt-0.5">Status of registered local Model Context Protocol servers.</p>
+            </div>
+            <div className="space-y-2 max-h-[295px] overflow-y-auto pr-1">
+              {mcpServers.length === 0 ? (
+                <p className="text-xs text-slate-400 italic">Loading MCP servers status...</p>
+              ) : (
+                mcpServers.map(server => (
+                  <div key={server.name} className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 bg-slate-50/50">
+                    <span className="text-xs font-bold text-slate-700 font-mono">{server.name}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-10 text-slate-500 font-medium font-mono">{server.latency_ms}ms</span>
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        server.status === "Live"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                          : "bg-rose-50 text-rose-700 border border-rose-100"
+                      }`}>
+                        <span className={`w-1/5 h-1 rounded-full ${server.status === "Live" ? "bg-emerald-500" : "bg-rose-500"}`} />
+                        {server.status}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </Card>
         </div>
 
         {/* Show results sections if completed or logs exist */}
