@@ -196,7 +196,7 @@ export default function ExploreCourses({
       } else if (stepLower.includes("react")) {
         keywords = ["react"];
       } else if (stepLower.includes("next.js")) {
-        keywords = ["next.js"];
+        keywords = ["next.js", "nextjs"];
       } else if (stepLower.includes("python")) {
         keywords = ["python"];
       } else if (stepLower.includes("databases") || stepLower.includes("sql")) {
@@ -217,16 +217,51 @@ export default function ExploreCourses({
 
       return pathCourses.filter((c: any) => {
         const titleLower = (c.title || "").toLowerCase();
-        const categoryLower = (c.category || "").toLowerCase();
-        const descLower = (c.description || "").toLowerCase();
-        const skillsLower = (c.skills || []).map((s: string) => s.toLowerCase());
 
-        return keywords.some(kw => 
-          titleLower.includes(kw) || 
-          categoryLower.includes(kw) || 
-          descLower.includes(kw) ||
-          skillsLower.some((s: string) => s.includes(kw) || kw.includes(s))
-        );
+        // Standardise check to avoid spillover of framework names
+        if (stepLower.includes("html") || stepLower.includes("css")) {
+          return (titleLower.includes("html") || titleLower.includes("css")) &&
+            !titleLower.includes("next.js") && !titleLower.includes("react") && !titleLower.includes("node.js");
+        }
+        if (stepLower.includes("javascript") || stepLower.includes("js")) {
+          return (titleLower.includes("javascript") || titleLower.includes("js")) &&
+            !titleLower.includes("next.js") && !titleLower.includes("node.js") && !titleLower.includes("react") && !titleLower.includes("vue") && !titleLower.includes("angular");
+        }
+        if (stepLower.includes("typescript")) {
+          return titleLower.includes("typescript") || titleLower.includes("ts");
+        }
+        if (stepLower.includes("react")) {
+          return titleLower.includes("react") && !titleLower.includes("react native");
+        }
+        if (stepLower.includes("next.js")) {
+          return titleLower.includes("next.js") || titleLower.includes("nextjs");
+        }
+        if (stepLower.includes("python")) {
+          return titleLower.includes("python");
+        }
+        if (stepLower.includes("databases") || stepLower.includes("sql")) {
+          return titleLower.includes("sql") || titleLower.includes("database") || titleLower.includes("postgres") || titleLower.includes("mysql") || titleLower.includes("mongodb");
+        }
+        if (stepLower.includes("apis") || stepLower.includes("node.js")) {
+          return titleLower.includes("node") || titleLower.includes("express") || titleLower.includes("api") || titleLower.includes("fastapi");
+        }
+        if (stepLower.includes("ml fundamentals") || stepLower.includes("deep learning") || stepLower.includes("llms") || stepLower.includes("math")) {
+          return titleLower.includes("machine learning") || titleLower.includes("ml") || titleLower.includes("deep learning") || titleLower.includes("llm") || titleLower.includes("neural") || titleLower.includes("ai");
+        }
+        if (stepLower.includes("aws core") || stepLower.includes("cloud") || stepLower.includes("networking")) {
+          return titleLower.includes("aws") || titleLower.includes("cloud") || titleLower.includes("network") || titleLower.includes("azure") || titleLower.includes("gcp");
+        }
+        if (stepLower.includes("architecture") || stepLower.includes("system design")) {
+          return titleLower.includes("system design") || titleLower.includes("architecture") || titleLower.includes("scale") || titleLower.includes("scalability");
+        }
+        if (stepLower.includes("docker") || stepLower.includes("ci/cd") || stepLower.includes("kubernetes")) {
+          return titleLower.includes("docker") || titleLower.includes("kubernetes") || titleLower.includes("ci/cd") || titleLower.includes("jenkins") || titleLower.includes("devops");
+        }
+        if (stepLower.includes("cryptography") || stepLower.includes("ethical hacking") || stepLower.includes("siem")) {
+          return titleLower.includes("security") || titleLower.includes("cybersecurity") || titleLower.includes("cryptography") || titleLower.includes("hacking") || titleLower.includes("siem");
+        }
+
+        return keywords.some(kw => titleLower.includes(kw));
       });
     },
     []
