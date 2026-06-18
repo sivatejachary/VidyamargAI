@@ -1161,7 +1161,7 @@ export default function CandidateJobs() {
                     location: jobItem.location,
                     experience: jobItem.experience_level,
                     work_mode: "On-site",
-                    skills: jobItem.required_skills ? jobItem.required_skills.split(",").map((s: string) => s.strip ? s.strip() : s.trim()) : [],
+                    skills: jobItem.required_skills ? jobItem.required_skills.split(",").map((s: string) => s.trim()) : [],
                     apply_url: jobItem.source_url || "",
                     posted_date: "Saved",
                     source: jobItem.source_platform || "Database",

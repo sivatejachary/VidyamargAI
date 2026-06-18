@@ -900,33 +900,6 @@ export const apiService = {
     return res.json();
   },
 
-  async getHAQPending() {
-    const res = await customFetch(`${getBaseUrl()}/haq/pending`, {
-      headers: getHeaders(),
-    });
-    if (!res.ok) throw new Error("Failed to fetch pending HAQ items");
-    return res.json();
-  },
-
-  async completeHAQItem(callbackKey: string, humanInput: Record<string, any> = {}) {
-    const res = await customFetch(`${getBaseUrl()}/haq/${callbackKey}/complete`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...getHeaders() },
-      body: JSON.stringify(humanInput),
-    });
-    if (!res.ok) throw new Error("Failed to complete action item");
-    return res.json();
-  },
-
-  async dismissHAQItem(callbackKey: string) {
-    const res = await customFetch(`${getBaseUrl()}/haq/${callbackKey}/dismiss`, {
-      method: "POST",
-      headers: getHeaders(),
-    });
-    if (!res.ok) throw new Error("Failed to dismiss action item");
-    return res.json();
-  },
-
   async getAgentActivity(limit = 20) {
     const res = await customFetch(`${getBaseUrl()}/agent/activity?limit=${limit}`, {
       headers: getHeaders(),
