@@ -15,7 +15,10 @@ for path in [
                     line = line.strip()
                     if line and not line.startswith("#") and "=" in line:
                         k, v = line.split("=", 1)
-                        os.environ[k.strip()] = v.strip().strip('"').strip("'")
+                        key = k.strip()
+                        val = v.strip().strip('"').strip("'")
+                        if key not in os.environ:
+                            os.environ[key] = val
             break
         except Exception:
             pass

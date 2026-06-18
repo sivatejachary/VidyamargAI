@@ -98,12 +98,23 @@ def init_db_safely():
         print(f"Auto-seed warning initialization failed: {e}")
 
     def _get_columns(conn, table_name: str):
-        """Return list of column names for a table in PostgreSQL."""
-        rows = conn.execute(text(
-            "SELECT column_name FROM information_schema.columns "
-            "WHERE table_name = :t"
-        ), {"t": table_name}).fetchall()
-        return [r[0] for r in rows]
+        """Return list of column names for a table in PostgreSQL or SQLite."""
+        is_postgres = "postgresql" in str(engine.url).lower()
+        if is_postgres:
+            try:
+                rows = conn.execute(text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_name = :t"
+                ), {"t": table_name}).fetchall()
+                return [r[0] for r in rows]
+            except Exception:
+                return []
+        else:
+            try:
+                rows = conn.execute(text(f"PRAGMA table_info({table_name})")).fetchall()
+                return [r[1] for r in rows]
+            except Exception:
+                return []
 
     serial = "SERIAL PRIMARY KEY"
     try:
@@ -432,14 +443,17 @@ def init_db_safely():
 
             # Archiving migrations for existing tables
             for tbl in ["ai_mentor_sessions", "ai_mentor_messages", "ai_mentor_artifacts"]:
-                try:
-                    conn.execute(text(f"ALTER TABLE {tbl} ADD COLUMN is_archived BOOLEAN DEFAULT false"))
-                except Exception:
-                    pass
-                try:
-                    conn.execute(text(f"ALTER TABLE {tbl} ADD COLUMN archived_at TIMESTAMP"))
-                except Exception:
-                    pass
+                existing_cols = _get_columns(conn, tbl)
+                if "is_archived" not in existing_cols:
+                    try:
+                        conn.execute(text(f"ALTER TABLE {tbl} ADD COLUMN is_archived BOOLEAN DEFAULT false"))
+                    except Exception as e:
+                        print(f"Failed to add column is_archived to {tbl}: {e}")
+                if "archived_at" not in existing_cols:
+                    try:
+                        conn.execute(text(f"ALTER TABLE {tbl} ADD COLUMN archived_at TIMESTAMP"))
+                    except Exception as e:
+                        print(f"Failed to add column archived_at to {tbl}: {e}")
 
             # Create full-text GIN search indexes on Postgres
             is_postgres = "postgresql" in str(engine.url).lower()
