@@ -333,63 +333,63 @@ export default function ExploreCourses({
         />
 
         {/* ── Section 1: Hero Section (AI Learning OS Welcome) ── */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950/80 to-slate-900 border border-indigo-500/20 p-6 sm:p-8 shadow-2xl flex flex-col md:flex-row justify-between gap-6">
-          <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-950/80 to-slate-900 border border-indigo-500/20 p-4 sm:p-5 shadow-xl flex flex-col md:flex-row justify-between gap-4">
+          <div className="absolute top-0 right-0 w-60 h-60 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
           
-          <div className="relative z-10 flex-1 space-y-4">
+          <div className="relative z-10 flex-1 space-y-3">
             <div className="space-y-1">
-              <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 font-mono bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 rounded-full">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 font-mono bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-full">
                 VidyamargAI Skill Lab 3.0
               </span>
-              <h2 className="text-2xl sm:text-3xl font-black text-white leading-tight mt-2">
+              <h2 className="text-lg sm:text-xl font-black text-white leading-tight mt-1">
                 Good {timeOfDay}, {userName} 👋
               </h2>
             </div>
 
-            <div className="flex flex-wrap gap-4 text-xs font-medium text-slate-300">
-              <div className="flex items-center gap-2 bg-black/30 backdrop-blur-md px-3.5 py-1.8 rounded-xl border border-white/5">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50 animate-pulse" />
+            <div className="flex flex-wrap gap-2 text-[11px] font-semibold text-slate-350">
+              <div className="flex items-center gap-1.5 bg-black/30 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50 animate-pulse" />
                 <span>Learning Health: <strong>{healthScore}%</strong></span>
               </div>
-              <div className="flex items-center gap-2 bg-black/30 backdrop-blur-md px-3.5 py-1.8 rounded-xl border border-white/5">
-                <Award size={14} className="text-amber-400" />
+              <div className="flex items-center gap-1.5 bg-black/30 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/5">
+                <Award size={12} className="text-amber-400" />
                 <span>Level {levelNum}</span>
               </div>
-              <div className="flex items-center gap-2 bg-black/30 backdrop-blur-md px-3.5 py-1.8 rounded-xl border border-white/5">
-                <Sparkles size={14} className="text-violet-400" />
+              <div className="flex items-center gap-1.5 bg-black/30 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/5">
+                <Sparkles size={12} className="text-violet-400" />
                 <span>{xpPoints} XP</span>
               </div>
-              <div className="flex items-center gap-2 bg-black/30 backdrop-blur-md px-3.5 py-1.8 rounded-xl border border-white/5">
-                <Flame size={14} className="text-orange-500 fill-orange-500/10" />
+              <div className="flex items-center gap-1.5 bg-black/30 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/5">
+                <Flame size={12} className="text-orange-500 fill-orange-500/10" />
                 <span>{streakDays} Day Streak</span>
               </div>
             </div>
 
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 max-w-xl">
-              <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Current Goal</p>
-              <h4 className="text-sm font-bold text-white mb-1">{careerGoal}</h4>
-              <p className="text-xs text-indigo-200">
+            <div className="bg-white/5 border border-white/10 rounded-xl p-3 max-w-lg">
+              <p className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Current Goal</p>
+              <h4 className="text-xs font-bold text-white mb-0.5">{careerGoal}</h4>
+              <p className="text-[11px] text-indigo-200/90">
                 🤖 AI Insight: &ldquo;You're {onTrackPercent}% on track to your goal.&rdquo;
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 pt-2">
+            <div className="flex flex-wrap items-center gap-2 pt-1">
               {activeEnrollmentCourse && (
                 <button
-                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/30 flex items-center gap-2 cursor-pointer transition-all hover:-translate-y-0.5"
+                  className="px-3.5 py-1.8 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-bold shadow-md shadow-indigo-600/30 flex items-center gap-1.5 cursor-pointer transition-all hover:-translate-y-0.5"
                   onClick={() => handleGoToLesson(activeEnrollmentCourse, "video")}
                 >
                   Resume Learning →
                 </button>
               )}
               <button
-                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold border border-slate-700/50 flex items-center gap-2 cursor-pointer transition-all"
+                className="px-3.5 py-1.8 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-[11px] font-bold border border-slate-700/50 flex items-center gap-1.5 cursor-pointer transition-all"
                 onClick={() => setActiveView("ai-mentor")}
               >
                 Ask AI Mentor
               </button>
               <button
-                className="px-5 py-2.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 rounded-xl text-xs font-bold border border-indigo-500/20 flex items-center gap-2 cursor-pointer transition-all"
+                className="px-3.5 py-1.8 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 rounded-lg text-[11px] font-bold border border-indigo-500/20 flex items-center gap-1.5 cursor-pointer transition-all"
                 onClick={() => setActiveView("ai-mentor")}
               >
                 Generate Study Plan
@@ -399,13 +399,13 @@ export default function ExploreCourses({
         </div>
 
         {/* ── Section 2: Learning Health Dashboard Grid ── */}
-        <section className="space-y-4">
+        <section className="space-y-3">
           <div>
-            <h3 className="text-lg font-bold text-foreground">Learning Health Dashboard</h3>
-            <p className="text-xs text-muted-foreground">Real-time stats from your autonomous learning logs</p>
+            <h3 className="text-base font-bold text-foreground">Learning Health Dashboard</h3>
+            <p className="text-[11px] text-muted-foreground">Real-time stats from your autonomous learning logs</p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               { label: "Courses Enrolled", val: enrollments.length, change: "+1 this week", type: "info" },
               { label: "Courses Completed", val: stats?.completed_courses || 0, change: "100% finished", type: "success" },
@@ -418,14 +418,14 @@ export default function ExploreCourses({
             ].map((stat, idx) => (
               <Card
                 key={idx}
-                className="relative overflow-hidden border border-border/80 p-4 rounded-2xl flex flex-col justify-between hover:scale-[1.02] hover:shadow-md transition-all duration-300 cursor-default"
+                className="relative overflow-hidden border border-border/80 p-3 rounded-xl flex flex-col justify-between hover:scale-[1.02] hover:shadow-sm transition-all duration-350 cursor-default"
               >
-                <div className="space-y-1">
-                  <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{stat.label}</p>
-                  <h3 className="text-xl sm:text-2xl font-black text-foreground">{stat.val}</h3>
+                <div className="space-y-0.5">
+                  <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider">{stat.label}</p>
+                  <h3 className="text-base sm:text-lg font-black text-foreground">{stat.val}</h3>
                 </div>
-                <div className="flex items-center gap-1 mt-3 text-[10px] text-muted-foreground font-semibold">
-                  <TrendingUp size={12} className={stat.type === "success" ? "text-emerald-500" : "text-indigo-500"} />
+                <div className="flex items-center gap-1 mt-2 text-[9px] text-muted-foreground font-semibold">
+                  <TrendingUp size={11} className={stat.type === "success" ? "text-emerald-500" : "text-indigo-500"} />
                   <span>{stat.change}</span>
                 </div>
               </Card>

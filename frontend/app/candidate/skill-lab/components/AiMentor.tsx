@@ -726,23 +726,23 @@ export default function AiMentor({
                     </div>
                   </div>
 
-                  <div className="relative z-10 grid grid-cols-2 md:grid-cols-6 gap-4">
+                  <div className="relative z-10 grid grid-cols-2 md:grid-cols-6 gap-2.5">
                     {/* Health Score circle */}
-                    <div className="p-3 bg-black/30 border border-white/5 rounded-2xl flex flex-col justify-between">
+                    <div className="p-2.5 bg-black/30 border border-white/5 rounded-xl flex flex-col justify-between">
                       <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Learning Health</span>
-                      <div className="flex items-center gap-3 mt-2">
-                        <div className="w-11 h-11 rounded-full border-2 border-indigo-500/50 flex items-center justify-center font-black text-white text-sm">
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <div className="w-9 h-9 rounded-full border-2 border-indigo-500/50 flex items-center justify-center font-black text-white text-xs shrink-0">
                           {Math.round(profileStats?.health_score || 84)}%
                         </div>
-                        <span className="text-11 text-slate-200 font-extrabold">{profileStats?.health_status || "Improving"}</span>
+                        <span className="text-[10px] text-slate-200 font-extrabold truncate">{profileStats?.health_status || "Improving"}</span>
                       </div>
                     </div>
 
                     {/* Risk score */}
-                    <div className="p-3 bg-black/30 border border-white/5 rounded-2xl flex flex-col justify-between">
+                    <div className="p-2.5 bg-black/30 border border-white/5 rounded-xl flex flex-col justify-between">
                       <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Risk Score</span>
-                      <div className="mt-2 space-y-1">
-                        <h4 className={`text-sm font-black ${
+                      <div className="mt-1.5 space-y-1">
+                        <h4 className={`text-xs font-black ${
                           profileStats?.risk_score && profileStats.risk_score >= 60 ? "text-red-400 animate-pulse" : "text-emerald-400"
                         }`}>
                           {profileStats?.risk_score || 15}/100
@@ -752,18 +752,18 @@ export default function AiMentor({
                     </div>
 
                     {/* Stage */}
-                    <div className="p-3 bg-black/30 border border-white/5 rounded-2xl flex flex-col justify-between">
+                    <div className="p-2.5 bg-black/30 border border-white/5 rounded-xl flex flex-col justify-between">
                       <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Roadmap Stage</span>
-                      <h4 className="text-xs font-black text-indigo-300 mt-2 truncate">
+                      <h4 className="text-[11px] font-black text-indigo-300 mt-1.5 truncate">
                         {profileStats?.current_roadmap_stage || "React State"}
                       </h4>
                     </div>
 
                     {/* Weekly goal progress */}
-                    <div className="p-3 bg-black/30 border border-white/5 rounded-2xl flex flex-col justify-between">
+                    <div className="p-2.5 bg-black/30 border border-white/5 rounded-xl flex flex-col justify-between">
                       <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Weekly Progress</span>
-                      <div className="mt-2 space-y-1">
-                        <span className="text-xs font-black text-white block">
+                      <div className="mt-1.5 space-y-1">
+                        <span className="text-[11px] font-black text-white block">
                           {Math.round(profileStats?.weekly_goal_progress || 0)}%
                         </span>
                         <ProgressBar value={profileStats?.weekly_goal_progress || 0} className="h-1 bg-white/10" />
@@ -771,20 +771,20 @@ export default function AiMentor({
                     </div>
 
                     {/* Status */}
-                    <div className="p-3 bg-black/30 border border-white/5 rounded-2xl flex flex-col justify-between">
+                    <div className="p-2.5 bg-black/30 border border-white/5 rounded-xl flex flex-col justify-between">
                       <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Agent Status</span>
-                      <div className="flex items-center gap-1.5 mt-2.5">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="text-xs font-black text-white">{profileStats?.agent_status || "Active"}</span>
+                      <div className="flex items-center gap-1.5 mt-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[11px] font-black text-white">{profileStats?.agent_status || "Active"}</span>
                       </div>
                     </div>
 
                     {/* XP / Level info */}
-                    <div className="p-3 bg-black/30 border border-white/5 rounded-2xl flex flex-col justify-between">
+                    <div className="p-2.5 bg-black/30 border border-white/5 rounded-xl flex flex-col justify-between">
                       <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">XP Level</span>
-                      <div className="flex items-baseline gap-1 mt-2">
-                        <span className="text-sm font-black text-white">Lvl {profileStats?.level || 8}</span>
-                        <span className="text-[9px] text-slate-400 font-bold">({profileStats?.xp || 1250} XP)</span>
+                      <div className="flex items-baseline gap-1 mt-1.5">
+                        <span className="text-xs font-black text-white">Lvl {profileStats?.level || 8}</span>
+                        <span className="text-[8px] text-slate-400 font-bold">({profileStats?.xp || 1250} XP)</span>
                       </div>
                     </div>
                   </div>
