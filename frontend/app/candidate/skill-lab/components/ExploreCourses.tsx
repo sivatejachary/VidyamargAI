@@ -183,37 +183,36 @@ export default function ExploreCourses({
     [courses]
   );
 
-  /* ─── Get courses matching a specific roadmap step ─── */
   const getCoursesForStep = useCallback(
     (step: string, pathCourses: any[]) => {
       const stepLower = step.toLowerCase();
       let keywords: string[] = [stepLower];
       if (stepLower.includes("html") || stepLower.includes("css")) {
-        keywords = ["html", "css", "web development", "frontend"];
+        keywords = ["html", "css"];
       } else if (stepLower.includes("javascript") || stepLower.includes("js")) {
-        keywords = ["javascript", "js", "web development", "react", "next.js"];
+        keywords = ["javascript", "js"];
       } else if (stepLower.includes("typescript")) {
-        keywords = ["typescript", "ts", "next.js", "react"];
+        keywords = ["typescript", "ts"];
       } else if (stepLower.includes("react")) {
-        keywords = ["react", "next.js"];
+        keywords = ["react"];
       } else if (stepLower.includes("next.js")) {
-        keywords = ["next.js", "react"];
+        keywords = ["next.js"];
       } else if (stepLower.includes("python")) {
         keywords = ["python"];
       } else if (stepLower.includes("databases") || stepLower.includes("sql")) {
-        keywords = ["sql", "database", "postgres"];
+        keywords = ["sql", "database", "postgres", "mysql", "mongodb"];
       } else if (stepLower.includes("apis") || stepLower.includes("node.js")) {
-        keywords = ["api", "node.js", "fastapi", "backend"];
+        keywords = ["node.js", "express", "fastapi"];
       } else if (stepLower.includes("ml fundamentals") || stepLower.includes("deep learning") || stepLower.includes("llms") || stepLower.includes("math")) {
-        keywords = ["machine learning", "ml", "python", "ai"];
+        keywords = ["machine learning", "ml", "deep learning", "llm", "neural network", "tensorflow", "pytorch"];
       } else if (stepLower.includes("aws core") || stepLower.includes("cloud") || stepLower.includes("networking")) {
-        keywords = ["aws", "cloud", "devops"];
+        keywords = ["aws", "cloud", "network", "azure", "gcp"];
       } else if (stepLower.includes("architecture") || stepLower.includes("system design")) {
-        keywords = ["system design", "scalability"];
+        keywords = ["system design", "architecture", "microservices", "scalability"];
       } else if (stepLower.includes("docker") || stepLower.includes("ci/cd") || stepLower.includes("kubernetes")) {
-        keywords = ["docker", "aws", "kubernetes", "devops"];
+        keywords = ["docker", "kubernetes", "jenkins", "github actions", "ci/cd", "devops"];
       } else if (stepLower.includes("cryptography") || stepLower.includes("ethical hacking") || stepLower.includes("siem")) {
-        keywords = ["security", "cybersecurity", "networking"];
+        keywords = ["security", "cybersecurity", "cryptography", "hacking", "siem"];
       }
 
       return pathCourses.filter((c: any) => {
