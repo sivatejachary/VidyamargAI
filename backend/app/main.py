@@ -82,11 +82,8 @@ def init_db_safely():
             if perms_count == 0:
                 print("Seeding default ToolPermissions...")
                 default_perms = [
-                    ToolPermission(role="candidate", tool="ResumeMCPServer", grants="read,write"),
-                    ToolPermission(role="candidate", tool="SkillLabMCPServer", grants="read,write"),
-                    ToolPermission(role="candidate", tool="JobMCPServer", grants="read,apply"),
-                    ToolPermission(role="recruiter", tool="JobMCPServer", grants="read,write"),
-                    ToolPermission(role="recruiter", tool="ResumeMCPServer", grants="read"),
+                    ToolPermission(role="candidate", tool="*", grants="read,write,apply"),
+                    ToolPermission(role="recruiter", tool="*", grants="read,write"),
                     ToolPermission(role="admin", tool="*", grants="read,write,apply,admin")
                 ]
                 for p in default_perms:

@@ -189,22 +189,54 @@ class SupervisorAgent:
         return "general"
 
     def _gather_tool_context(self, intent: str, mode: str, candidate_id: int, db: Session) -> str:
-        """Calls appropriate MCP tools based on intent and mode."""
+        """Calls appropriate services/queries based on intent and mode."""
         ctx_parts = []
         try:
+            from app.models.models import Candidate, CandidateProfile, JobMatch, Application, Job
+            import json
+
             if mode == "resume" or intent == "resume_improve":
-                from app.mcp.resume_tools import resume_mcp
-                ats = resume_mcp.get_ats_score(candidate_id, db)
-                completeness = resume_mcp.get_profile_completeness(candidate_id, db)
-                ctx_parts.append(f"Resume ATS Score: {ats.get('ats_score', 'N/A')}")
-                ctx_parts.append(f"Profile Completeness: {completeness.get('score', 0)}%")
-                if completeness.get("missing_sections"):
-                    ctx_parts.append(f"Missing: {', '.join(completeness['missing_sections'])}")
+                profile = db.query(CandidateProfile).filter(
+                    CandidateProfile.candidate_id == candidate_id
+                ).order_by(CandidateProfile.created_at.desc()).first()
+                
+                ats_score = "N/A"
+                if profile and profile.parsed_metadata:
+                    try:
+                        meta = json.loads(profile.parsed_metadata)
+                        ats_score = meta.get("ats_score", "N/A")
+                    except Exception:
+                        pass
+                
+                cand = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+                if cand:
+                    fields = {
+                        "summary": cand.summary,
+                        "skills": cand.skills,
+                        "experience": cand.experience,
+                        "education": cand.education,
+                        "projects": cand.projects,
+                        "phone": cand.phone,
+                        "linkedin": cand.linkedin,
+                        "github": cand.github,
+                    }
+                    filled = sum(1 for v in fields.values() if v)
+                    total = len(fields)
+                    score = round((filled / total) * 100) if total > 0 else 0
+                    missing = [k for k, v in fields.items() if not v]
+                    
+                    ctx_parts.append(f"Resume ATS Score: {ats_score}")
+                    ctx_parts.append(f"Profile Completeness: {score}%")
+                    if missing:
+                        ctx_parts.append(f"Missing: {', '.join(missing)}")
 
             if mode == "skill-lab" or intent in ["skill_gap", "course_recommend", "learning_progress"]:
-                from app.mcp.skilllab_tools import skilllab_mcp
-                health = skilllab_mcp.get_learning_health(candidate_id, db)
-                gaps = skilllab_mcp.get_skill_gaps(candidate_id, db)
+                from app.services.learning_health import get_learning_health
+                from app.services.skill_gap_graph import get_skill_gaps
+                
+                health = get_learning_health(candidate_id, db)
+                gaps = get_skill_gaps(candidate_id, db)
+                
                 ctx_parts.append(f"Learning Health: {health.get('health_score', 0)}/100")
                 ctx_parts.append(f"Active Courses: {health.get('active_courses', 0)}, Completed: {health.get('completed_courses', 0)}")
                 if gaps:
@@ -212,17 +244,35 @@ class SupervisorAgent:
                     ctx_parts.append(f"Top Skill Gaps: {', '.join(top_gaps)}")
 
             if mode == "job-agent" or intent in ["job_search", "skill_gap"]:
-                from app.mcp.job_tools import job_mcp
-                jobs = job_mcp.search_jobs(candidate_id, db)
-                apps = job_mcp.get_applications(candidate_id, db)
+                jobs = db.query(JobMatch, Job).join(
+                    Job, JobMatch.job_id == Job.id
+                ).filter(
+                    JobMatch.candidate_id == candidate_id,
+                    Job.status == "active"
+                ).order_by(JobMatch.match_score.desc()).limit(20).all()
+                
+                apps = db.query(Application).filter(Application.candidate_id == candidate_id).count()
+                
                 ctx_parts.append(f"Matched Jobs Available: {len(jobs)}")
                 if jobs:
-                    top = jobs[0]
-                    ctx_parts.append(f"Top Match: {top['title']} ({top['match_score']}% match)")
-                ctx_parts.append(f"Total Applications: {len(apps)}")
-                gaps = job_mcp.get_skill_gaps_for_jobs(candidate_id, db)
-                if gaps:
-                    ctx_parts.append(f"Top Missing Skills for Jobs: {', '.join([g['skill'] for g in gaps[:4]])}")
+                    match, job = jobs[0]
+                    ctx_parts.append(f"Top Match: {job.title} ({round(match.match_score)}% match)")
+                ctx_parts.append(f"Total Applications: {apps}")
+                
+                # Fetch skill gaps from top matches
+                matches = db.query(JobMatch).filter(
+                    JobMatch.candidate_id == candidate_id
+                ).order_by(JobMatch.match_score.desc()).limit(15).all()
+                gap_counts = {}
+                for m in matches:
+                    if m.skills_gap:
+                        for sk in m.skills_gap.split(","):
+                            sk = sk.strip().title()
+                            if sk:
+                                gap_counts[sk] = gap_counts.get(sk, 0) + 1
+                gaps_list = sorted(gap_counts.keys(), key=lambda x: gap_counts[x], reverse=True)
+                if gaps_list:
+                    ctx_parts.append(f"Top Missing Skills for Jobs: {', '.join(gaps_list[:4])}")
 
         except Exception as e:
             logger.error(f"Tool context gathering failed: {e}")
