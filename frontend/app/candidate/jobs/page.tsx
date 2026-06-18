@@ -21,6 +21,7 @@ import { Alert } from "@/components/ui/Alert";
 // Import custom Job Agent subcomponents
 import AgentConsole from "@/components/AgentConsole";
 import RecommendedLearning from "@/components/RecommendedLearning";
+import MCPChat from "@/components/MCPChat";
 
 // ─────────────────────── Types ───────────────────────
 interface LiveJob {
@@ -769,6 +770,8 @@ export default function CandidateJobs() {
           </div>
         </Modal>
       )}
+      {/* Job Agent MCP AI Assistant */}
+      <MCPChat mode="job-agent" contextHint={jobs.length > 0 ? `Currently showing ${jobs.length} matched jobs. Top match: ${jobs[0]?.title} at ${jobs[0]?.company} (${jobs[0]?.match_score}% match)` : undefined} />
     </div>
   );
 }

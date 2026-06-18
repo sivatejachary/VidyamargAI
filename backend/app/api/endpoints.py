@@ -1807,13 +1807,19 @@ async def start_job_agent_run(
             return {"run_id": active_run.id, "status": "running", "message": "An agent run is already in progress"}
 
     # Start new run
-    new_run = JobAgentRun(candidate_id=candidate.id, status="running")
+    new_run = JobAgentRun(candidate_id=candidate.id, status="queued")
     db.add(new_run)
     db.commit()
     db.refresh(new_run)
 
-    from app.agents.manager import run_agent_flow
-    background_tasks.add_task(run_agent_flow, new_run.id, candidate.id)
+    from app.core.queue import enqueue_agent_run
+    try:
+        enqueue_agent_run(new_run.id, candidate.id)
+    except Exception as e:
+        new_run.status = "failed"
+        new_run.completed_at = datetime.utcnow()
+        db.commit()
+        raise HTTPException(status_code=503, detail=str(e))
 
     return {"run_id": new_run.id, "status": "running", "message": "Job agent run started"}
 
@@ -2058,6 +2064,95 @@ def get_search_history(
         raise HTTPException(status_code=404, detail="Candidate not found")
         
     return db.query(SearchHistory).filter(SearchHistory.candidate_id == candidate.id).order_by(SearchHistory.searched_at.desc()).limit(10).all()
+
+@router.get("/admin/metrics")
+def get_admin_metrics(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if not current_user or current_user.role not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    from datetime import datetime, timedelta
+    from app.models.mcp_models import AgentHealth, MCPAuditLog, DeadLetterJob
+    from app.services.mcp_audit import get_queue_size, get_dropped_count, get_overflow_count
+    from app.services.circuit_breaker import get_open_breakers_count
+    from app.core.queue import is_redis_connected, get_fallback_queue_depth, redis_failover_active, redis_conn
+    from rq import Queue
+
+    # 1. Healthy / Failed Agents
+    # Healthy if heartbeat is within last 5 minutes and status is healthy
+    five_min_ago = datetime.utcnow() - timedelta(minutes=5)
+    healthy_agents = db.query(AgentHealth).filter(
+        AgentHealth.status == "healthy",
+        AgentHealth.last_heartbeat >= five_min_ago
+    ).count()
+    
+    # Failed if heartbeat is older than 5 min or status is unhealthy/degraded
+    failed_agents = db.query(AgentHealth).filter(
+        (AgentHealth.status.in_(["unhealthy", "degraded"])) |
+        (AgentHealth.last_heartbeat < five_min_ago)
+    ).count()
+
+    # 2. Queue Depth
+    queue_depth = 0
+    redis_conn_ok = is_redis_connected()
+    if redis_conn_ok:
+        try:
+            for q_name in ["high", "default", "low"]:
+                q = Queue(q_name, connection=redis_conn)
+                queue_depth += q.count
+        except Exception:
+            pass
+    queue_depth += get_fallback_queue_depth()
+
+    # 3. Latency Percentiles (P95/P99)
+    twenty_four_hours_ago = datetime.utcnow() - timedelta(hours=24)
+    logs = db.query(MCPAuditLog.latency).filter(MCPAuditLog.created_at >= twenty_four_hours_ago).all()
+    latencies = [l[0] for l in logs]
+    
+    def get_percentile(data, p):
+        if not data:
+            return 0
+        sorted_data = sorted(data)
+        idx = (len(data) - 1) * p / 100.0
+        floor_idx = int(idx)
+        ceil_idx = min(floor_idx + 1, len(data) - 1)
+        weight = idx - floor_idx
+        return int(sorted_data[floor_idx] * (1.0 - weight) + sorted_data[ceil_idx] * weight)
+
+    mcp_latency_p95 = get_percentile(latencies, 95)
+    mcp_latency_p99 = get_percentile(latencies, 99)
+
+    # 4. Error rate metrics
+    total_calls = db.query(MCPAuditLog).filter(MCPAuditLog.created_at >= twenty_four_hours_ago).count()
+    failed_calls = db.query(MCPAuditLog).filter(MCPAuditLog.created_at >= twenty_four_hours_ago, MCPAuditLog.status == "failure").count()
+    mcp_error_rate = round(failed_calls / total_calls, 4) if total_calls > 0 else 0.0
+
+    agents = db.query(AgentHealth).all()
+    total_runs = sum(a.success_count + a.failure_count for a in agents)
+    total_failures = sum(a.failure_count for a in agents)
+    agent_failure_rate = round(total_failures / total_runs, 4) if total_runs > 0 else 0.0
+
+    # 5. Dead letter queue
+    dead_letter_jobs = db.query(DeadLetterJob).filter(DeadLetterJob.status == "pending").count()
+
+    return {
+        "healthy_agents": healthy_agents,
+        "failed_agents": failed_agents,
+        "queue_depth": queue_depth,
+        "mcp_latency_p95": mcp_latency_p95,
+        "mcp_latency_p99": mcp_latency_p99,
+        "mcp_error_rate": mcp_error_rate,
+        "agent_failure_rate": agent_failure_rate,
+        "redis_failover_active": redis_failover_active,
+        "open_circuit_breakers": get_open_breakers_count(),
+        "audit_queue_depth": get_queue_size(),
+        "audit_queue_dropped": get_dropped_count(),
+        "audit_queue_overflow": get_overflow_count(),
+        "dead_letter_jobs": dead_letter_jobs,
+        "redis_connected": redis_conn_ok
+    }
 
 @router.get("/admin/jobs/dashboard", response_model=schemas.AdminJobsDashboardResponse)
 def get_admin_jobs_dashboard(
@@ -3719,6 +3814,113 @@ async def chat_copilot(
             actions.append({"label": "View Applications", "href": "/candidate/jobs"})
 
     return schemas.ChatCopilotResponse(response=response_text, actions=actions if actions else None)
+
+# ─────────────── MCP UNIFIED CHAT ───────────────
+
+@router.post("/mcp/chat")
+async def mcp_chat(
+    payload: schemas.MCPChatRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Unified MCP chat endpoint — routes through Supervisor Agent.
+    Replaces mode-specific endpoints. All MCP widgets call this.
+    """
+    from app.agents.supervisor_agent import supervisor_agent
+    from app.models.models import Candidate
+
+    cand = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
+    if not cand:
+        raise HTTPException(status_code=404, detail="Candidate profile not found")
+
+    result = supervisor_agent.route(
+        message=payload.message,
+        mode=payload.mode,
+        candidate_id=cand.id,
+        user_id=current_user.id,
+        history=[h.dict() for h in payload.history],
+        context_hint=payload.context_hint,
+        db=db
+    )
+
+    return {
+        "response": result.response,
+        "action_cards": result.action_cards,
+        "haq_required": result.haq_required,
+        "haq_item": result.haq_item,
+        "memory_updated": result.memory_updated,
+        "intent": result.intent,
+        "agent_used": result.agent_used,
+        "actions": [],  # backward compat
+    }
+
+
+# ─────────────── HUMAN ACTION QUEUE ───────────────
+
+@router.get("/haq/pending")
+async def get_pending_actions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Returns all pending Human Action Queue items for the current user."""
+    from app.services.human_action_queue import haq_service
+    items = haq_service.get_pending(current_user.id, db)
+    return [
+        {
+            "id": item.id,
+            "action_type": item.action_type,
+            "title": item.title,
+            "description": item.description,
+            "status": item.status,
+            "callback_key": item.callback_key,
+            "created_at": item.created_at.isoformat(),
+            "expires_at": item.expires_at.isoformat() if item.expires_at else None,
+        }
+        for item in items
+    ]
+
+
+@router.post("/haq/{callback_key}/complete")
+async def complete_haq_item(
+    callback_key: str,
+    payload: dict = {},
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """User completes a required action (OTP, CAPTCHA, etc)."""
+    from app.services.human_action_queue import haq_service
+    item = haq_service.complete(callback_key, payload, db)
+    if not item:
+        raise HTTPException(status_code=404, detail="Action item not found")
+    return {"status": "completed", "callback_key": callback_key}
+
+
+@router.post("/haq/{callback_key}/dismiss")
+async def dismiss_haq_item(
+    callback_key: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """User dismisses a pending action."""
+    from app.services.human_action_queue import haq_service
+    item = haq_service.dismiss(callback_key, db)
+    if not item:
+        raise HTTPException(status_code=404, detail="Action item not found")
+    return {"status": "dismissed", "callback_key": callback_key}
+
+
+# ─────────────── AGENT ACTIVITY FEED ───────────────
+
+@router.get("/agent/activity")
+async def get_agent_activity(
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Returns the agent activity feed for the current user."""
+    from app.services.agent_activity_feed import get_feed
+    return get_feed(current_user.id, limit, db)
 
 # ----------------- MESSAGES & LIVE CHAT -----------------
 

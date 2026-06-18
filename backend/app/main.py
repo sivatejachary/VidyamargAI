@@ -28,6 +28,7 @@ def init_db_safely():
         return
     try:
         print("Creating all tables via SQLAlchemy metadata...")
+        from app.models import mcp_models
         Base.metadata.create_all(bind=engine)
         print("Database tables created successfully.")
     except Exception as e:
@@ -74,6 +75,24 @@ def init_db_safely():
                     db_session.add(TelegramSource(channel_name=ch, active=True))
                 db_session.commit()
                 print("Default Telegram channels seeded successfully.")
+
+            # Auto-seed default tool permissions if empty
+            from app.models.mcp_models import ToolPermission
+            perms_count = db_session.query(ToolPermission).count()
+            if perms_count == 0:
+                print("Seeding default ToolPermissions...")
+                default_perms = [
+                    ToolPermission(role="candidate", tool="ResumeMCPServer", grants="read,write"),
+                    ToolPermission(role="candidate", tool="SkillLabMCPServer", grants="read,write"),
+                    ToolPermission(role="candidate", tool="JobMCPServer", grants="read,apply"),
+                    ToolPermission(role="recruiter", tool="JobMCPServer", grants="read,write"),
+                    ToolPermission(role="recruiter", tool="ResumeMCPServer", grants="read"),
+                    ToolPermission(role="admin", tool="*", grants="read,write,apply,admin")
+                ]
+                for p in default_perms:
+                    db_session.add(p)
+                db_session.commit()
+                print("Default ToolPermissions seeded successfully.")
         except Exception as e:
             print(f"Auto-seed warning: {e}")
         finally:
@@ -474,8 +493,23 @@ except ImportError:
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 @app.on_event("startup")
-def startup_event():
+async def startup_event():
     init_db_safely()
+    
+    try:
+        from app.core.queue import recover_queued_jobs_on_startup
+        recover_queued_jobs_on_startup()
+    except Exception as e:
+        logger.error(f"Failed to run startup queue recovery: {e}")
+
+    try:
+        from app.services.mcp_audit import audit_logger_worker
+        from app.services.alerting import start_alert_coordinator
+        asyncio.create_task(audit_logger_worker())
+        asyncio.create_task(start_alert_coordinator())
+        logger.info("Background operational workers (Audit & Alerting) started.")
+    except Exception as e:
+        logger.error(f"Failed to launch background workers: {e}")
 
 
 @app.on_event("shutdown")

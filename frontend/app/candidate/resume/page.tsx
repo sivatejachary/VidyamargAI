@@ -12,6 +12,7 @@ import {
   Briefcase, MapPin, Mail, Phone, Camera, Code, Folder, Trophy,
   Globe, Languages, User
 } from "lucide-react";
+import MCPChat from "@/components/MCPChat";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -1951,6 +1952,8 @@ export default function ResumeBuilder() {
         </Modal>
       )}
 
+      {/* Resume MCP AI Assistant */}
+      <MCPChat mode="resume" contextHint={analysisData ? `Current ATS score: ${analysisData.ats_score ?? 'N/A'}, Completeness: ${analysisData.completeness ?? 'N/A'}%` : undefined} />
     </div>
   );
 }

@@ -482,3 +482,13 @@ def trigger_learning_os_agents(db: Session, user_id: int, event: str) -> Dict[st
         
     logger.info(f"Event-driven trigger complete for '{event}'. Runs executed: {list(results.keys())}")
     return results
+
+
+class LearningOSAgent:
+    """Wrapper class representing the Learning OS Agent for registry registration."""
+    def __init__(self, db: Session, user_id: int):
+        self.db = db
+        self.user_id = user_id
+
+    def run_flow(self, event: str) -> dict:
+        return trigger_learning_os_agents(self.db, self.user_id, event)

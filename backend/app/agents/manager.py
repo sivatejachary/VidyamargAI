@@ -85,162 +85,25 @@ async def run_agent_flow(run_id: int, candidate_id: int):
 
     db = SessionLocal()
     try:
-        from app.agents.resume_intelligence import ResumeIntelligenceAgent
-        from app.agents.planning import PlanningAgent
-        from app.agents.search import SearchAgent
-        from app.agents.verification import VerificationAgent
-        from app.agents.matching import MatchingAgent
-        from app.agents.ranking import RankingAgent
-        from app.agents.skill_gap import SkillGapAgent
-        from app.agents.recommendation import RecommendationAgent
+        from app.agents.job_supervisor_agent import JobSupervisorAgent
         import app.services.job_cache as job_cache
+        from app.models.models import Job, Company, JobSource, JobMatch, Candidate
 
-        # 1. Resume Intelligence Agent
-        log_step(db, run_id, "Resume Agent", "Loading candidate profile and latest resume...", "info")
-        await asyncio.sleep(0.5)  # small pause to make log visible
-        resume_agent = ResumeIntelligenceAgent(db, candidate_id)
-        profile = resume_agent.extract_profile()
-        log_step(db, run_id, "Resume Agent", f"Found {len(profile.skills)} skills and {profile.experience_years} years of experience.", "success")
-
-        # 2. Planning Agent
-        log_step(db, run_id, "Planning Agent", "Creating search strategy...", "info")
-        await asyncio.sleep(0.5)
-        planning_agent = PlanningAgent(profile)
-        queries = planning_agent.generate_strategy()
-        log_step(db, run_id, "Planning Agent", f"Generated {len(queries)} search query variations.", "success")
-
-        # 3. Portal Search & Telegram Community Agents
-        log_step(db, run_id, "Search Agent", "Searching job portals and Telegram channels concurrently...", "info")
-        await asyncio.sleep(0.5)
+        supervisor = JobSupervisorAgent(db, candidate_id)
         
-        search_agent = SearchAgent(queries, profile.skills, profile.experience_years)
-        from app.agents.telegram import TelegramCommunityAgent
-        telegram_agent = TelegramCommunityAgent(db)
-        
-        def portal_log_callback(msg, status="info"):
-            log_step(db, run_id, "Portal Search Agent", msg, status)
-            
-        def tg_log_callback(msg, status="info"):
-            log_step(db, run_id, "Telegram Community Agent", msg, status)
-            
-        loop = asyncio.get_event_loop()
-        portal_task = loop.run_in_executor(None, lambda: search_agent.execute_search(portal_log_callback))
-        tg_task = loop.run_in_executor(None, lambda: telegram_agent.collect_jobs(tg_log_callback))
-        
-        portal_jobs, tg_jobs = await asyncio.gather(portal_task, tg_task)
-        raw_jobs = portal_jobs + tg_jobs
-        log_step(db, run_id, "Search Agent", f"Completed aggregation. Collected {len(portal_jobs)} jobs from portals and {len(tg_jobs)} jobs from Telegram channels.", "success")
+        def log_callback(msg, status="info"):
+            log_step(db, run_id, "Job Supervisor", msg, status)
 
-        # 4. Verification Agent
-        log_step(db, run_id, "Verification Agent", "Filtering out expired jobs, scam indicators, and duplicates...", "info")
-        await asyncio.sleep(0.5)
-        verification_agent = VerificationAgent(raw_jobs)
+        # Execute flow
+        flow_result = await supervisor.execute_run_flow(run_id, log_callback)
+        db.rollback()  # Refresh connection after long-running flow before starting db sync
         
-        def ver_log_callback(msg, status="info"):
-            log_step(db, run_id, "Verification Agent", msg, status)
-            
-        verified_jobs = verification_agent.verify_and_deduplicate(ver_log_callback)
-
-        # 4b. Job Consistency Agent
-        log_step(db, run_id, "Job Consistency Agent", "Auditing landing page details in parallel for title, company, and location consistency...", "info")
-        await asyncio.sleep(0.5)
-        from app.agents.consistency import JobConsistencyAgent
-        consistency_agent = JobConsistencyAgent(db)
-        
-        final_verified_jobs = []
-        consistency_rejected_count = 0
-        
-        loop = asyncio.get_running_loop()
-        def audit_job(job):
-            score, status = consistency_agent.verify_job_consistency(job)
-            return job, score, status
-
-        tasks = [
-            loop.run_in_executor(None, audit_job, j)
-            for j in verified_jobs
-        ]
-        
-        results = await asyncio.gather(*tasks)
-        for job, score, status in results:
-            job.verification_score = score
-            job.verification_status = status
-            
-            if status == "Rejected":
-                consistency_rejected_count += 1
-                log_step(db, run_id, "Job Consistency Agent", f"Rejected job '{job.title}' at '{job.company}' (Score: {score}): Landing page details did not match", "warning")
-            else:
-                final_verified_jobs.append(job)
-                
-        log_step(db, run_id, "Job Consistency Agent", f"Completed consistency audits. Approved {len(final_verified_jobs)} jobs, filtered out {consistency_rejected_count} mismatched listings.", "success")
-
-        # 5. Matching Agent
-        log_step(db, run_id, "Matching Agent", "Calculating resume-to-job match scores using 4-factor formula...", "info")
-        await asyncio.sleep(0.5)
-        matching_agent = MatchingAgent(profile)
-        
-        matched_jobs = []
-        for j in final_verified_jobs:
-            match_res = matching_agent.match_job(j)
-            
-            # Merge job details with match outputs
-            job_dict = {
-                "id": j.stable_id,
-                "title": j.title,
-                "company": j.company,
-                "location": j.location,
-                "experience": j.experience,
-                "work_mode": j.work_mode,
-                "skills": j.skills,
-                "apply_url": j.apply_url,
-                "posted_date": j.posted_date,
-                "source": j.source,
-                "description": j.description,
-                "company_logo": j.company_logo,
-                
-                # Match scores
-                "match_score": match_res["match_score"],
-                "matched_skills": match_res["matched_skills"],
-                "missing_skills": match_res["missing_skills"],
-                "reasoning": match_res["reasoning"],
-                
-                # Verification Details
-                "verification_score": getattr(j, "verification_score", 100),
-                "verification_status": getattr(j, "verification_status", "Fully Verified")
-            }
-            matched_jobs.append(job_dict)
-        log_step(db, run_id, "Matching Agent", "Completed compatibility calculations.", "success")
-
-        # 6. Ranking Agent
-        log_step(db, run_id, "Ranking Agent", "Ranking jobs by match score relevance, freshness, and reliability...", "info")
-        await asyncio.sleep(0.5)
-        ranking_agent = RankingAgent(matched_jobs)
-        
-        def rank_log_callback(msg, status="info"):
-            log_step(db, run_id, "Ranking Agent", msg, status)
-            
-        ranked_jobs = ranking_agent.rank_jobs(rank_log_callback)
-
-        # 7. Skill Gap Agent
-        log_step(db, run_id, "Skill Gap Agent", "Analyzing missing skills in top matching opportunities...", "info")
-        await asyncio.sleep(0.5)
-        skill_gap_agent = SkillGapAgent(ranked_jobs)
-        skill_gaps = skill_gap_agent.analyze_gaps()
-        if skill_gaps:
-            top_missing = ", ".join([g["skill"] for g in skill_gaps[:3]])
-            log_step(db, run_id, "Skill Gap Agent", f"Most requested missing skills: {top_missing}", "warning")
-        else:
-            log_step(db, run_id, "Skill Gap Agent", "No significant skill gaps found.", "success")
-
-        # 8. Recommendation Agent
-        log_step(db, run_id, "Recommendation Agent", "Generating recommended certifications, projects, and learning paths...", "info")
-        await asyncio.sleep(0.5)
-        rec_agent = RecommendationAgent(skill_gaps)
-        recommendations = rec_agent.generate_recommendations()
-        log_step(db, run_id, "Recommendation Agent", "Roadmap generated successfully.", "success")
+        ranked_jobs = flow_result["jobs"]
+        skill_gaps = flow_result["skill_gaps"]
+        recommendations = flow_result["recommendations"]
 
         # Sync/Persist all matched jobs and their match scores to the database
         log_step(db, run_id, "Database Sync", "Persisting discovered jobs to the database...", "info")
-        from app.models.models import Job, Company, JobSource, JobMatch, Candidate
         candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
         
         for rj in ranked_jobs:
@@ -315,7 +178,6 @@ async def run_agent_flow(run_id: int, candidate_id: int):
         log_step(db, run_id, "Database Sync", f"Successfully synced and updated {len(ranked_jobs)} jobs in database.", "success")
 
         # 9. Store complete outputs in cache for 30 minutes
-        # Re-save to LIVE_JOB_STORE in endpoints as well for detail modal clicks
         from app.api.endpoints import _LIVE_JOB_STORE
         for rj in ranked_jobs:
             _LIVE_JOB_STORE[rj["id"]] = rj

@@ -617,5 +617,15 @@ class AIMentorAnalyticsResponse(BaseModel):
     engagement_rate: float
 
 
+# MCP Chat schemas (imported from mcp_schemas for router compatibility)
+from app.schemas.mcp_schemas import (
+    MCPChatRequest,
+    MCPChatResponse,
+    ActionCard,
+    HAQItemResponse,
+    HAQCompleteRequest
+)
+
+
 
 

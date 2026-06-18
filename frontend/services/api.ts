@@ -890,6 +890,51 @@ export const apiService = {
     return res.json();
   },
 
+  async mcpChat(message: string, mode: 'resume' | 'skill-lab' | 'job-agent' | 'general', history: any[], contextHint?: string) {
+    const res = await customFetch(`${getBaseUrl()}/mcp/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getHeaders() },
+      body: JSON.stringify({ message, mode, history, context_hint: contextHint }),
+    });
+    if (!res.ok) throw new Error("Failed to send MCP chat message");
+    return res.json();
+  },
+
+  async getHAQPending() {
+    const res = await customFetch(`${getBaseUrl()}/haq/pending`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to fetch pending HAQ items");
+    return res.json();
+  },
+
+  async completeHAQItem(callbackKey: string, humanInput: Record<string, any> = {}) {
+    const res = await customFetch(`${getBaseUrl()}/haq/${callbackKey}/complete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getHeaders() },
+      body: JSON.stringify(humanInput),
+    });
+    if (!res.ok) throw new Error("Failed to complete action item");
+    return res.json();
+  },
+
+  async dismissHAQItem(callbackKey: string) {
+    const res = await customFetch(`${getBaseUrl()}/haq/${callbackKey}/dismiss`, {
+      method: "POST",
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to dismiss action item");
+    return res.json();
+  },
+
+  async getAgentActivity(limit = 20) {
+    const res = await customFetch(`${getBaseUrl()}/agent/activity?limit=${limit}`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to fetch agent activity feed");
+    return res.json();
+  },
+
   async getCareerPaths() {
     const res = await customFetch(`${getBaseUrl()}/ai-mentor/career-paths`, {
       headers: getHeaders(),
