@@ -494,29 +494,29 @@ export default function ExploreCourses({
         )}
 
         {/* ── Section 4: Career Growth Paths ── */}
-        <section className="space-y-4">
+        <section className="space-y-3">
           <div>
-            <h3 className="text-lg font-bold text-foreground">Career Growth Paths</h3>
-            <p className="text-xs text-muted-foreground">Choose your goal path and let the AI system direct your learning</p>
+            <h3 className="text-base font-bold text-foreground">Career Growth Paths</h3>
+            <p className="text-[11px] text-muted-foreground">Choose your goal path and let the AI system direct your learning</p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {careerPaths.map((path) => {
               const isActive = careerGoal.toLowerCase() === path.name.toLowerCase();
               return (
                 <div
                   key={path.id}
-                  className={`relative overflow-hidden rounded-2xl border p-5 flex flex-col justify-between gap-4 transition-all duration-300 hover:shadow-md cursor-pointer ${
+                  className={`relative overflow-hidden rounded-xl border p-3.5 flex flex-col justify-between gap-3 transition-all duration-300 hover:shadow-sm cursor-pointer ${
                     isActive 
                       ? "border-indigo-500 bg-indigo-500/5 shadow-sm"
                       : "border-border hover:border-indigo-500/40 bg-card"
                   }`}
                   onClick={() => handleSelectGoal(path.name)}
                 >
-                  <div className="space-y-2.5">
+                  <div className="space-y-2">
                     <div className="flex justify-between items-start">
-                      <h4 className="text-sm font-bold text-foreground">{path.name}</h4>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                      <h4 className="text-xs font-bold text-foreground">{path.name}</h4>
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md ${
                         path.match_percentage >= 80 
                           ? "bg-emerald-500/10 text-emerald-500" 
                           : "bg-indigo-500/10 text-indigo-400"
@@ -529,19 +529,19 @@ export default function ExploreCourses({
                       {path.skills.slice(0, 4).map((skill: string) => (
                         <span
                           key={skill}
-                          className="text-[9px] font-medium bg-muted px-2 py-0.5 rounded-md text-muted-foreground border border-border/20"
+                          className="text-[8px] font-semibold bg-muted px-1.5 py-0.5 rounded text-muted-foreground border border-border/20"
                         >
                           {skill}
                         </span>
                       ))}
                       {path.skills.length > 4 && (
-                        <span className="text-[9px] font-medium text-muted-foreground px-1">+{path.skills.length - 4} more</span>
+                        <span className="text-[8px] font-semibold text-muted-foreground px-0.5">+{path.skills.length - 4} more</span>
                       )}
                     </div>
                   </div>
 
-                  <div className="space-y-2 pt-2 border-t border-border/40">
-                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <div className="space-y-1.5 pt-2 border-t border-border/40">
+                    <div className="flex justify-between text-[9px] text-muted-foreground">
                       <span>Est. Time: {path.duration_estimate}</span>
                       <span>Progress: {path.progress}%</span>
                     </div>
@@ -549,7 +549,7 @@ export default function ExploreCourses({
                     <Button
                       variant={isActive ? "primary" : "outline"}
                       size="xs"
-                      className="w-full mt-1 font-bold text-[10px]"
+                      className="w-full mt-1 font-bold text-[9px]"
                     >
                       {isActive ? "Selected Path ✓" : "Activate Path"}
                     </Button>
@@ -557,6 +557,18 @@ export default function ExploreCourses({
                 </div>
               );
             })}
+          </div>
+        </section>
+
+        {/* ── Section 5: All Available Courses ── */}
+        <section className="space-y-3">
+          <div>
+            <h3 className="text-base font-bold text-foreground">All Available Courses</h3>
+            <p className="text-[11px] text-muted-foreground">Browse all courses and enroll in the ones that interest you</p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {courses.map((course: any) => renderCourseCard(course))}
           </div>
         </section>
 
