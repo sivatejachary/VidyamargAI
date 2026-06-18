@@ -845,6 +845,57 @@ export const apiService = {
     });
     if (!res.ok) throw new Error("Failed to create AI mentor artifact");
     return res.json();
+  },
+
+  async getAIMentorConfig() {
+    const res = await customFetch(`${getBaseUrl()}/ai-mentor/config`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to get AI mentor configuration");
+    return res.json();
+  },
+
+  async searchAIMentor(q: string, type: string = "all", page: number = 1, pageSize: number = 50) {
+    const res = await customFetch(`${getBaseUrl()}/ai-mentor/search?q=${encodeURIComponent(q)}&type=${encodeURIComponent(type)}&page=${page}&page_size=${pageSize}`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to search AI mentor records");
+    return res.json();
+  },
+
+  async updateCareerGoal(career_goal: string, target_role: string = "Frontend Developer", target_level: string = "Mid-Level") {
+    const res = await customFetch(`${getBaseUrl()}/ai-mentor/goal`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...getHeaders() },
+      body: JSON.stringify({ career_goal, target_role, target_level }),
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || "Failed to update career goal");
+    return res.json();
+  },
+
+  async runSupervisorAgent() {
+    const res = await customFetch(`${getBaseUrl()}/ai-mentor/agent/run`, {
+      method: "POST",
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to trigger supervisor agent");
+    return res.json();
+  },
+
+  async getAgentActivityFeed() {
+    const res = await customFetch(`${getBaseUrl()}/ai-mentor/agent/activity-feed`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to get agent activity feed");
+    return res.json();
+  },
+
+  async getCareerPaths() {
+    const res = await customFetch(`${getBaseUrl()}/ai-mentor/career-paths`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to get career paths");
+    return res.json();
   }
 };
 

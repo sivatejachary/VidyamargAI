@@ -88,6 +88,10 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://www.youtube.com" />
+        <link rel="preconnect" href="https://s.ytimg.com" />
+        <link rel="preconnect" href="https://i.ytimg.com" />
+        <script src="https://www.youtube.com/iframe_api" async></script>
       </head>
       <body className="min-h-full flex flex-col">
         {/* Inline theme script — runs before paint to prevent flash of wrong theme */}

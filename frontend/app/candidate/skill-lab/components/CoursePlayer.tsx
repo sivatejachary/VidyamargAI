@@ -70,6 +70,7 @@ export default function CoursePlayer({
   const [videoError, setVideoError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasStarted, setHasStarted] = useState(false);
+  const [isPlayerReady, setIsPlayerReady] = useState(false);
 
   // YouTube player state refs and helper
   const isYouTube = useMemo(() => {
@@ -280,31 +281,26 @@ export default function CoursePlayer({
 
   // Manage YouTube Player API and segment tracking
   useEffect(() => {
-    if (ytIntervalRef.current) {
-      clearInterval(ytIntervalRef.current);
-      ytIntervalRef.current = null;
-    }
-    if (ytPlayerRef.current) {
-      try {
-        ytPlayerRef.current.destroy();
-      } catch (e) {
-        console.error("Error destroying YT player:", e);
+    if (!isYouTube) {
+      setIsPlayerReady(false);
+      if (ytIntervalRef.current) {
+        clearInterval(ytIntervalRef.current);
+        ytIntervalRef.current = null;
       }
-      ytPlayerRef.current = null;
+      if (ytPlayerRef.current) {
+        try {
+          ytPlayerRef.current.destroy();
+        } catch (e) {
+          console.error("Error destroying YT player:", e);
+        }
+        ytPlayerRef.current = null;
+      }
+      return;
     }
-
-    if (!currentLesson || currentLesson.type !== "video" || !isYouTube) return;
 
     setIsLoading(true);
     setIsPlaying(false);
     setVideoError(null);
-
-    const videoId = extractYouTubeId(currentLesson.video_url);
-    if (!videoId) {
-      setVideoError("Invalid YouTube URL");
-      setIsLoading(false);
-      return;
-    }
 
     let checkInterval: NodeJS.Timeout | null = null;
     let initialized = false;
@@ -315,6 +311,13 @@ export default function CoursePlayer({
         initialized = true;
         if (checkInterval) clearInterval(checkInterval);
         
+        const videoId = extractYouTubeId(currentLesson?.video_url || "");
+        if (!videoId) {
+          setVideoError("Invalid YouTube URL");
+          setIsLoading(false);
+          return;
+        }
+
         try {
           ytPlayerRef.current = new (window as any).YT.Player('youtube-player', {
             videoId: videoId,
@@ -333,12 +336,19 @@ export default function CoursePlayer({
               onReady: (event: any) => {
                 setDuration(event.target.getDuration());
                 setIsLoading(false);
+                setIsPlayerReady(true);
               },
               onStateChange: (event: any) => {
                 const state = event.data;
-                // Playing is 1, Paused is 2, Ended is 0
+                // state 5 = CUED, state 1 = PLAYING, state 2 = PAUSED, state 0 = ENDED
+                if (state === 5) {
+                  setDuration(event.target.getDuration());
+                  setIsLoading(false);
+                }
+                
                 if (state === 1) {
                   setIsPlaying(true);
+                  setIsLoading(false);
                   if (ytStartedTimeoutRef.current) {
                     clearTimeout(ytStartedTimeoutRef.current);
                   }
@@ -416,17 +426,16 @@ export default function CoursePlayer({
       firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
     }
 
-    // Set callback if script is loading
     const previousCallback = (window as any).onYouTubeIframeAPIReady;
     (window as any).onYouTubeIframeAPIReady = () => {
       if (previousCallback) previousCallback();
       initializeYTPlayer();
     };
 
-    // Fallback polling check in case API is already loaded/loading
     checkInterval = setInterval(initializeYTPlayer, 200);
 
     return () => {
+      setIsPlayerReady(false);
       if (checkInterval) clearInterval(checkInterval);
       if (ytIntervalRef.current) clearInterval(ytIntervalRef.current);
       if (ytStartedTimeoutRef.current) clearTimeout(ytStartedTimeoutRef.current);
@@ -434,9 +443,39 @@ export default function CoursePlayer({
         try {
           ytPlayerRef.current.destroy();
         } catch (e) {}
+        ytPlayerRef.current = null;
       }
     };
-  }, [currentLesson?.id, isYouTube]);
+  }, [isYouTube]);
+
+  // Load new video when lesson changes
+  useEffect(() => {
+    if (!isYouTube || !isPlayerReady || !ytPlayerRef.current) return;
+
+    const videoId = extractYouTubeId(currentLesson?.video_url || "");
+    if (!videoId) {
+      setVideoError("Invalid YouTube URL");
+      return;
+    }
+
+    setIsLoading(true);
+    setIsPlaying(false);
+    setVideoError(null);
+    setHasStarted(false);
+    setCurrentTime(0);
+
+    try {
+      if (typeof ytPlayerRef.current.cueVideoById === "function") {
+        ytPlayerRef.current.cueVideoById({ videoId: videoId });
+      } else {
+        setIsPlayerReady(false);
+      }
+    } catch (e) {
+      console.error("Error loading video in existing player:", e);
+      setVideoError("Unable to load YouTube video");
+      setIsLoading(false);
+    }
+  }, [currentLesson?.id, isPlayerReady, isYouTube]);
 
   // Auto-Save notes every 3 seconds if modified
   useEffect(() => {
@@ -996,7 +1035,7 @@ export default function CoursePlayer({
                 className="relative aspect-video w-full bg-black group select-none"
               >
                 {isYouTube ? (
-                  <div key={currentLesson.id} className="absolute inset-0 w-full h-full overflow-hidden">
+                  <div className="absolute inset-0 w-full h-full overflow-hidden">
                     <div 
                       id="youtube-player" 
                       className="absolute w-full h-[150%] -top-[25%] left-0 right-0 pointer-events-none"

@@ -57,6 +57,14 @@ class Settings(BaseSettings):
     TG_API_ID: str = os.getenv("TG_API_ID", os.getenv("api_id", ""))
     TG_API_HASH: str = os.getenv("TG_API_HASH", os.getenv("api_hash", ""))
     
+    # Feature Flags
+    AI_MENTOR_ENABLED: bool = os.getenv("AI_MENTOR_ENABLED", "True").lower() == "true"
+    VOICE_MENTOR_ENABLED: bool = os.getenv("VOICE_MENTOR_ENABLED", "False").lower() == "true"
+    STUDY_PLAN_ENABLED: bool = os.getenv("STUDY_PLAN_ENABLED", "True").lower() == "true"
+    ARTIFACTS_ENABLED: bool = os.getenv("ARTIFACTS_ENABLED", "True").lower() == "true"
+    SEARCH_ENABLED: bool = os.getenv("SEARCH_ENABLED", "True").lower() == "true"
+    ANALYTICS_ENABLED: bool = os.getenv("ANALYTICS_ENABLED", "False").lower() == "true"
+    
     class Config:
         case_sensitive = True
 
@@ -71,7 +79,7 @@ except Exception:
         SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-recruit-tara-key-987654321")
         ALGORITHM = "HS256"
         ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
-        DATABASE_URL = os.getenv("DATABASE_URL", _default_db_url)
+        DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/hireai")
         MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "localhost:9000")
         MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
         MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
@@ -84,4 +92,10 @@ except Exception:
         NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
         TG_API_ID = os.getenv("TG_API_ID", os.getenv("api_id", ""))
         TG_API_HASH = os.getenv("TG_API_HASH", os.getenv("api_hash", ""))
+        AI_MENTOR_ENABLED = os.getenv("AI_MENTOR_ENABLED", "True").lower() == "true"
+        VOICE_MENTOR_ENABLED = os.getenv("VOICE_MENTOR_ENABLED", "False").lower() == "true"
+        STUDY_PLAN_ENABLED = os.getenv("STUDY_PLAN_ENABLED", "True").lower() == "true"
+        ARTIFACTS_ENABLED = os.getenv("ARTIFACTS_ENABLED", "True").lower() == "true"
+        SEARCH_ENABLED = os.getenv("SEARCH_ENABLED", "True").lower() == "true"
+        ANALYTICS_ENABLED = os.getenv("ANALYTICS_ENABLED", "False").lower() == "true"
     settings = ManualSettings()

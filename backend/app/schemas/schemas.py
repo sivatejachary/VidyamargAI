@@ -588,10 +588,26 @@ class AIMentorStatsResponse(BaseModel):
     upcoming_assessments: List[str]
     insights: List[AIMentorInsightResponse]
     enrolled_courses: List[AIMentorCourseProgressInfo]
+    career_goal: str
+    target_role: Optional[str] = "Frontend Developer"
+    target_level: Optional[str] = "Mid-Level"
+    hours_learned: float
+    completed_certs: int
+    monthly_progress: float
+    risk_score: float
+    current_roadmap_stage: str
+    weekly_goal_progress: float
+    agent_status: str
+
+class UserGoalUpdate(BaseModel):
+    career_goal: str
+    target_role: Optional[str] = "Frontend Developer"
+    target_level: Optional[str] = "Mid-Level"
 
 class AIMentorRiskResponse(BaseModel):
     risk_level: str  # "Low" | "Medium" | "High"
     reason: str
+
 
 class AIMentorAnalyticsResponse(BaseModel):
     average_health_score: float

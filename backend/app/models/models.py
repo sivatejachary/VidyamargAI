@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from sqlalchemy import (
-    Column, Integer, String, Text, Boolean, DateTime, Float, ForeignKey, Index, JSON
+    Column, Integer, String, Text, Boolean, DateTime, Float, ForeignKey, Index, JSON, CheckConstraint
 )
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -534,6 +534,8 @@ class AIMentorSession(Base):
     metadata_json = Column(JSON, default=dict)
     is_deleted = Column(Boolean, default=False)
     deleted_at = Column(DateTime, nullable=True)
+    is_archived = Column(Boolean, default=False)
+    archived_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -549,6 +551,8 @@ class AIMentorMessage(Base):
     sender = Column(String, nullable=False)  # "user" or "ai"
     message = Column(Text, nullable=False)
     metadata_json = Column(JSON, default=dict)
+    is_archived = Column(Boolean, default=False)
+    archived_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 Index("idx_ai_mentor_message_session", AIMentorMessage.session_id)
@@ -571,6 +575,9 @@ Index("idx_ai_mentor_studyplan_user", AIMentorStudyPlan.user_id)
 
 class AIMentorInsight(Base):
     __tablename__ = "ai_mentor_insights"
+    __table_args__ = (
+        CheckConstraint("insight_type IN ('achievement','warning','recommendation')", name="chk_insight_type"),
+    )
     
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
@@ -584,6 +591,10 @@ Index("idx_ai_mentor_insight_user", AIMentorInsight.user_id)
 
 class AIMentorArtifact(Base):
     __tablename__ = "ai_mentor_artifacts"
+    __table_args__ = (
+        CheckConstraint("version > 0", name="chk_artifact_version"),
+        CheckConstraint("artifact_type IN ('quiz','notes','challenge','questions')", name="chk_artifact_type"),
+    )
     
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
@@ -592,6 +603,8 @@ class AIMentorArtifact(Base):
     content = Column(Text, nullable=False)
     version = Column(Integer, default=1)
     metadata_json = Column(JSON, default=dict)
+    is_archived = Column(Boolean, default=False)
+    archived_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 Index("idx_ai_mentor_artifact_user", AIMentorArtifact.user_id)
@@ -603,13 +616,26 @@ class AIMentorUsage(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     model_name = Column(String, nullable=False)
-    prompt_tokens = Column(Integer, default=0)
-    completion_tokens = Column(Integer, default=0)
-    total_tokens = Column(Integer, default=0)
-    estimated_cost = Column(Float, default=0.0)
+    prompt_chars = Column(Integer, default=0)
+    completion_chars = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 Index("idx_ai_mentor_usage_user", AIMentorUsage.user_id)
+
+
+class UserCareerProfile(Base):
+    __tablename__ = "user_career_profiles"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
+    career_goal = Column(String, default="Frontend Engineer")
+    target_role = Column(String, default="Frontend Developer")
+    target_level = Column(String, default="Mid-Level")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+Index("idx_user_career_profile_user", UserCareerProfile.user_id)
+
 
 
 

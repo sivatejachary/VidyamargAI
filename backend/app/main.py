@@ -317,6 +317,8 @@ def init_db_safely():
                     metadata_json JSONB DEFAULT '{{}}'::jsonb,
                     is_deleted BOOLEAN DEFAULT false,
                     deleted_at TIMESTAMP,
+                    is_archived BOOLEAN DEFAULT false,
+                    archived_at TIMESTAMP,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
@@ -332,6 +334,8 @@ def init_db_safely():
                     sender VARCHAR NOT NULL,
                     message TEXT NOT NULL,
                     metadata_json JSONB DEFAULT '{{}}'::jsonb,
+                    is_archived BOOLEAN DEFAULT false,
+                    archived_at TIMESTAMP,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """))
@@ -357,7 +361,7 @@ def init_db_safely():
                 CREATE TABLE IF NOT EXISTS ai_mentor_insights (
                     id VARCHAR PRIMARY KEY,
                     user_id INTEGER NOT NULL,
-                    insight_type VARCHAR NOT NULL,
+                    insight_type VARCHAR NOT NULL CHECK (insight_type IN ('achievement','warning','recommendation')),
                     title VARCHAR NOT NULL,
                     description TEXT NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -370,11 +374,13 @@ def init_db_safely():
                 CREATE TABLE IF NOT EXISTS ai_mentor_artifacts (
                     id VARCHAR PRIMARY KEY,
                     user_id INTEGER NOT NULL,
-                    artifact_type VARCHAR NOT NULL,
+                    artifact_type VARCHAR NOT NULL CHECK (artifact_type IN ('quiz','notes','challenge','questions')),
                     title VARCHAR NOT NULL,
                     content TEXT NOT NULL,
-                    version INTEGER DEFAULT 1,
+                    version INTEGER DEFAULT 1 CHECK (version > 0),
                     metadata_json JSONB DEFAULT '{{}}'::jsonb,
+                    is_archived BOOLEAN DEFAULT false,
+                    archived_at TIMESTAMP,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """))
@@ -386,14 +392,49 @@ def init_db_safely():
                     id VARCHAR PRIMARY KEY,
                     user_id INTEGER NOT NULL,
                     model_name VARCHAR NOT NULL,
-                    prompt_tokens INTEGER DEFAULT 0,
-                    completion_tokens INTEGER DEFAULT 0,
-                    total_tokens INTEGER DEFAULT 0,
-                    estimated_cost REAL DEFAULT 0.0,
+                    prompt_chars INTEGER DEFAULT 0,
+                    completion_chars INTEGER DEFAULT 0,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """))
             conn.execute(text("CREATE INDEX IF NOT EXISTS idx_ai_mentor_usage_user ON ai_mentor_usage(user_id)"))
+
+            # user_career_profiles table
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS user_career_profiles (
+                    id VARCHAR PRIMARY KEY,
+                    user_id INTEGER NOT NULL UNIQUE,
+                    career_goal VARCHAR DEFAULT 'Frontend Engineer',
+                    target_role VARCHAR DEFAULT 'Frontend Developer',
+                    target_level VARCHAR DEFAULT 'Mid-Level',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_user_career_profile_user ON user_career_profiles(user_id)"))
+
+
+            # Archiving migrations for existing tables
+            for tbl in ["ai_mentor_sessions", "ai_mentor_messages", "ai_mentor_artifacts"]:
+                try:
+                    conn.execute(text(f"ALTER TABLE {tbl} ADD COLUMN is_archived BOOLEAN DEFAULT false"))
+                except Exception:
+                    pass
+                try:
+                    conn.execute(text(f"ALTER TABLE {tbl} ADD COLUMN archived_at TIMESTAMP"))
+                except Exception:
+                    pass
+
+            # Create full-text GIN search indexes on Postgres
+            is_postgres = "postgresql" in str(engine.url).lower()
+            if is_postgres:
+                try:
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_ai_mentor_sessions_search ON ai_mentor_sessions USING GIN (to_tsvector('english', title)) WHERE is_archived = FALSE"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_ai_mentor_messages_search ON ai_mentor_messages USING GIN (to_tsvector('english', message)) WHERE is_archived = FALSE"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_ai_mentor_studyplans_search ON ai_mentor_study_plans USING GIN (to_tsvector('english', content))"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_ai_mentor_artifacts_search ON ai_mentor_artifacts USING GIN (to_tsvector('english', content)) WHERE is_archived = FALSE"))
+                except Exception as e:
+                    print(f"GIN Index creation warning: {e}")
 
             print("Migration: courses/modules/enrollments/certificates and curriculum tables ensured.")
     except Exception as e:

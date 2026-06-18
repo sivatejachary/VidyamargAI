@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useEffect } from "react";
-import { Brain, Clock, BookOpen, X, ArrowRight, CheckCircle, Circle } from "lucide-react";
+import { Brain, Clock, BookOpen, X, ArrowRight, CheckCircle, Circle, Sparkles, Award, Flame, TrendingUp } from "lucide-react";
 import { HorizontalCarousel } from "@/components/lms/HorizontalCarousel";
 import { CourseCard } from "@/components/lms/CourseCard";
 import CareerPathCard from "@/components/lms/CareerPathCard";
@@ -10,16 +10,14 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ProgressBar } from "@/components/ui/Progress";
 import type { CareerPath } from "@/types/lms.types";
+import { apiService } from "@/services/api";
+import { useAuthStore } from "@/store/authStore";
 import {
   CAREER_PATHS,
   PATH_BADGES,
   CATEGORY_GRADIENTS,
   DEFAULT_GRADIENT,
 } from "@/types/lms.types";
-
-/* ═══════════════════════════════════════════════════════
-   ExploreCourses — Goal-based learning discovery
-   ═══════════════════════════════════════════════════════ */
 
 interface ExploreCoursesProps {
   courses: any[];
@@ -65,6 +63,50 @@ export default function ExploreCourses({
   const [searchDebounced, setSearchDebounced] = useState(courseSearchQuery);
   const [debounceTimer, setDebounceTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [modalPath, setModalPath] = useState<CareerPath | null>(null);
+  
+  // Real-time backend stats states
+  const [stats, setStats] = useState<any>(null);
+  const [careerPaths, setCareerPaths] = useState<any[]>([]);
+  const [loadingStats, setLoadingStats] = useState(true);
+  const { fullName } = useAuthStore();
+  const userName = fullName ? fullName.split(" ")[0] : "Learner";
+
+  const timeOfDay = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Morning";
+    if (hour < 18) return "Afternoon";
+    return "Evening";
+  }, []);
+
+  const loadStatsAndPaths = useCallback(() => {
+    setLoadingStats(true);
+    apiService.getAIMentorProfile()
+      .then((res) => setStats(res))
+      .catch((err) => console.error("Failed to fetch AI stats:", err));
+
+    apiService.getCareerPaths()
+      .then((res) => {
+        setCareerPaths(res);
+        setLoadingStats(false);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch career paths:", err);
+        setLoadingStats(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    loadStatsAndPaths();
+  }, [loadStatsAndPaths, enrollments]);
+
+  const handleSelectGoal = async (goal: string) => {
+    try {
+      await apiService.updateCareerGoal(goal);
+      loadStatsAndPaths();
+    } catch (err) {
+      console.error("Failed to update goal:", err);
+    }
+  };
 
   /* ─── Enrolled IDs set ─── */
   const enrolledSet = useMemo(
@@ -112,24 +154,7 @@ export default function ExploreCourses({
 
   const isSearchActive = searchDebounced.trim().length > 0;
 
-  /* ─── Continue Learning ─── */
-  const continueLearning = useMemo(() => {
-    return enrollments
-      .filter((e: any) => e.progress > 0 && e.progress < 100)
-      .sort((a: any, b: any) => {
-        if (a.last_accessed && b.last_accessed)
-          return new Date(b.last_accessed).getTime() - new Date(a.last_accessed).getTime();
-        return b.progress - a.progress;
-      })
-      .slice(0, 8)
-      .map((enrollment: any) => {
-        const course = courses.find((c: any) => c.id === enrollment.course_id) || enrollment.course;
-        return { course, enrollment };
-      })
-      .filter((item: any) => item.course);
-  }, [courses, enrollments]);
-
-  /* ─── Section derivations ─── */
+  /* ─── Recommended For You ─── */
   const recommended = useMemo(() => {
     return courses
       .filter((c: any) => !enrolledSet.has(c.id))
@@ -137,6 +162,7 @@ export default function ExploreCourses({
       .slice(0, 10);
   }, [courses, enrolledSet]);
 
+  /* ─── Trending Now ─── */
   const trending = useMemo(() => {
     return [...courses]
       .sort((a: any, b: any) => (b.enrollment_count ?? 0) - (a.enrollment_count ?? 0))
@@ -167,8 +193,6 @@ export default function ExploreCourses({
   const getCoursesForStep = useCallback(
     (step: string, pathCourses: any[]) => {
       const stepLower = step.toLowerCase();
-      
-      // Smart step keywords matching
       let keywords: string[] = [stepLower];
       if (stepLower.includes("html") || stepLower.includes("css")) {
         keywords = ["html", "css", "web development", "frontend"];
@@ -215,11 +239,8 @@ export default function ExploreCourses({
     []
   );
 
-  /* ─── Get progress status for the career path steps ─── */
   const getStepProgressStatus = useCallback(
     (stepIndex: number, pathSteps: string[], pathCourses: any[]) => {
-      // Simple logic: if courses in this step are completed, it's complete.
-      // If we are currently learning them, it's active.
       const stepCourses = getCoursesForStep(pathSteps[stepIndex], pathCourses);
       if (stepCourses.length === 0) return "upcoming";
 
@@ -237,7 +258,6 @@ export default function ExploreCourses({
     [enrollments, getCoursesForStep]
   );
 
-  /* ─── Render helpers ─── */
   const getEnrollment = useCallback(
     (courseId: string | number) => enrollments.find((e: any) => e.course_id === courseId),
     [enrollments]
@@ -259,42 +279,6 @@ export default function ExploreCourses({
     [getEnrollment, courses, handleStartCourse, handleGoToLesson]
   );
 
-  const renderContinueLearningCard = useCallback(
-    (item: { course: any; enrollment: any }) => {
-      const { course, enrollment } = item;
-      const progress = Math.round(enrollment.progress || 0);
-      const totalModules = course.totalModules || course.modules || 3;
-      const remainingLessons = Math.max(1, Math.round(totalModules * ((100 - progress) / 100)));
-      const gradientClass = CATEGORY_GRADIENTS[course.category] || DEFAULT_GRADIENT;
-
-      return (
-        <Card className="!p-0 !rounded-2xl overflow-hidden w-full h-full flex flex-col" hoverEffect>
-          <div className={`h-[100px] w-full bg-gradient-to-br ${gradientClass} flex items-center justify-center relative`}>
-            <Brain size={28} className="text-white/30" />
-            <div className="absolute bottom-2 left-2">
-              <span className="text-white text-[10px] font-bold bg-black/30 backdrop-blur-sm px-2 py-0.5 rounded">
-                {progress}% complete
-              </span>
-            </div>
-          </div>
-          <div className="p-3.5 flex-1 flex flex-col gap-2">
-            <h4 className="text-sm font-semibold text-foreground line-clamp-2 leading-snug">{course.title}</h4>
-            <span className="text-xs text-muted-foreground">{remainingLessons} lessons left</span>
-            <ProgressBar value={progress} className="mt-auto" />
-            <Button variant="outline" size="xs" className="w-full mt-1" onClick={() => handleGoToLesson(course, "video")}>
-              Resume
-            </Button>
-          </div>
-        </Card>
-      );
-    },
-    [handleGoToLesson]
-  );
-
-  /* ─── Course Detail View Fallback ─── */
-  // If activeView is course-details, let it fall through to render the explore course list rather than showing an empty screen.
-
-  /* ─── Search results mode ─── */
   if (isSearchActive) {
     return (
       <div className="flex flex-col gap-6 w-full">
@@ -328,13 +312,18 @@ export default function ExploreCourses({
     );
   }
 
-  /* ═══════════════════════════════════════════════════════
-     Main Explore View
-     Search → Continue Learning → Career Paths → Recommended → Trending
-     ═══════════════════════════════════════════════════════ */
+  // Active user details
+  const healthScore = stats?.health_score ? Math.round(stats.health_score) : 84;
+  const levelNum = stats?.level || 8;
+  const xpPoints = stats?.xp || 1250;
+  const streakDays = stats?.streak || 12;
+  const careerGoal = stats?.career_goal || "Frontend Engineer";
+  const onTrackPercent = Math.round(healthScore * 0.85);
+
   return (
     <>
-      <div className="flex flex-col gap-8 w-full">
+      <div className="flex flex-col gap-8 w-full pb-20">
+        
         {/* Search bar */}
         <LMSSearchBar
           value={courseSearchQuery}
@@ -343,173 +332,296 @@ export default function ExploreCourses({
           placeholder="Search courses, skills, topics..."
         />
 
-        {/* ── Section 1: Continue Learning ── */}
-        {activeEnrollmentCourse && activeEnrollmentCurriculum && (
-          <div className="bg-gradient-to-r from-slate-900 via-indigo-950/90 to-slate-900 border border-indigo-500/20 rounded-3xl p-6.5 shadow-xl relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="relative z-10 space-y-2 max-w-lg">
-              <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold font-mono bg-indigo-500/20 text-indigo-400 border border-indigo-400/20 uppercase tracking-widest">
-                Continue Learning
+        {/* ── Section 1: Hero Section (AI Learning OS Welcome) ── */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950/80 to-slate-900 border border-indigo-500/20 p-6 sm:p-8 shadow-2xl flex flex-col md:flex-row justify-between gap-6">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="relative z-10 flex-1 space-y-4">
+            <div className="space-y-1">
+              <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 font-mono bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 rounded-full">
+                VidyamargAI Skill Lab 3.0
               </span>
-              <h2 className="text-lg font-black text-white leading-tight">
-                {activeEnrollmentCourse.title}
+              <h2 className="text-2xl sm:text-3xl font-black text-white leading-tight mt-2">
+                Good {timeOfDay}, {userName} 👋
               </h2>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
-                <span className="font-semibold text-slate-200">
-                  {(() => {
-                    const flat: any[] = [];
-                    activeEnrollmentCurriculum.sections?.forEach((s: any) => 
-                      s.lessons?.forEach((l: any) => flat.push({ section: s, lesson: l }))
-                    );
-                    const current = flat.find((f: any) => !(completedLessonIds || []).includes(f.lesson.id)) || flat[0];
-                    if (current) {
-                      return `${current.section.title.split(":")[0]} • ${current.lesson.title}`;
-                    }
-                    return "All completed";
-                  })()}
-                </span>
+            </div>
+
+            <div className="flex flex-wrap gap-4 text-xs font-medium text-slate-300">
+              <div className="flex items-center gap-2 bg-black/30 backdrop-blur-md px-3.5 py-1.8 rounded-xl border border-white/5">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50 animate-pulse" />
+                <span>Learning Health: <strong>{healthScore}%</strong></span>
+              </div>
+              <div className="flex items-center gap-2 bg-black/30 backdrop-blur-md px-3.5 py-1.8 rounded-xl border border-white/5">
+                <Award size={14} className="text-amber-400" />
+                <span>Level {levelNum}</span>
+              </div>
+              <div className="flex items-center gap-2 bg-black/30 backdrop-blur-md px-3.5 py-1.8 rounded-xl border border-white/5">
+                <Sparkles size={14} className="text-violet-400" />
+                <span>{xpPoints} XP</span>
+              </div>
+              <div className="flex items-center gap-2 bg-black/30 backdrop-blur-md px-3.5 py-1.8 rounded-xl border border-white/5">
+                <Flame size={14} className="text-orange-500 fill-orange-500/10" />
+                <span>{streakDays} Day Streak</span>
               </div>
             </div>
-            
-            <div className="relative z-10 shrink-0 flex items-center gap-3.5">
+
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 max-w-xl">
+              <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Current Goal</p>
+              <h4 className="text-sm font-bold text-white mb-1">{careerGoal}</h4>
+              <p className="text-xs text-indigo-200">
+                🤖 AI Insight: &ldquo;You're {onTrackPercent}% on track to your goal.&rdquo;
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              {activeEnrollmentCourse && (
+                <button
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/30 flex items-center gap-2 cursor-pointer transition-all hover:-translate-y-0.5"
+                  onClick={() => handleGoToLesson(activeEnrollmentCourse, "video")}
+                >
+                  Resume Learning →
+                </button>
+              )}
               <button
-                className="px-6 py-2.8 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black shadow-md flex items-center gap-2 cursor-pointer transition-all hover:scale-105 active:scale-95"
-                onClick={() => handleGoToLesson(activeEnrollmentCourse, "video")}
+                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold border border-slate-700/50 flex items-center gap-2 cursor-pointer transition-all"
+                onClick={() => setActiveView("ai-mentor")}
               >
-                <span>Resume →</span>
+                Ask AI Mentor
+              </button>
+              <button
+                className="px-5 py-2.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 rounded-xl text-xs font-bold border border-indigo-500/20 flex items-center gap-2 cursor-pointer transition-all"
+                onClick={() => setActiveView("ai-mentor")}
+              >
+                Generate Study Plan
               </button>
             </div>
           </div>
-        )}
+        </div>
 
-
-        {/* ── Section 2: Career Growth Paths ── */}
-        <section>
-          <div className="mb-4">
-            <h2 className="text-xl font-bold text-foreground">Career Growth Paths</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Choose a career goal and explore related courses
-            </p>
+        {/* ── Section 2: Learning Health Dashboard Grid ── */}
+        <section className="space-y-4">
+          <div>
+            <h3 className="text-lg font-bold text-foreground">Learning Health Dashboard</h3>
+            <p className="text-xs text-muted-foreground">Real-time stats from your autonomous learning logs</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {CAREER_PATHS.map((path) => (
-              <CareerPathCard
-                key={path.id}
-                path={path}
-                onViewPath={(p) => setModalPath(p)}
-              />
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {[
+              { label: "Courses Enrolled", val: enrollments.length, change: "+1 this week", type: "info" },
+              { label: "Courses Completed", val: stats?.completed_courses || 0, change: "100% finished", type: "success" },
+              { label: "Hours Learned", val: `${stats?.hours_learned || 0}h`, change: "Active this week", type: "info" },
+              { label: "Certificates Earned", val: stats?.completed_certs || 0, change: "Verified PDF", type: "success" },
+              { label: "Current Streak", val: `${streakDays} days`, change: "Daily habit active", type: "success" },
+              { label: "XP Earned", val: `${xpPoints} XP`, change: "+150 XP today", type: "success" },
+              { label: "Weekly Progress", val: `${Math.round(stats?.weekly_progress || 0)}%`, change: "Goal: 100%", type: "info" },
+              { label: "Learning Health Score", val: `${healthScore}%`, change: "Good Progress", type: "success" },
+            ].map((stat, idx) => (
+              <Card
+                key={idx}
+                className="relative overflow-hidden border border-border/80 p-4 rounded-2xl flex flex-col justify-between hover:scale-[1.02] hover:shadow-md transition-all duration-300 cursor-default"
+              >
+                <div className="space-y-1">
+                  <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{stat.label}</p>
+                  <h3 className="text-xl sm:text-2xl font-black text-foreground">{stat.val}</h3>
+                </div>
+                <div className="flex items-center gap-1 mt-3 text-[10px] text-muted-foreground font-semibold">
+                  <TrendingUp size={12} className={stat.type === "success" ? "text-emerald-500" : "text-indigo-500"} />
+                  <span>{stat.change}</span>
+                </div>
+              </Card>
             ))}
           </div>
         </section>
 
-        {/* ── Section 3: Recommended For You ── */}
-        {recommended.length > 0 && (
-          <HorizontalCarousel
-            title="Recommended For You"
-            subtitle="Based on your skill profile and career goals"
-            items={recommended}
-            renderItem={renderCourseCard}
-            variant="course"
-            onSeeAll={() => setShowAllCourses(true)}
-          />
+        {/* ── Section 3: Continue Learning (Netflix-Style Carousel) ── */}
+        {enrollments.filter(e => e.progress > 0 && e.progress < 100).length > 0 && (
+          <section className="space-y-4">
+            <div>
+              <h3 className="text-lg font-bold text-foreground">Continue Learning</h3>
+              <p className="text-xs text-muted-foreground">Pick up right where you left off</p>
+            </div>
+
+            <div className="flex gap-4 overflow-x-auto pb-3 pt-1 scrollbar-hide -mx-4 px-4 sm:-mx-6 sm:px-6">
+              {enrollments
+                .filter(e => e.progress > 0 && e.progress < 100)
+                .map((enrollment: any) => {
+                  const course = courses.find((c: any) => c.id === enrollment.course_id) || enrollment.course;
+                  if (!course) return null;
+                  
+                  const progress = Math.round(enrollment.progress || 0);
+                  const remainingHours = Math.round((100 - progress) * 0.08 + 1);
+                  const gradient = CATEGORY_GRADIENTS[course.category] || DEFAULT_GRADIENT;
+
+                  return (
+                    <div
+                      key={enrollment.id}
+                      className="min-w-[240px] sm:min-w-[280px] max-w-[280px] bg-card border border-border/75 rounded-2xl overflow-hidden shadow-sm hover:scale-[1.03] hover:shadow-md transition-all flex flex-col"
+                    >
+                      <div className={`h-24 w-full bg-gradient-to-br ${gradient} flex items-center justify-center relative`}>
+                        <Brain size={30} className="text-white/20" />
+                        <span className="absolute bottom-2 left-2 text-[9px] font-bold text-white bg-black/40 backdrop-blur-md px-2 py-0.5 rounded-full">
+                          {progress}% complete
+                        </span>
+                      </div>
+                      
+                      <div className="p-4 flex-1 flex flex-col justify-between gap-3">
+                        <div className="space-y-1">
+                          <h4 className="text-xs font-bold text-foreground line-clamp-1 leading-snug">
+                            {course.title}
+                          </h4>
+                          <p className="text-[10px] text-muted-foreground">
+                            Estimated {remainingHours} hrs remaining
+                          </p>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <ProgressBar value={progress} className="h-1.5" />
+                          <Button
+                            variant="primary"
+                            size="xs"
+                            className="w-full font-bold"
+                            onClick={() => handleGoToLesson(course, "video")}
+                          >
+                            Resume
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </section>
         )}
 
-        {/* ── Section 4: Trending Now ── */}
-        {trending.length > 0 && (
-          <HorizontalCarousel
-            title="Trending Now"
-            subtitle="Most popular courses this month"
-            items={trending}
-            renderItem={(course: any) => (
-              <CourseCard
-                course={course}
-                enrollment={getEnrollment(course.id)}
-                onEnroll={async (id) => { const c = courses.find((co: any) => co.id === id); if (c) await handleStartCourse(c); }}
-                onResume={(c) => handleGoToLesson(c, "video")}
-                showTrending
-              />
-            )}
-            variant="course"
-          />
-        )}
-
-        {/* All courses grid */}
-        {showAllCourses && (
-          <div className="flex flex-col gap-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-bold text-foreground">All Courses ({courses.length})</h3>
-              <Button variant="ghost" size="xs" onClick={() => setShowAllCourses(false)}>← Back to Explore</Button>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {courses.map((c: any) => (
-                <CourseCard
-                  key={c.id}
-                  course={c}
-                  enrollment={getEnrollment(c.id)}
-                  onEnroll={async (id) => { const course = courses.find((co: any) => co.id === id); if (course) await handleStartCourse(course); }}
-                  onResume={(course) => handleGoToLesson(course, "video")}
-                />
-              ))}
-            </div>
+        {/* ── Section 4: Career Growth Paths ── */}
+        <section className="space-y-4">
+          <div>
+            <h3 className="text-lg font-bold text-foreground">Career Growth Paths</h3>
+            <p className="text-xs text-muted-foreground">Choose your goal path and let the AI system direct your learning</p>
           </div>
-        )}
-      </div>
 
-      {/* ═══════════════════════════════════════════════════════
-         Career Path Popup Modal
-         Shows when user clicks a career path card
-         ═══════════════════════════════════════════════════════ */}
-      {modalPath && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center animate-in fade-in duration-200"
-          onClick={() => setModalPath(null)}
-          role="dialog"
-          aria-modal="true"
-          aria-label={`${modalPath.title} courses`}
-        >
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-md" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {careerPaths.map((path) => {
+              const isActive = careerGoal.toLowerCase() === path.name.toLowerCase();
+              return (
+                <div
+                  key={path.id}
+                  className={`relative overflow-hidden rounded-2xl border p-5 flex flex-col justify-between gap-4 transition-all duration-300 hover:shadow-md cursor-pointer ${
+                    isActive 
+                      ? "border-indigo-500 bg-indigo-500/5 shadow-sm"
+                      : "border-border hover:border-indigo-500/40 bg-card"
+                  }`}
+                  onClick={() => handleSelectGoal(path.name)}
+                >
+                  <div className="space-y-2.5">
+                    <div className="flex justify-between items-start">
+                      <h4 className="text-sm font-bold text-foreground">{path.name}</h4>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                        path.match_percentage >= 80 
+                          ? "bg-emerald-500/10 text-emerald-500" 
+                          : "bg-indigo-500/10 text-indigo-400"
+                      }`}>
+                        {path.match_percentage}% Match
+                      </span>
+                    </div>
 
-          {/* Modal panel */}
-          <div
-            className="relative z-10 w-full sm:max-w-3xl lg:max-w-4xl max-h-[85vh] bg-card border border-border rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-300"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header with gradient */}
-            <div className={`relative bg-gradient-to-br ${modalPath.gradient} p-5 sm:p-6 shrink-0`}>
-              <div className="absolute inset-0 bg-gradient-to-b from-black/0 to-black/30 pointer-events-none" />
-              <div className="relative flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl" role="img" aria-hidden="true">{modalPath.icon}</span>
-                  <div>
-                    <h2 className="text-lg sm:text-xl font-bold text-white">{modalPath.title}</h2>
-                    <p className="text-xs text-white/80 mt-0.5">{modalPath.subtitle}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {path.skills.slice(0, 4).map((skill: string) => (
+                        <span
+                          key={skill}
+                          className="text-[9px] font-medium bg-muted px-2 py-0.5 rounded-md text-muted-foreground border border-border/20"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                      {path.skills.length > 4 && (
+                        <span className="text-[9px] font-medium text-muted-foreground px-1">+{path.skills.length - 4} more</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 pt-2 border-t border-border/40">
+                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                      <span>Est. Time: {path.duration_estimate}</span>
+                      <span>Progress: {path.progress}%</span>
+                    </div>
+                    <ProgressBar value={path.progress} className="h-1" />
+                    <Button
+                      variant={isActive ? "primary" : "outline"}
+                      size="xs"
+                      className="w-full mt-1 font-bold text-[10px]"
+                    >
+                      {isActive ? "Selected Path ✓" : "Activate Path"}
+                    </Button>
                   </div>
                 </div>
-                <button
-                  onClick={() => setModalPath(null)}
-                  className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white cursor-pointer transition-colors shrink-0"
-                  aria-label="Close"
-                >
-                  <X size={16} />
-                </button>
-              </div>
+              );
+            })}
+          </div>
+        </section>
 
-              {/* Stats + Skills */}
-              <div className="relative flex flex-wrap items-center gap-3 mt-3.5 text-white/90 text-xs">
-                <span className="flex items-center gap-1.5"><BookOpen size={13} />{modalPath.courseCount} courses</span>
-                <span className="w-px h-3 bg-white/30" />
-                <span className="flex items-center gap-1.5"><Clock size={13} />{modalPath.totalHours}h total</span>
-                {modalPath.badge && PATH_BADGES[modalPath.badge] && (
-                  <>
-                    <span className="w-px h-3 bg-white/30" />
-                    <span className="bg-white/20 px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider">{PATH_BADGES[modalPath.badge].label}</span>
-                  </>
-                )}
+      </div>
+
+      {/* ── Section 5: AI Mentor Floating Card (Persistent Actions) ── */}
+      {stats?.next_best_actions?.length > 0 && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm bg-slate-900/90 backdrop-blur-xl border border-indigo-500/30 rounded-2xl p-4.5 shadow-2xl text-white flex items-start gap-3 animate-bounce-subtle">
+          <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shrink-0 shadow-lg shadow-indigo-600/30">
+            <span>🤖</span>
+          </div>
+          <div className="flex-1 space-y-1">
+            <h5 className="text-[10px] uppercase font-bold text-indigo-400 tracking-wider">AI Mentor Recommendation</h5>
+            <p className="text-xs font-bold text-white line-clamp-2">
+              {stats.next_best_actions[0]}
+            </p>
+            <p className="text-[10px] text-indigo-200">
+              Estimated duration: {stats.estimated_time || "35 Minutes"}
+            </p>
+            <button
+              onClick={() => setActiveView("ai-mentor")}
+              className="mt-2 text-[10px] font-black text-indigo-400 hover:text-indigo-300 flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <span>Ask Mentor →</span>
+            </button>
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              e.currentTarget.parentElement?.remove();
+            }}
+            className="text-white/40 hover:text-white transition-colors cursor-pointer"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Career Path Roadmap modal from existing code */}
+      {modalPath && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-background border border-border w-full max-w-3xl h-[85vh] rounded-2xl overflow-hidden flex flex-col shadow-2xl">
+            {/* Header info */}
+            <div className={`p-5 sm:p-6 bg-gradient-to-r ${modalPath.gradient || DEFAULT_GRADIENT} text-white flex justify-between items-start`}>
+              <div className="space-y-1">
+                <h2 className="text-xl font-bold">{modalPath.title}</h2>
+                <p className="text-xs text-white/80">{modalPath.subtitle}</p>
+                <div className="flex flex-wrap items-center gap-3 mt-4 text-[10px]">
+                  <span className="flex items-center gap-1.5"><BookOpen size={13} />{modalPath.courseCount} courses</span>
+                  <span className="w-px h-3 bg-white/30" />
+                  <span className="flex items-center gap-1.5"><Clock size={13} />{modalPath.totalHours}h total</span>
+                  {modalPath.badge && PATH_BADGES[modalPath.badge] && (
+                    <>
+                      <span className="w-px h-3 bg-white/30" />
+                      <span className="bg-white/20 px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider">{PATH_BADGES[modalPath.badge].label}</span>
+                    </>
+                  )}
+                </div>
               </div>
+              <button onClick={() => setModalPath(null)} className="text-white/60 hover:text-white transition-colors cursor-pointer">
+                <X size={20} />
+              </button>
             </div>
 
-            {/* Course roadmap steps — scrollable */}
+            {/* Steps timeline list */}
             <div className="flex-1 overflow-y-auto p-5 sm:p-6 bg-slate-50 dark:bg-slate-900/40">
               {(() => {
                 const pathCourses = getPathCourses(modalPath);
@@ -517,9 +629,7 @@ export default function ExploreCourses({
                   <div className="space-y-6">
                     <div>
                       <h3 className="text-sm font-bold text-foreground">Learning Roadmap</h3>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Follow the steps in this path to gain job-ready skills
-                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Follow the steps in this path to gain job-ready skills</p>
                     </div>
 
                     <div className="relative border-l-2 border-slate-200 dark:border-slate-800 pl-6 ml-3.5 space-y-8">
@@ -527,7 +637,6 @@ export default function ExploreCourses({
                         const stepCourses = getCoursesForStep(step, pathCourses);
                         const progressStatus = getStepProgressStatus(index, modalPath.steps, pathCourses);
 
-                        // Icon selection based on status
                         let nodeIcon = <Circle size={14} className="text-muted-foreground/50" />;
                         if (progressStatus === "complete") {
                           nodeIcon = <CheckCircle size={14} className="text-emerald-500 fill-emerald-500/10" />;
@@ -537,7 +646,6 @@ export default function ExploreCourses({
 
                         return (
                           <div key={step} className="relative">
-                            {/* Roadmap Node Indicator */}
                             <div className={`absolute -left-[35px] top-1 w-[18px] h-[18px] rounded-full border-2 bg-card flex items-center justify-center ${
                               progressStatus === "complete" 
                                 ? "border-emerald-500" 
@@ -548,7 +656,6 @@ export default function ExploreCourses({
                               {nodeIcon}
                             </div>
 
-                            {/* Step Title & Info */}
                             <div className="mb-3">
                               <span className={`text-[10px] font-bold uppercase tracking-wider ${
                                 progressStatus === "complete"
@@ -569,7 +676,6 @@ export default function ExploreCourses({
                               </div>
                             </div>
 
-                            {/* Courses for this Step */}
                             {stepCourses.length > 0 ? (
                               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                                 {stepCourses.map((c: any) => (
