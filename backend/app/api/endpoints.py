@@ -4075,6 +4075,27 @@ async def mcp_chat(
         db=db
     )
 
+    # Convert action_cards (Pydantic objects) and actions to serializable dicts
+    action_cards_data = []
+    if result.action_cards:
+        for card in result.action_cards:
+            if hasattr(card, "dict"):
+                action_cards_data.append(card.dict())
+            elif hasattr(card, "model_dump"):
+                action_cards_data.append(card.model_dump())
+            else:
+                action_cards_data.append(card)
+
+    actions_data = []
+    if result.actions:
+        for action in result.actions:
+            if hasattr(action, "dict"):
+                actions_data.append(action.dict())
+            elif hasattr(action, "model_dump"):
+                actions_data.append(action.model_dump())
+            else:
+                actions_data.append(action)
+
     # Save assistant's message
     assistant_msg = MCPChatMessage(
         id=str(uuid.uuid4()),
@@ -4082,8 +4103,8 @@ async def mcp_chat(
         user_id=current_user.id,
         sender="tush",
         text=result.response,
-        actions=result.actions if result.actions else [],
-        action_cards=result.action_cards if result.action_cards else [],
+        actions=actions_data,
+        action_cards=action_cards_data,
         memory_updated=result.memory_updated
     )
     db.add(assistant_msg)
@@ -4179,6 +4200,27 @@ async def mcp_chat_stream(
         db=db
     )
 
+    # Convert action_cards (Pydantic objects) and actions to serializable dicts
+    action_cards_data = []
+    if result.action_cards:
+        for card in result.action_cards:
+            if hasattr(card, "dict"):
+                action_cards_data.append(card.dict())
+            elif hasattr(card, "model_dump"):
+                action_cards_data.append(card.model_dump())
+            else:
+                action_cards_data.append(card)
+
+    actions_data = []
+    if result.actions:
+        for action in result.actions:
+            if hasattr(action, "dict"):
+                actions_data.append(action.dict())
+            elif hasattr(action, "model_dump"):
+                actions_data.append(action.model_dump())
+            else:
+                actions_data.append(action)
+
     # Save assistant reply
     assistant_msg = MCPChatMessage(
         id=str(uuid.uuid4()),
@@ -4186,8 +4228,8 @@ async def mcp_chat_stream(
         user_id=current_user.id,
         sender="tush",
         text=result.response,
-        actions=result.actions if result.actions else [],
-        action_cards=result.action_cards if result.action_cards else [],
+        actions=actions_data,
+        action_cards=action_cards_data,
         memory_updated=result.memory_updated
     )
     db.add(assistant_msg)
