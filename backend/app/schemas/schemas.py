@@ -623,7 +623,11 @@ from app.schemas.mcp_schemas import (
     MCPChatResponse,
     ActionCard,
     HAQItemResponse,
-    HAQCompleteRequest
+    HAQCompleteRequest,
+    MCPChatMessage,
+    MCPChatSessionResponse,
+    MCPChatSessionUpdate,
+    MCPChatSessionListResponse
 )
 
 
