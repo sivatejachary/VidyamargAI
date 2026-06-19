@@ -520,56 +520,7 @@ export default function TushAIChat() {
     );
   };
 
-  const InputBox = ({ isLanding }: { isLanding: boolean }) => (
-    <div className="flex flex-col bg-card border border-border rounded-2xl p-2 pl-4 pr-3 shadow-custom-glass hover:border-border-hover dark:hover:border-neutral-700 focus-within:border-primary/50 dark:focus-within:border-primary/40 focus-within:shadow-[0_8px_30px_rgba(59,130,246,0.08)] transition-all duration-300 w-full">
-      {attachments.length > 0 && (
-        <div className="flex flex-wrap gap-2 px-1 pt-2 pb-1.5 border-b border-gray-100 dark:border-zinc-800 mb-2">
-          {attachments.map((file, idx) => (
-            <div key={idx} className="flex items-center gap-1.5 pl-2 pr-1.5 py-1 rounded-lg bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-xs text-gray-700 dark:text-zinc-300">
-              {file.type.startsWith("image/") ? (
-                <img src={URL.createObjectURL(file)} alt={file.name} className="w-4 h-4 rounded object-cover" />
-              ) : (
-                <FileText size={13} className="text-blue-500" />
-              )}
-              <span className="max-w-28 truncate font-medium">{file.name}</span>
-              <button onClick={() => removeAttachment(idx)} className="w-4 h-4 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-pointer"><X size={10} /></button>
-            </div>
-          ))}
-        </div>
-      )}
-      <div className="flex items-end gap-2 w-full min-h-10">
-        <button
-          onClick={() => isLanding ? landingFileRef.current?.click() : chatFileRef.current?.click()}
-          className="flex items-center justify-center w-9 h-9 rounded-full text-gray-400 hover:text-gray-600 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-800/50 transition-colors shrink-0 mb-0.5 cursor-pointer"
-        ><Plus size={20} /></button>
-        <input type="file" ref={isLanding ? landingFileRef : chatFileRef} onChange={handleFileChange} multiple accept="image/*,.pdf,.doc,.docx,.txt" className="hidden" />
 
-        <div className="flex-1 min-w-0 py-1.5 self-center">
-          <textarea
-            ref={isLanding ? landingTextareaRef : chatTextareaRef}
-            rows={1}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(query); } }}
-            placeholder="Ask Tush AI anything about your career, jobs, learning..."
-            className="chat-input-textarea w-full bg-transparent resize-none border-none outline-none focus:ring-0 text-sm text-foreground placeholder-muted-foreground py-1 max-h-48 h-6"
-          />
-        </div>
-
-        <div className="flex items-center gap-1.5 shrink-0 self-center">
-          <button
-            onClick={startListening}
-            className={`flex items-center justify-center w-9 h-9 rounded-full transition-all duration-300 cursor-pointer ${isListening ? "bg-red-500 text-white animate-pulse shadow-[0_0_12px_rgba(239,68,68,0.5)]" : "text-gray-400 hover:text-gray-600 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-800/50"}`}
-          ><Mic size={18} /></button>
-          <button
-            onClick={() => handleSend(query)}
-            disabled={!query.trim() && attachments.length === 0}
-            className={`flex items-center justify-center w-9 h-9 rounded-full transition-all duration-200 shrink-0 ${query.trim() || attachments.length > 0 ? "bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:scale-105 active:scale-95 cursor-pointer" : "bg-slate-100 dark:bg-zinc-800 text-slate-400 dark:text-slate-600 cursor-not-allowed"}`}
-          ><ArrowUp size={16} /></button>
-        </div>
-      </div>
-    </div>
-  );
 
   return (
     <div className="w-full h-full min-h-screen bg-app-bg text-app-text flex flex-row font-sans transition-colors duration-300 relative overflow-hidden">
@@ -717,10 +668,54 @@ export default function TushAIChat() {
               Your AI-powered career companion
             </p>
 
-            {/* Input */}
-            <div className="w-full max-w-2xl mb-8">
-              <InputBox isLanding={true} />
-            </div>
+              <div className="flex flex-col bg-card border border-border rounded-2xl p-2 pl-4 pr-3 shadow-custom-glass hover:border-border-hover dark:hover:border-neutral-700 focus-within:border-primary/50 dark:focus-within:border-primary/40 focus-within:shadow-[0_8px_30px_rgba(59,130,246,0.08)] transition-all duration-300 w-full">
+                {attachments.length > 0 && (
+                  <div className="flex flex-wrap gap-2 px-1 pt-2 pb-1.5 border-b border-gray-100 dark:border-zinc-800 mb-2">
+                    {attachments.map((file, idx) => (
+                      <div key={idx} className="flex items-center gap-1.5 pl-2 pr-1.5 py-1 rounded-lg bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-xs text-gray-700 dark:text-zinc-300">
+                        {file.type.startsWith("image/") ? (
+                          <img src={URL.createObjectURL(file)} alt={file.name} className="w-4 h-4 rounded object-cover" />
+                        ) : (
+                          <FileText size={13} className="text-blue-500" />
+                        )}
+                        <span className="max-w-28 truncate font-medium">{file.name}</span>
+                        <button onClick={() => removeAttachment(idx)} className="w-4 h-4 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-pointer"><X size={10} /></button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="flex items-end gap-2 w-full min-h-10">
+                  <button
+                    onClick={() => landingFileRef.current?.click()}
+                    className="flex items-center justify-center w-9 h-9 rounded-full text-gray-400 hover:text-gray-600 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-800/50 transition-colors shrink-0 mb-0.5 cursor-pointer"
+                  ><Plus size={20} /></button>
+                  <input type="file" ref={landingFileRef} onChange={handleFileChange} multiple accept="image/*,.pdf,.doc,.docx,.txt" className="hidden" />
+
+                  <div className="flex-1 min-w-0 py-1.5 self-center">
+                    <textarea
+                      ref={landingTextareaRef}
+                      rows={1}
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(query); } }}
+                      placeholder="Ask Tush AI anything about your career, jobs, learning..."
+                      className="chat-input-textarea w-full bg-transparent resize-none border-none outline-none focus:ring-0 text-sm text-foreground placeholder-muted-foreground py-1 max-h-48 h-6"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0 self-center">
+                    <button
+                      onClick={startListening}
+                      className={`flex items-center justify-center w-9 h-9 rounded-full transition-all duration-300 cursor-pointer ${isListening ? "bg-red-500 text-white animate-pulse shadow-[0_0_12px_rgba(239,68,68,0.5)]" : "text-gray-400 hover:text-gray-600 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-800/50"}`}
+                    ><Mic size={18} /></button>
+                    <button
+                      onClick={() => handleSend(query)}
+                      disabled={!query.trim() && attachments.length === 0}
+                      className={`flex items-center justify-center w-9 h-9 rounded-full transition-all duration-200 shrink-0 ${query.trim() || attachments.length > 0 ? "bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:scale-105 active:scale-95 cursor-pointer" : "bg-slate-100 dark:bg-zinc-800 text-slate-400 dark:text-slate-600 cursor-not-allowed"}`}
+                    ><ArrowUp size={16} /></button>
+                  </div>
+                </div>
+              </div>
 
             {/* Quick Suggestions */}
             <div className="w-full max-w-3xl">
@@ -849,9 +844,55 @@ export default function TushAIChat() {
                 <div ref={chatEndRef} />
               </div>
 
-              {/* Input Footer */}
               <div className="pt-2 pb-1 no-print">
-                <InputBox isLanding={false} />
+                <div className="flex flex-col bg-card border border-border rounded-2xl p-2 pl-4 pr-3 shadow-custom-glass hover:border-border-hover dark:hover:border-neutral-700 focus-within:border-primary/50 dark:focus-within:border-primary/40 focus-within:shadow-[0_8px_30px_rgba(59,130,246,0.08)] transition-all duration-300 w-full">
+                  {attachments.length > 0 && (
+                    <div className="flex flex-wrap gap-2 px-1 pt-2 pb-1.5 border-b border-gray-100 dark:border-zinc-800 mb-2">
+                      {attachments.map((file, idx) => (
+                        <div key={idx} className="flex items-center gap-1.5 pl-2 pr-1.5 py-1 rounded-lg bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-xs text-gray-700 dark:text-zinc-300">
+                          {file.type.startsWith("image/") ? (
+                            <img src={URL.createObjectURL(file)} alt={file.name} className="w-4 h-4 rounded object-cover" />
+                          ) : (
+                            <FileText size={13} className="text-blue-500" />
+                          )}
+                          <span className="max-w-28 truncate font-medium">{file.name}</span>
+                          <button onClick={() => removeAttachment(idx)} className="w-4 h-4 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-pointer"><X size={10} /></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex items-end gap-2 w-full min-h-10">
+                    <button
+                      onClick={() => chatFileRef.current?.click()}
+                      className="flex items-center justify-center w-9 h-9 rounded-full text-gray-400 hover:text-gray-600 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-800/50 transition-colors shrink-0 mb-0.5 cursor-pointer"
+                    ><Plus size={20} /></button>
+                    <input type="file" ref={chatFileRef} onChange={handleFileChange} multiple accept="image/*,.pdf,.doc,.docx,.txt" className="hidden" />
+
+                    <div className="flex-1 min-w-0 py-1.5 self-center">
+                      <textarea
+                        ref={chatTextareaRef}
+                        rows={1}
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(query); } }}
+                        placeholder="Ask Tush AI anything about your career, jobs, learning..."
+                        className="chat-input-textarea w-full bg-transparent resize-none border-none outline-none focus:ring-0 text-sm text-foreground placeholder-muted-foreground py-1 max-h-48 h-6"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0 self-center">
+                      <button
+                        onClick={startListening}
+                        className={`flex items-center justify-center w-9 h-9 rounded-full transition-all duration-300 cursor-pointer ${isListening ? "bg-red-500 text-white animate-pulse shadow-[0_0_12px_rgba(239,68,68,0.5)]" : "text-gray-400 hover:text-gray-600 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-800/50"}`}
+                      ><Mic size={18} /></button>
+                      <button
+                        onClick={() => handleSend(query)}
+                        disabled={!query.trim() && attachments.length === 0}
+                        className={`flex items-center justify-center w-9 h-9 rounded-full transition-all duration-200 shrink-0 ${query.trim() || attachments.length > 0 ? "bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:scale-105 active:scale-95 cursor-pointer" : "bg-slate-100 dark:bg-zinc-800 text-slate-400 dark:text-slate-600 cursor-not-allowed"}`}
+                      ><ArrowUp size={16} /></button>
+                    </div>
+                  </div>
+                </div>
                 <p className="text-[10px] text-app-text-muted text-center mt-2">
                   Tush AI · Personalized career guidance
                 </p>
