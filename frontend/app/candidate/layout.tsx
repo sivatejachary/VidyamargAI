@@ -38,7 +38,7 @@ export default function CandidateLayout({
   return (
     <div className="min-h-screen bg-app-bg flex flex-col md:flex-row transition-colors duration-300">
       <Sidebar portal="candidate" />
-      <main className="flex-1 h-layout-main md:h-screen overflow-y-auto bg-app-bg text-app-text transition-colors duration-300 font-sans mt-16 md:mt-0 pb-16 md:pb-0">
+      <main className="flex-1 h-layout-main md:h-screen overflow-y-auto bg-app-bg text-app-text transition-colors duration-300 font-sans mt-16 md:mt-0 pb-0">
         {children}
       </main>
       <HumanActionQueue />
