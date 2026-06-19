@@ -544,11 +544,11 @@ export default function TushAIChat() {
 
 
   return (
-    <div className="w-full h-full min-h-screen bg-app-bg text-app-text flex flex-row font-sans transition-colors duration-300 relative overflow-hidden">
+    <div className="w-full h-full bg-app-bg text-app-text flex flex-row font-sans transition-colors duration-300 relative overflow-hidden">
       
       {/* 1. Collapsible Left Chat History Sidebar */}
       {isHistoryOpen && (
-        <aside className="no-print w-72 shrink-0 border-r border-app-border bg-app-surface/90 backdrop-blur-md flex flex-col h-screen transition-all duration-300 ease-in-out">
+        <aside className="no-print w-72 shrink-0 border-r border-app-border bg-app-surface/90 backdrop-blur-md flex flex-col h-full transition-all duration-300 ease-in-out">
           {/* Header & New Chat */}
           <div className="p-4 flex flex-col gap-3 shrink-0">
             <div className="flex items-center justify-between">
@@ -658,7 +658,7 @@ export default function TushAIChat() {
       )}
 
       {/* 2. Main Content Area */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden print-full-width">
+      <div className="flex-1 flex flex-col h-full overflow-hidden print-full-width">
         
         {/* Toggle button if Sidebar is closed */}
         {!isHistoryOpen && (
