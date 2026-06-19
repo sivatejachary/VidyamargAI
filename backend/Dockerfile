@@ -19,6 +19,11 @@ COPY backend/ .
 ENV PATH=/root/.local/bin:$PATH
 ENV PYTHONUNBUFFERED=1
 
+# Install system dependencies for Playwright chromium
+RUN apt-get update && \
+    playwright install chromium --with-deps && \
+    rm -rf /var/lib/apt/lists/*
+
 EXPOSE 8000
 
 
