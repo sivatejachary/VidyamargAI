@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     NVIDIA_API_KEY: str = os.getenv("NVIDIA_API_KEY", "")
+    SERPER_API_KEY: str = os.getenv("SERPER_API_KEY", "")
     
     # Telegram API
     TG_API_ID: str = os.getenv("TG_API_ID", os.getenv("api_id", ""))
@@ -93,6 +94,7 @@ except Exception:
         GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
         OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
         NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
+        SERPER_API_KEY = os.getenv("SERPER_API_KEY", "")
         TG_API_ID = os.getenv("TG_API_ID", os.getenv("api_id", ""))
         TG_API_HASH = os.getenv("TG_API_HASH", os.getenv("api_hash", ""))
         AI_MENTOR_ENABLED = os.getenv("AI_MENTOR_ENABLED", "True").lower() == "true"
