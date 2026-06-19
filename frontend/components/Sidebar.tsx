@@ -412,6 +412,39 @@ export default function Sidebar({ portal }: SidebarProps) {
           )}
         </div>
       </aside>
+      {/* Mobile Bottom Navigation Bar for Candidate (Mobile view only) */}
+      {portal === "candidate" && (
+        <nav
+          className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-app-surface border-t border-app-border flex justify-around items-center px-2 w-full font-sans shadow-[0_-2px_10px_rgba(0,0,0,0.05)] dark:shadow-[0_-2px_10px_rgba(0,0,0,0.2)]"
+          style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom, 16px))", height: "calc(64px + env(safe-area-inset-bottom, 0px))" }}
+        >
+          {[
+            { name: "Resume", href: "/candidate/resume", icon: FileText },
+            { name: "Jobs", href: "/candidate/jobs", icon: Briefcase },
+            { name: "Skill Lab", href: "/candidate/skill-lab", icon: Compass },
+            { name: "Ask Tush AI", href: "/candidate/chat", icon: Sparkles },
+            { name: "Profile", href: "/candidate/profile", icon: Users }
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = pathname === tab.href || (tab.href !== "/candidate/chat" && pathname.startsWith(tab.href));
+            return (
+              <Link
+                key={tab.name}
+                href={tab.href}
+                aria-current={isActive ? "page" : undefined}
+                className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${
+                  isActive
+                    ? "text-blue-600 dark:text-blue-400"
+                    : "text-app-text-muted hover:text-app-text"
+                }`}
+              >
+                <Icon size={20} className="mb-0.5 shrink-0" />
+                <span className="text-10 font-semibold tracking-tight leading-none">{tab.name}</span>
+              </Link>
+            );
+          })}
+        </nav>
+      )}
     </>
   );
 }
