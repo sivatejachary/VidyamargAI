@@ -397,3 +397,43 @@ textarea.chat-input-textarea:focus {
 .auth-form-panel {
   width: var(--auth-form-width);
 }
+
+/* ==========================================================================
+   PRINT OVERRIDES & UTILITIES FOR CHAT EXPORT
+   ========================================================================== */
+@media print {
+  body, html {
+    background: white !important;
+    color: black !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-full-width {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+  .print-page-break {
+    page-break-inside: avoid;
+  }
+}
+
+/* Custom scrollbar for sidebar history list */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.3);
+  border-radius: 99px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.5);
+}

@@ -890,13 +890,82 @@ export const apiService = {
     return res.json();
   },
 
-  async mcpChat(message: string, mode: 'resume' | 'skill-lab' | 'job-agent' | 'general', history: any[], contextHint?: string) {
+  async mcpChat(message: string, mode: 'resume' | 'skill-lab' | 'job-agent' | 'general', history: any[], contextHint?: string, sessionId?: string) {
     const res = await customFetch(`${getBaseUrl()}/mcp/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...getHeaders() },
-      body: JSON.stringify({ message, mode, history, context_hint: contextHint }),
+      body: JSON.stringify({ message, mode, history, context_hint: contextHint, session_id: sessionId }),
     });
     if (!res.ok) throw new Error("Failed to send MCP chat message");
+    return res.json();
+  },
+
+  async mcpChatStream(message: string, mode: 'resume' | 'skill-lab' | 'job-agent' | 'general', history: any[], contextHint?: string, sessionId?: string): Promise<Response> {
+    const res = await customFetch(`${getBaseUrl()}/mcp/chat/stream`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getHeaders() },
+      body: JSON.stringify({ message, mode, history, context_hint: contextHint, session_id: sessionId }),
+    });
+    if (!res.ok) throw new Error("Failed to start MCP chat stream");
+    return res;
+  },
+
+  async getMcpSessions(page = 1, limit = 20, search?: string) {
+    let url = `${getBaseUrl()}/mcp/sessions?page=${page}&limit=${limit}`;
+    if (search) {
+      url += `&search=${encodeURIComponent(search)}`;
+    }
+    const res = await customFetch(url, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to fetch past chat sessions");
+    return res.json();
+  },
+
+  async getMcpSessionMessages(sessionId: string) {
+    const res = await customFetch(`${getBaseUrl()}/mcp/sessions/${sessionId}/messages`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to fetch session messages");
+    return res.json();
+  },
+
+  async renameMcpSession(sessionId: string, title: string) {
+    const res = await customFetch(`${getBaseUrl()}/mcp/sessions/${sessionId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...getHeaders() },
+      body: JSON.stringify({ title }),
+    });
+    if (!res.ok) throw new Error("Failed to rename session");
+    return res.json();
+  },
+
+  async pinMcpSession(sessionId: string, isPinned: boolean) {
+    const res = await customFetch(`${getBaseUrl()}/mcp/sessions/${sessionId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...getHeaders() },
+      body: JSON.stringify({ is_pinned: isPinned }),
+    });
+    if (!res.ok) throw new Error("Failed to update session pin status");
+    return res.json();
+  },
+
+  async archiveMcpSession(sessionId: string, isArchived: boolean) {
+    const res = await customFetch(`${getBaseUrl()}/mcp/sessions/${sessionId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...getHeaders() },
+      body: JSON.stringify({ is_archived: isArchived }),
+    });
+    if (!res.ok) throw new Error("Failed to archive session");
+    return res.json();
+  },
+
+  async deleteMcpSession(sessionId: string) {
+    const res = await customFetch(`${getBaseUrl()}/mcp/sessions/${sessionId}`, {
+      method: "DELETE",
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to delete session");
     return res.json();
   },
 

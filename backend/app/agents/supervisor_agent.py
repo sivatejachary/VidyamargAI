@@ -100,6 +100,12 @@ class SupervisorAgent:
             prompt += f"\nUser: {message}\nAssistant:"
 
             selected_model = cost_controller.select_model(prompt, user_id, db)
+            
+            try:
+                db.commit() # Commit transaction to avoid idle_in_transaction_session_timeout
+            except Exception:
+                db.rollback()
+
             ai_response = None
             model_used = "gemini"
 

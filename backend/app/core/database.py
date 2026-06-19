@@ -17,7 +17,7 @@ engine = create_engine(
     pool_recycle=3600,
     pool_timeout=30,
     connect_args={
-        "options": "-c idle_in_transaction_session_timeout=30000 -c lock_timeout=5000"
+        "options": "-c idle_in_transaction_session_timeout=120000 -c lock_timeout=5000"
     }
 )
 

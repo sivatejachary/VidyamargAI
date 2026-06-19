@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from sqlalchemy import (
-    Column, Integer, String, Text, Boolean, DateTime, Float, ForeignKey, Index, JSON, CheckConstraint
+    Column, Integer, String, Text, Boolean, DateTime, Float, ForeignKey, Index, JSON, CheckConstraint, UniqueConstraint
 )
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -415,8 +415,8 @@ class SavedJob(Base):
     __tablename__ = "saved_jobs"
     
     id = Column(Integer, primary_key=True, index=True)
-    candidate_id = Column(Integer, ForeignKey("candidates.id"), nullable=False)
-    job_id = Column(Integer, ForeignKey("jobs.id"), nullable=False)
+    candidate_id = Column(Integer, ForeignKey("candidates.id"), nullable=False, index=True)
+    job_id = Column(Integer, ForeignKey("jobs.id"), nullable=False, index=True)
     saved_at = Column(DateTime, default=datetime.utcnow)
     
     job = relationship("Job", back_populates="saved_by")
@@ -427,9 +427,9 @@ class JobAgentRun(Base):
     __tablename__ = "job_agent_runs"
     
     id = Column(Integer, primary_key=True, index=True)
-    candidate_id = Column(Integer, ForeignKey("candidates.id"), nullable=False)
+    candidate_id = Column(Integer, ForeignKey("candidates.id"), nullable=False, index=True)
     status = Column(String, default="running")  # running, completed, failed
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
     completed_at = Column(DateTime, nullable=True)
     
     candidate = relationship("Candidate")
@@ -440,7 +440,7 @@ class JobAgentLog(Base):
     __tablename__ = "job_agent_logs"
     
     id = Column(Integer, primary_key=True, index=True)
-    run_id = Column(Integer, ForeignKey("job_agent_runs.id"), nullable=False)
+    run_id = Column(Integer, ForeignKey("job_agent_runs.id"), nullable=False, index=True)
     message = Column(Text, nullable=False)
     status = Column(String, default="info")  # info, success, warning, error
     timestamp = Column(DateTime, default=datetime.utcnow)
@@ -471,8 +471,8 @@ class CourseProgress(Base):
     __tablename__ = "course_progress"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    course_id = Column(String, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    course_id = Column(String, nullable=False, index=True)
     video_progress = Column(Float, default=0.0)
     pdf_progress = Column(Float, default=0.0)
     quiz_progress = Column(Float, default=0.0)
@@ -480,15 +480,22 @@ class CourseProgress(Base):
     last_lesson_id = Column(String, nullable=True)
     last_activity = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    __table_args__ = (
+        # Compound index for efficient per-user curriculum progress lookups
+        Index("ix_course_progress_user_course", "user_id", "course_id"),
+        UniqueConstraint("user_id", "course_id", name="uq_course_progress_user_course"),
+    )
+
+
 class LearningEvent(Base):
     __tablename__ = "learning_events"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    event_type = Column(String, nullable=False)
-    lesson_id = Column(String, nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    event_type = Column(String, nullable=False, index=True)
+    lesson_id = Column(String, nullable=True, index=True)
     metadata_json = Column(Text, default="{}")
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
 class VideoAnalytics(Base):
     __tablename__ = "video_analytics"
@@ -652,6 +659,45 @@ class UserConsent(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 Index("idx_user_consent_user_type", UserConsent.user_id, UserConsent.consent_type)
+
+
+class MCPChatSession(Base):
+    __tablename__ = "mcp_chat_sessions"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    title = Column(String, nullable=False)
+    mode = Column(String, default="general")
+    is_pinned = Column(Boolean, default=False)
+    is_archived = Column(Boolean, default=False)
+    is_deleted = Column(Boolean, default=False)
+    deleted_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    messages = relationship("MCPChatMessage", back_populates="session", cascade="all, delete-orphan")
+
+
+class MCPChatMessage(Base):
+    __tablename__ = "mcp_chat_messages"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    session_id = Column(String, ForeignKey("mcp_chat_sessions.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    sender = Column(String, nullable=False)  # "user" or "tush"
+    text = Column(Text, nullable=False)
+    actions = Column(JSON, default=list)
+    action_cards = Column(JSON, default=list)
+    memory_updated = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    session = relationship("MCPChatSession", back_populates="messages")
+
+
+Index("idx_mcp_chat_session_user", MCPChatSession.user_id)
+Index("idx_mcp_chat_message_session", MCPChatMessage.session_id)
+Index("idx_mcp_chat_message_user", MCPChatMessage.user_id)
+
 
 
 

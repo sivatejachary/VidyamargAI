@@ -37,6 +37,7 @@ export default function HumanActionQueue() {
   const [items, setItems] = useState<HAQItem[]>([]);
   const [expanded, setExpanded] = useState(true);
   const [dismissing, setDismissing] = useState<Set<string>>(new Set());
+  const [inputs, setInputs] = useState<Record<string, string>>({});
 
   const fetchPending = useCallback(async () => {
     try {
@@ -65,8 +66,18 @@ export default function HumanActionQueue() {
 
   const handleComplete = async (callbackKey: string) => {
     try {
-      await apiService.completeHAQItem(callbackKey);
+      const val = inputs[callbackKey] || "";
+      await apiService.completeHAQItem(callbackKey, {
+        value: val,
+        code: val,
+        answer: val
+      });
       setItems(prev => prev.filter(i => i.callback_key !== callbackKey));
+      setInputs(prev => {
+        const next = { ...prev };
+        delete next[callbackKey];
+        return next;
+      });
     } catch (err) {
       console.error(err);
     }
@@ -135,6 +146,21 @@ export default function HumanActionQueue() {
 
             {item.description && (
               <p className="text-[10px] text-muted-foreground mb-2.5 leading-relaxed">{item.description}</p>
+            )}
+
+            {["otp", "captcha", "2fa", "recruiter_question"].includes(item.action_type) && (
+              <input
+                type="text"
+                value={inputs[item.callback_key] || ""}
+                onChange={(e) => setInputs(prev => ({ ...prev, [item.callback_key]: e.target.value }))}
+                placeholder={
+                  item.action_type === "otp" ? "Enter OTP Code..." :
+                  item.action_type === "captcha" ? "Enter CAPTCHA..." :
+                  item.action_type === "2fa" ? "Enter 2FA Code..." :
+                  "Enter your answer..."
+                }
+                className="w-full px-2.5 py-1.5 mb-2.5 text-[11px] border border-amber-300 rounded-lg bg-white/70 dark:bg-black/35 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              />
             )}
 
             <div className="flex items-center gap-2">

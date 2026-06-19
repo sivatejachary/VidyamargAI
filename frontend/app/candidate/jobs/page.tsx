@@ -21,6 +21,7 @@ import { Alert } from "@/components/ui/Alert";
 // Import custom Job Agent subcomponents
 import AgentConsole from "@/components/AgentConsole";
 import RecommendedLearning from "@/components/RecommendedLearning";
+import MissingSkills from "@/components/MissingSkills";
 
 // ─────────────────────── Types ───────────────────────
 interface LiveJob {
@@ -380,6 +381,27 @@ export default function CandidateJobs() {
     }
   };
 
+  // Helper to ensure consent and trigger auto apply
+  const ensureConsentAndApply = async (jobId: string) => {
+    if (!consents.app_submission?.granted) {
+      const confirmConsent = window.confirm(
+        "Auto-apply requires your consent to submit applications on your behalf. Would you like to grant this consent and proceed with the application?"
+      );
+      if (!confirmConsent) return;
+      try {
+        const res = await apiService.updateUserConsent("app_submission", true);
+        setConsents(prev => ({
+          ...prev,
+          app_submission: { granted: res.granted, consent_ref: res.consent_ref }
+        }));
+      } catch (err: any) {
+        alert("Failed to grant consent: " + err.message);
+        return;
+      }
+    }
+    await handleAutoApply(jobId);
+  };
+
   // Filter remaining jobs (excluding top 3 opportunities unless View All is active)
   const topOpportunities = showAllOpportunities ? jobs : jobs.slice(0, 3);
   const remainingJobs = showAllOpportunities ? [] : jobs.slice(3);
@@ -711,14 +733,14 @@ export default function CandidateJobs() {
                             </button>
 
                             {job.apply_url && (
-                              <a
-                                href={job.apply_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex-1 flex items-center justify-center gap-1 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs transition cursor-pointer"
+                              <button
+                                onClick={() => ensureConsentAndApply(job.id)}
+                                disabled={applyingIds.has(job.id)}
+                                className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs transition cursor-pointer disabled:opacity-50"
                               >
-                                Apply <ArrowUpRight className="w-3.5 h-3.5" />
-                              </a>
+                                <Zap className={`w-3.5 h-3.5 ${applyingIds.has(job.id) ? "animate-pulse" : ""}`} />
+                                {applyingIds.has(job.id) ? "Applying..." : "Apply"}
+                              </button>
                             )}
                           </div>
                         </div>
@@ -726,6 +748,13 @@ export default function CandidateJobs() {
                     })}
                   </div>
                 </div>
+
+                {/* Section 3: Skill Gap Analysis */}
+                {skillGaps && skillGaps.length > 0 && (
+                  <div className="grid grid-cols-1">
+                    <MissingSkills skillGaps={skillGaps} />
+                  </div>
+                )}
 
                 {/* Section 4: Recommended Learning Path */}
                 {recommendations && (
@@ -774,8 +803,24 @@ export default function CandidateJobs() {
                   </div>
 
                   {filteredRemainingJobs.length === 0 ? (
-                    <div className="text-center py-10">
-                      <p className="text-sm text-slate-400">No additional ranked jobs match your filters.</p>
+                    <div className="text-center py-12 flex flex-col items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center">
+                        <Search className="w-6 h-6 text-blue-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-700 dark:text-slate-300">No additional matches for these filters</p>
+                        <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
+                          Try clearing filters or re-run the Job Agent to discover fresh listings
+                        </p>
+                      </div>
+                      <button
+                        onClick={triggerAgentRun}
+                        disabled={agentStatus === "running"}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition cursor-pointer disabled:opacity-50"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${agentStatus === "running" ? "animate-spin" : ""}`} />
+                        Re-Run Job Agent
+                      </button>
                     </div>
                   ) : (
                     <>
@@ -1083,28 +1128,24 @@ export default function CandidateJobs() {
                           </button>
                           
                           {job.apply_url && (
-                            <a
-                              href={job.apply_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex-1 flex items-center justify-center gap-1 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs transition cursor-pointer"
+                            <button
+                              onClick={() => ensureConsentAndApply(job.id)}
+                              disabled={isApplying}
+                              className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs transition cursor-pointer disabled:opacity-50"
                             >
-                              Apply Directly <ArrowUpRight className="w-3.5 h-3.5" />
-                            </a>
+                              <Zap className={`w-3.5 h-3.5 ${isApplying ? "animate-pulse" : ""}`} />
+                              {isApplying ? "Applying..." : "Apply"}
+                            </button>
                           )}
                         </div>
 
                         <button
-                          onClick={() => handleAutoApply(job.id)}
-                          disabled={isApplying || !consents.app_submission?.granted}
-                          className={`w-full py-2 flex items-center justify-center gap-1.5 font-bold rounded-xl text-xs transition cursor-pointer ${
-                            consents.app_submission?.granted
-                              ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
-                              : "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
-                          }`}
+                          onClick={() => ensureConsentAndApply(job.id)}
+                          disabled={isApplying}
+                          className="w-full py-2 flex items-center justify-center gap-1.5 font-bold rounded-xl text-xs bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white transition cursor-pointer disabled:opacity-50"
                         >
                           <Zap className={`w-3.5 h-3.5 ${isApplying ? "animate-pulse" : ""}`} />
-                          {isApplying ? "Queuing Apply..." : consents.app_submission?.granted ? "Queue Auto-Apply" : "Auto-Apply (Needs Consent)"}
+                          {isApplying ? "Queuing Apply..." : "Queue Auto-Apply"}
                         </button>
                       </div>
                     </div>
@@ -1223,28 +1264,24 @@ export default function CandidateJobs() {
                           </button>
                           
                           {jobItem.source_url && (
-                            <a
-                              href={jobItem.source_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex-1 flex items-center justify-center gap-1 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs transition cursor-pointer"
+                            <button
+                              onClick={() => ensureConsentAndApply(String(jobItem.id))}
+                              disabled={isApplying}
+                              className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs transition cursor-pointer disabled:opacity-50"
                             >
-                              Apply Directly <ArrowUpRight className="w-3.5 h-3.5" />
-                            </a>
+                              <Zap className={`w-3.5 h-3.5 ${isApplying ? "animate-pulse" : ""}`} />
+                              {isApplying ? "Applying..." : "Apply"}
+                            </button>
                           )}
                         </div>
 
                         <button
-                          onClick={() => handleAutoApply(String(jobItem.id))}
-                          disabled={isApplying || !consents.app_submission?.granted}
-                          className={`w-full py-2 flex items-center justify-center gap-1.5 font-bold rounded-xl text-xs transition cursor-pointer ${
-                            consents.app_submission?.granted
-                              ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
-                              : "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
-                          }`}
+                          onClick={() => ensureConsentAndApply(String(jobItem.id))}
+                          disabled={isApplying}
+                          className="w-full py-2 flex items-center justify-center gap-1.5 font-bold rounded-xl text-xs bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white transition cursor-pointer disabled:opacity-50"
                         >
                           <Zap className={`w-3.5 h-3.5 ${isApplying ? "animate-pulse" : ""}`} />
-                          {isApplying ? "Queuing Apply..." : consents.app_submission?.granted ? "Queue Auto-Apply" : "Auto-Apply (Needs Consent)"}
+                          {isApplying ? "Queuing Apply..." : "Queue Auto-Apply"}
                         </button>
                       </div>
                     </div>
@@ -1350,16 +1387,14 @@ export default function CandidateJobs() {
               </Button>
 
               {selectedJob.apply_url && (
-                <a
-                  href={selectedJob.apply_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1"
+                <Button
+                  onClick={() => ensureConsentAndApply(selectedJob.id)}
+                  disabled={applyingIds.has(selectedJob.id)}
+                  className="flex-1 flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs transition"
                 >
-                  <Button className="w-full flex items-center justify-center gap-1.5">
-                    Apply Directly <ArrowUpRight className="w-4 h-4" />
-                  </Button>
-                </a>
+                  <Zap className={`w-4 h-4 ${applyingIds.has(selectedJob.id) ? "animate-pulse" : ""}`} />
+                  <span>{applyingIds.has(selectedJob.id) ? "Applying..." : "Apply"}</span>
+                </Button>
               )}
             </div>
           </div>

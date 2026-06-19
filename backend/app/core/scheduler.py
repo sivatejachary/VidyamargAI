@@ -3,12 +3,12 @@ Autonomous Scheduler — periodically runs background agents and workers
 using APScheduler. Decouples background processes from web request flows.
 """
 import logging
-from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.workers.discovery_worker import run_discovery_all_candidates
 
 logger = logging.getLogger("app.scheduler")
 
-scheduler = BackgroundScheduler()
+scheduler = AsyncIOScheduler()
 
 
 def start_scheduler():
@@ -23,7 +23,7 @@ def start_scheduler():
             replace_existing=True
         )
         scheduler.start()
-        logger.info("APScheduler background scheduler started and discovery worker registered")
+        logger.info("APScheduler AsyncIOScheduler started and discovery worker registered")
     except Exception as e:
         logger.error(f"Failed to start APScheduler: {e}")
 
@@ -32,4 +32,4 @@ def shutdown_scheduler():
     """Gracefully shuts down the background scheduler."""
     if scheduler.running:
         scheduler.shutdown()
-        logger.info("APScheduler background scheduler shut down")
+        logger.info("APScheduler AsyncIOScheduler shut down")

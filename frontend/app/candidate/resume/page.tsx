@@ -641,10 +641,41 @@ export default function ResumeBuilder() {
 
   if (loading) {
     return (
-      <div className="flex-1 min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 size={36} className="animate-spin text-slate-800 dark:text-white" />
-          <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">Loading Resume Dashboard...</span>
+      <div className="flex-1 min-h-screen bg-background text-foreground p-6 md:p-8 font-sans">
+        {/* Skeleton Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div>
+            <div className="h-8 w-56 bg-muted rounded-xl animate-pulse" />
+            <div className="h-4 w-80 bg-muted rounded-lg animate-pulse mt-2" />
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-28 bg-muted rounded-xl animate-pulse" />
+            <div className="h-9 w-36 bg-muted rounded-xl animate-pulse" />
+          </div>
+        </div>
+        {/* Skeleton Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="bg-card border border-border rounded-2xl p-6 animate-pulse">
+              <div className="h-4 w-24 bg-muted rounded mb-4" />
+              <div className="h-10 w-16 bg-muted rounded-xl mb-2" />
+              <div className="h-3 w-32 bg-muted rounded" />
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-card border border-border rounded-2xl p-6 h-64 animate-pulse">
+            <div className="h-4 w-36 bg-muted rounded mb-4" />
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map(i => <div key={i} className="h-3 bg-muted rounded" />)}
+            </div>
+          </div>
+          <div className="bg-card border border-border rounded-2xl p-6 h-64 animate-pulse">
+            <div className="h-4 w-36 bg-muted rounded mb-4" />
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map(i => <div key={i} className="h-3 bg-muted rounded" />)}
+            </div>
+          </div>
         </div>
       </div>
     );

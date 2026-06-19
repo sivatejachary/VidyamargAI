@@ -5,6 +5,8 @@ from typing import Optional, Literal, Any
 from pydantic import BaseModel
 
 
+from datetime import datetime
+
 class MCPChatMessage(BaseModel):
     role: Literal["user", "assistant"]
     content: str
@@ -15,6 +17,34 @@ class MCPChatRequest(BaseModel):
     mode: Literal["resume", "skill-lab", "job-agent", "general"] = "general"
     history: list[MCPChatMessage] = []
     context_hint: Optional[str] = None  # Extra context from the frontend widget
+    session_id: Optional[str] = None
+
+
+class MCPChatSessionResponse(BaseModel):
+    id: str
+    title: str
+    mode: str
+    is_pinned: bool
+    is_archived: bool
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class MCPChatSessionUpdate(BaseModel):
+    title: Optional[str] = None
+    is_pinned: Optional[bool] = None
+    is_archived: Optional[bool] = None
+
+
+class MCPChatSessionListResponse(BaseModel):
+    sessions: list[MCPChatSessionResponse]
+    total_count: int
+    page: int
+    pages: int
+
 
 
 class ActionCard(BaseModel):
@@ -43,6 +73,7 @@ class MCPChatResponse(BaseModel):
     actions: list[dict] = []  # backward compat with old /chat/copilot
     intent: Optional[str] = None
     agent_used: Optional[str] = None
+    session_id: Optional[str] = None
 
 
 class HAQItemResponse(BaseModel):

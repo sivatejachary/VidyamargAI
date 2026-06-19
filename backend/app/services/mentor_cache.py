@@ -1,5 +1,6 @@
 import json
 import logging
+import datetime
 from app.core.config import settings
 
 logger = logging.getLogger("app.mentor_cache")
@@ -24,6 +25,11 @@ def _get_redis():
                 logger.warning(f"Redis not available for mentor cache: {e}")
     return _redis
 
+def serialize_datetime(obj):
+    if isinstance(obj, (datetime.datetime, datetime.date)):
+        return obj.isoformat()
+    raise TypeError(f"Type {type(obj)} not serializable")
+
 def get_cached_mentor_profile(user_id: int):
     r = _get_redis()
     key = f"mentor_profile_cache:{user_id}"
@@ -43,11 +49,14 @@ def set_cached_mentor_profile(user_id: int, data: dict):
     ttl = 60 * 60 * 24
     if r:
         try:
-            r.setex(key, ttl, json.dumps(data))
+            r.setex(key, ttl, json.dumps(data, default=serialize_datetime))
             return
         except Exception as e:
             logger.error(f"Redis cache error writing user {user_id}: {e}")
-    _LOCAL_MENTOR_CACHE[user_id] = data
+    try:
+        _LOCAL_MENTOR_CACHE[user_id] = json.loads(json.dumps(data, default=serialize_datetime))
+    except Exception:
+        _LOCAL_MENTOR_CACHE[user_id] = data
 
 def invalidate_mentor_profile(user_id: int):
     r = _get_redis()
@@ -58,4 +67,7 @@ def invalidate_mentor_profile(user_id: int):
         except Exception as e:
             logger.error(f"Redis cache error deleting user {user_id}: {e}")
     if user_id in _LOCAL_MENTOR_CACHE:
-        del _LOCAL_MENTOR_CACHE[user_id]
+        try:
+            del _LOCAL_MENTOR_CACHE[user_id]
+        except KeyError:
+            pass

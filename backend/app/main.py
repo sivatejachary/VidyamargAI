@@ -133,9 +133,15 @@ def init_db_safely():
                     totalmodules INTEGER DEFAULT 0,
                     level VARCHAR DEFAULT 'Beginner',
                     status VARCHAR DEFAULT 'published',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """))
+            try:
+                conn.execute(text("ALTER TABLE courses ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"))
+            except Exception as e:
+                print(f"Failed to add column updated_at to courses: {e}")
+
             conn.execute(text(f"""
                 CREATE TABLE IF NOT EXISTS modules (
                     id VARCHAR PRIMARY KEY,
@@ -439,6 +445,41 @@ def init_db_safely():
                 )
             """))
             conn.execute(text("CREATE INDEX IF NOT EXISTS idx_user_career_profile_user ON user_career_profiles(user_id)"))
+
+            # mcp_chat_sessions table
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS mcp_chat_sessions (
+                    id VARCHAR PRIMARY KEY,
+                    user_id INTEGER NOT NULL,
+                    title VARCHAR NOT NULL,
+                    mode VARCHAR DEFAULT 'general',
+                    is_pinned BOOLEAN DEFAULT false,
+                    is_archived BOOLEAN DEFAULT false,
+                    is_deleted BOOLEAN DEFAULT false,
+                    deleted_at TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_mcp_chat_session_user ON mcp_chat_sessions(user_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_mcp_chat_session_pinned_updated ON mcp_chat_sessions(is_pinned, updated_at DESC)"))
+
+            # mcp_chat_messages table
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS mcp_chat_messages (
+                    id VARCHAR PRIMARY KEY,
+                    session_id VARCHAR NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    sender VARCHAR NOT NULL,
+                    text TEXT NOT NULL,
+                    actions JSONB DEFAULT '[]'::jsonb,
+                    action_cards JSONB DEFAULT '[]'::jsonb,
+                    memory_updated BOOLEAN DEFAULT false,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_mcp_chat_message_session ON mcp_chat_messages(session_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_mcp_chat_message_user ON mcp_chat_messages(user_id)"))
 
 
             # Archiving migrations for existing tables

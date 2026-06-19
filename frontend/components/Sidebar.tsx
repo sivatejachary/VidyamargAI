@@ -19,9 +19,17 @@ export default function Sidebar({ portal }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { logout, fullName, email } = useAuthStore();
-  const [theme, setTheme] = useState<"dark" | "light">("light");
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    // Read synchronously from localStorage to prevent theme flicker on navigation
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("theme");
+      if (saved === "dark" || saved === "light") return saved;
+    }
+    return "light";
+  });
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
 
   useEffect(() => {
     const fetchPreferences = async () => {
@@ -407,7 +415,10 @@ export default function Sidebar({ portal }: SidebarProps) {
 
       {/* Mobile Bottom Navigation Bar for Candidate */}
       {portal === "candidate" && (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-app-surface border-t border-app-border flex justify-around items-center h-16 px-2 w-full font-sans shadow-[0_-2px_10px_rgba(0,0,0,0.05)] dark:shadow-[0_-2px_10px_rgba(0,0,0,0.2)]">
+        <nav
+          className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-app-surface border-t border-app-border flex justify-around items-center px-2 w-full font-sans shadow-[0_-2px_10px_rgba(0,0,0,0.05)] dark:shadow-[0_-2px_10px_rgba(0,0,0,0.2)]"
+          style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom, 16px))", height: "calc(64px + env(safe-area-inset-bottom, 0px))" }}
+        >
           {[
             { name: "Resume", href: "/candidate/resume", icon: FileText },
             { name: "Jobs", href: "/candidate/jobs", icon: Briefcase },
@@ -422,7 +433,7 @@ export default function Sidebar({ portal }: SidebarProps) {
                 key={tab.name}
                 href={tab.href}
                 aria-current={isActive ? "page" : undefined}
-                className={`flex flex-col items-center justify-center flex-1 h-full py-1 transition-all ${
+                className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${
                   isActive
                     ? "text-blue-600 dark:text-blue-400"
                     : "text-app-text-muted hover:text-app-text"

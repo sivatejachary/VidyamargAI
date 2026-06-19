@@ -167,3 +167,92 @@ def recover_queued_jobs_on_startup():
                     fallback_executor.submit(run_agent_flow_sync_wrapper, run.id, run.candidate_id)
     except Exception as e:
         logger.error(f"Error recovering queued jobs on startup: {e}")
+
+
+def run_auto_apply_sync_wrapper(candidate_id: int, db_job_id: int):
+    """Sync wrapper that runs the async auto_apply process."""
+    from app.core.database import SessionLocal
+    from app.models.models import Application, Job, Candidate, CandidateResume
+    from app.agents.application_agent import ApplicationAgent
+    import asyncio
+    
+    logger.info(f"Running auto apply task for candidate_id={candidate_id} db_job_id={db_job_id}")
+    
+    # 1. Update status to "applying" in DB
+    try:
+        with SessionLocal() as db:
+            app = db.query(Application).filter(
+                Application.candidate_id == candidate_id,
+                Application.job_id == db_job_id
+            ).first()
+            if app:
+                app.status = "applying"
+                db.commit()
+    except Exception as e:
+        logger.error(f"Failed to update status to applying: {e}")
+
+    # 2. Run the application agent
+    try:
+        with SessionLocal() as db:
+            job = db.query(Job).filter(Job.id == db_job_id).first()
+            candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+            if not job or not candidate:
+                raise ValueError("Job or Candidate not found in DB")
+            
+            # Find candidate's latest resume URL if available
+            resume = db.query(CandidateResume).filter(CandidateResume.candidate_id == candidate_id).order_by(CandidateResume.uploaded_at.desc()).first()
+            
+            # Build job dict
+            job_dict = {
+                "id": job.id,
+                "title": job.title,
+                "company": job.company.name if job.company else job.department,
+                "description": job.description,
+                "apply_url": job.sources[0].source_url if job.sources else f"https://example.com/apply/{job.id}"
+            }
+            
+            agent = ApplicationAgent()
+            # Run the apply coroutine
+            result = asyncio.run(agent.apply(candidate_id, job_dict))
+            
+            # Update Application status to "applied" or failed
+            app = db.query(Application).filter(
+                Application.candidate_id == candidate_id,
+                Application.job_id == db_job_id
+            ).first()
+            if app:
+                if result.get("status") == "success":
+                    app.status = "applied"
+                else:
+                    app.status = "failed"
+                db.commit()
+                
+    except Exception as e:
+        logger.error(f"Error in run_auto_apply_sync_wrapper: {e}")
+        try:
+            with SessionLocal() as db:
+                app = db.query(Application).filter(
+                    Application.candidate_id == candidate_id,
+                    Application.job_id == db_job_id
+                ).first()
+                if app:
+                    app.status = "failed"
+                    db.commit()
+        except Exception:
+            pass
+
+
+def enqueue_auto_apply(candidate_id: int, db_job_id: int) -> str:
+    """Enqueues an auto apply task using Redis default queue or ThreadPoolExecutor fallback."""
+    if is_redis_connected():
+        try:
+            default_queue.enqueue(run_auto_apply_sync_wrapper, candidate_id, db_job_id)
+            logger.info(f"Successfully enqueued auto apply to RQ default queue.")
+            return "queued_rq"
+        except Exception as exc:
+            logger.warning(f"Failed to enqueue to Redis RQ: {exc}. Falling back to DB queue.")
+            
+    fallback_executor.submit(run_auto_apply_sync_wrapper, candidate_id, db_job_id)
+    logger.info(f"Successfully enqueued auto apply to local ThreadPoolExecutor fallback queue.")
+    return "queued_fallback"
+

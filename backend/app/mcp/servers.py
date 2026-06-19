@@ -44,11 +44,22 @@ def get_fallback_embedding(text_content: str) -> List[float]:
     return vector
 
 
+async def get_semantic_embedding(text_content: str) -> List[float]:
+    """Generates 768-dimensional semantic embedding using the EmbeddingService."""
+    from app.services.embedding_service import embedding_service
+    return await embedding_service.get_embedding(text_content)
+
+
 def cosine_similarity(v1: List[float], v2: List[float]) -> float:
-    """Calculates cosine similarity between two unit vectors (simple dot product)."""
-    if len(v1) != len(v2) or len(v1) == 0:
+    """Calculates cosine similarity between two vectors."""
+    if not v1 or not v2 or len(v1) != len(v2):
         return 0.0
-    return sum(a * b for a, b in zip(v1, v2))
+    dot_product = sum(x * y for x, y in zip(v1, v2))
+    norm_v1 = math.sqrt(sum(x * x for x in v1))
+    norm_v2 = math.sqrt(sum(x * x for x in v2))
+    if norm_v1 == 0.0 or norm_v2 == 0.0:
+        return 0.0
+    return dot_product / (norm_v1 * norm_v2)
 
 
 # --------------------------------------------------------------------------
@@ -215,17 +226,17 @@ class VectorServer(BaseMCPServer):
     server_name = "mcp-server-vector"
     required_permission = "read"
 
-    def embed_text(self, user_id: int, arguments: Dict[str, Any], db: Session) -> Dict[str, Any]:
+    async def embed_text(self, user_id: int, arguments: Dict[str, Any], db: Session) -> Dict[str, Any]:
         """Generates embedding vector for input text."""
         text_content = arguments.get("text", "")
-        vector = get_fallback_embedding(text_content)
+        vector = await get_semantic_embedding(text_content)
         return {"embedding": vector}
 
-    def upsert_embedding(self, user_id: int, arguments: Dict[str, Any], db: Session) -> Dict[str, Any]:
+    async def upsert_embedding(self, user_id: int, arguments: Dict[str, Any], db: Session) -> Dict[str, Any]:
         """Stores a vector embedding chunk in database."""
         text_content = arguments.get("text", "")
         chunk_type = arguments.get("chunk_type", "generic")
-        vector = get_fallback_embedding(text_content)
+        vector = await get_semantic_embedding(text_content)
         
         chunk = VectorMemoryChunk(
             user_id=user_id,
@@ -238,11 +249,11 @@ class VectorServer(BaseMCPServer):
         db.commit()
         return {"status": "success", "chunk_id": chunk.id}
 
-    def search_similar_jobs(self, user_id: int, arguments: Dict[str, Any], db: Session) -> Dict[str, Any]:
+    async def search_similar_jobs(self, user_id: int, arguments: Dict[str, Any], db: Session) -> Dict[str, Any]:
         """ANN vector similarity search across active jobs."""
         query_text = arguments.get("query", "")
         top_k = arguments.get("top_k", 5)
-        query_vector = get_fallback_embedding(query_text)
+        query_vector = await get_semantic_embedding(query_text)
         
         # Load all active jobs from DB
         jobs = db.query(Job).filter(Job.status == "active").all()
@@ -250,7 +261,7 @@ class VectorServer(BaseMCPServer):
         for job in jobs:
             # Combine title and description for matching
             job_text = f"{job.title} {job.description} {job.required_skills}"
-            job_vector = get_fallback_embedding(job_text)
+            job_vector = await get_semantic_embedding(job_text)
             score = cosine_similarity(query_vector, job_vector)
             scored_jobs.append((score, job))
             
@@ -267,17 +278,17 @@ class VectorServer(BaseMCPServer):
             })
         return {"matches": results}
 
-    def search_similar_candidates(self, user_id: int, arguments: Dict[str, Any], db: Session) -> Dict[str, Any]:
+    async def search_similar_candidates(self, user_id: int, arguments: Dict[str, Any], db: Session) -> Dict[str, Any]:
         """Reverse matching: search candidates matching a job description."""
         job_text = arguments.get("job_description", "")
         top_k = arguments.get("top_k", 5)
-        job_vector = get_fallback_embedding(job_text)
+        job_vector = await get_semantic_embedding(job_text)
         
         candidates = db.query(Candidate).all()
         scored_cands = []
         for cand in candidates:
             cand_text = f"{cand.skills} {cand.summary} {cand.education}"
-            cand_vector = get_fallback_embedding(cand_text)
+            cand_vector = await get_semantic_embedding(cand_text)
             score = cosine_similarity(job_vector, cand_vector)
             scored_cands.append((score, cand))
             
@@ -338,10 +349,11 @@ class LLMServer(BaseMCPServer):
         
         return {"response": response, "model": model}
 
-    def embed(self, user_id: int, arguments: Dict[str, Any], db: Session) -> Dict[str, Any]:
+    async def embed(self, user_id: int, arguments: Dict[str, Any], db: Session) -> Dict[str, Any]:
         """Generate embedding vector."""
         text_content = arguments.get("text", "")
-        return {"embedding": get_fallback_embedding(text_content)}
+        vector = await get_semantic_embedding(text_content)
+        return {"embedding": vector}
 
     def classify(self, user_id: int, arguments: Dict[str, Any], db: Session) -> Dict[str, Any]:
         """Intent / Category Classification router tool."""

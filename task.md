@@ -67,8 +67,21 @@
 - [x] Explicit Tool Auditing & Async Batch Persistence in `backend/app/services/mcp_audit.py`
 - [x] Centralized Circuit Breaker with Redis Cache in `backend/app/mcp/base.py`
 - [x] Decorate MCP Tools in `resume_tools.py`, `skilllab_tools.py`, and `job_tools.py`
-- [x] Postgres-Backed Task Queue Fallback with ThreadPoolExecutor limit inside `backend/app/core/queue.py`
+- [x] Backend Database Models & Migrations
+  - [x] Add `MCPChatSession` and `MCPChatMessage` SQLAlchemy models to `backend/app/models/models.py`
+  - [x] Add table creation SQL schema to `backend/app/main.py`
 - [x] Admin Metrics Endpoint inside `backend/app/api/endpoints.py`
 - [x] Alerting Rules Engine inside `backend/app/services/alerting.py`
 - [x] Hook background worker startups in `backend/app/main.py`
 - [x] Write and execute the 5 simulation & verification scripts inside `backend/scratch/`
+
+## Phase 7 — Performance Optimizations and Resiliency Fixes
+- [x] Database: Ensure `updated_at` column in `courses` table and apply migration
+- [x] Caching: Implement curriculum caching and N+1 query optimization in `get_course_curriculum`
+- [x] Caching: Implement resume analysis caching in `resume_cache.py` and integrate it into `/candidates/resume/analyze`
+- [x] Caching: Invalidate resume analysis cache in `update_candidate_profile`, `upload_resume`, and `delete_candidate_resume`
+- [x] AI: Implement resilient Gemini API caller with auto-fallback to NVIDIA API
+- [x] Cache Serializer: Add custom datetime serialization support to `set_cached_mentor_profile`
+- [x] Verification: Write and run verification tests
+
+

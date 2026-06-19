@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import Sidebar from "@/components/Sidebar";
+import HumanActionQueue from "@/components/HumanActionQueue";
 
 export default function CandidateLayout({
   children,
@@ -40,6 +41,7 @@ export default function CandidateLayout({
       <main className="flex-1 h-layout-main md:h-screen overflow-y-auto bg-app-bg text-app-text transition-colors duration-300 font-sans mt-16 md:mt-0 pb-16 md:pb-0">
         {children}
       </main>
+      <HumanActionQueue />
     </div>
   );
 }

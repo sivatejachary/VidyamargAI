@@ -23,29 +23,42 @@ async def run_discovery_all_candidates():
     """Runs job discovery for all active candidates in the system."""
     logger.info("Starting background job discovery for all candidates")
     db = SessionLocal()
+    candidates_info = []
     try:
         candidates = db.query(Candidate).all()
         for candidate in candidates:
-            try:
-                await discover_for_candidate(candidate, db)
-            except Exception as e:
-                logger.error(f"Discovery failed for candidate {candidate.id}: {e}")
+            queries = build_queries(candidate)
+            skills = [s.strip() for s in (candidate.skills or "").split(",") if s.strip()]
+            candidates_info.append({
+                "id": candidate.id,
+                "queries": queries,
+                "skills": skills,
+            })
+    except Exception as e:
+        logger.error(f"Error querying candidates: {e}")
     finally:
         db.close()
+
+    for info in candidates_info:
+        try:
+            # Execute external crawls offline, without holding any DB connection active
+            discovered_jobs = await discover_jobs_network(info["id"], info["queries"], info["skills"])
+            
+            # Ingest and match results in a fresh, quick DB session
+            if discovered_jobs:
+                await save_and_match_discovered_jobs(info["id"], info["skills"], discovered_jobs)
+        except Exception as e:
+            logger.error(f"Discovery failed for candidate {info['id']}: {e}")
+            
     logger.info("Background job discovery cycle completed")
 
 
-async def discover_for_candidate(candidate: Candidate, db: Session):
-    """
-    Tiered discovery — tries each tier until sufficient jobs are found.
-    """
-    # Build search queries
-    queries = build_queries(candidate)
-    skills = [s.strip() for s in (candidate.skills or "").split(",") if s.strip()]
+async def discover_jobs_network(candidate_id: int, queries: list, skills: list) -> list:
+    """Performs Tier 1 and Tier 2 searches over the network without DB dependencies."""
     all_discovered = []
 
     # TIER 1: Direct APIs (always try first — free, reliable, no rate limits)
-    logger.info(f"Candidate {candidate.id} | Tier 1 Discovery started")
+    logger.info(f"Candidate {candidate_id} | Tier 1 Discovery started")
     t1_tasks = [
         fetch_greenhouse_jobs(queries),
         fetch_lever_jobs(queries),
@@ -56,63 +69,77 @@ async def discover_for_candidate(candidate: Candidate, db: Session):
         if isinstance(r, list):
             all_discovered.extend(r)
             
-    logger.info(f"Candidate {candidate.id} | Tier 1 found {len(all_discovered)} jobs")
+    logger.info(f"Candidate {candidate_id} | Tier 1 found {len(all_discovered)} jobs")
 
     # TIER 2: Google Discovery (Serper / fallback search)
-    # Triggered if we didn't find enough jobs from Tier 1
     if len(all_discovered) < 20:
-        logger.info(f"Candidate {candidate.id} | Tier 2 Discovery triggered")
+        logger.info(f"Candidate {candidate_id} | Tier 2 Discovery triggered")
         try:
             google_jobs = await search_google_jobs(queries)
             all_discovered.extend(google_jobs)
-            logger.info(f"Candidate {candidate.id} | Tier 2 found {len(google_jobs)} jobs")
+            logger.info(f"Candidate {candidate_id} | Tier 2 found {len(google_jobs)} jobs")
         except Exception as e:
             logger.warning(f"Tier 2 Google discovery failed: {e}")
 
-    # Deduplicate based on apply url / stable_id
+    # Deduplicate based on stable_id
     unique_jobs = {}
     for j in all_discovered:
         unique_jobs[j.stable_id] = j
 
-    logger.info(f"Candidate {candidate.id} | Ingesting {len(unique_jobs)} discovered jobs to pool")
-    
-    # Ingest into DB
-    saved_count = 0
-    for stable_id, job in unique_jobs.items():
-        # Check if already in pool
-        existing = db.query(JobPool).filter(JobPool.stable_id == stable_id).first()
-        if not existing:
-            new_job = JobPool(
-                stable_id=stable_id,
-                title=job.title,
-                company=job.company,
-                location=job.location,
-                experience=job.experience,
-                skills=job.skills,
-                apply_url=job.apply_url,
-                posted_date=job.posted_date,
-                source=job.source,
-                description=job.description,
-                work_mode=job.work_mode,
-                company_logo=job.company_logo,
-            )
-            db.add(new_job)
-            saved_count += 1
-            
-    if saved_count > 0:
-        db.commit()
-        logger.info(f"Candidate {candidate.id} | Saved {saved_count} new unique jobs")
+    return list(unique_jobs.values())
+
+
+async def save_and_match_discovered_jobs(candidate_id: int, candidate_skills: list, unique_jobs: list):
+    """Ingests discovered jobs and runs matching scores in a fast, isolated session."""
+    db = SessionLocal()
+    try:
+        candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+        if not candidate:
+            logger.warning(f"Candidate {candidate_id} not found when saving jobs")
+            return
+
+        logger.info(f"Candidate {candidate_id} | Ingesting {len(unique_jobs)} discovered jobs to pool")
         
-        # Trigger matching / scoring
-        await match_pool_jobs_for_candidate(candidate, db)
+        saved_count = 0
+        for job in unique_jobs:
+            # Check if already in pool
+            existing = db.query(JobPool).filter(JobPool.stable_id == job.stable_id).first()
+            if not existing:
+                new_job = JobPool(
+                    stable_id=job.stable_id,
+                    title=job.title,
+                    company=job.company,
+                    location=job.location,
+                    experience=job.experience,
+                    skills=job.skills,
+                    apply_url=job.apply_url,
+                    posted_date=job.posted_date,
+                    source=job.source,
+                    description=job.description,
+                    work_mode=job.work_mode,
+                    company_logo=job.company_logo,
+                )
+                db.add(new_job)
+                saved_count += 1
+                
+        if saved_count > 0:
+            db.commit()
+            logger.info(f"Candidate {candidate_id} | Saved {saved_count} new unique jobs")
+            
+        # Trigger matching / scoring inside this active session
+        await match_pool_jobs_for_candidate(candidate, db, candidate_skills)
+            
+    except Exception as e:
+        logger.error(f"Error in save_and_match_discovered_jobs for candidate {candidate_id}: {e}")
+        db.rollback()
+    finally:
+        db.close()
 
 
-async def match_pool_jobs_for_candidate(candidate: Candidate, db: Session):
+async def match_pool_jobs_for_candidate(candidate: Candidate, db: Session, candidate_skills: list):
     """
     Computes matching scores for all jobs in the pool against this candidate.
     """
-    from app.agents.job_supervisor_agent import JobSupervisorAgent
-    
     unmatched_jobs = db.query(JobPool).outerjoin(
         JobPoolMatch, 
         (JobPoolMatch.job_pool_id == JobPool.id) & (JobPoolMatch.candidate_id == candidate.id)
@@ -122,8 +149,6 @@ async def match_pool_jobs_for_candidate(candidate: Candidate, db: Session):
         return
         
     logger.info(f"Candidate {candidate.id} | Computing matches for {len(unmatched_jobs)} new jobs")
-    
-    candidate_skills = [s.strip().lower() for s in (candidate.skills or "").split(",") if s.strip()]
     
     for job in unmatched_jobs:
         # Quick intersection match score calculation (fast, no LLM required for bulk pool)
@@ -145,7 +170,6 @@ async def match_pool_jobs_for_candidate(candidate: Candidate, db: Session):
             score = 65.0 if any(r.lower() in job.title.lower() for r in ["engineer", "developer"]) else 50.0
             
         # Composite Opportunity Score calculation (Phase 10/11)
-        # base score + some company quality factor + freshness
         opp_score = score
         # Freshness: +10 if created in last 24h
         opp_score += 10.0

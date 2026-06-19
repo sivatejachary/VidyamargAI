@@ -19,6 +19,13 @@ class ApplicationAgent:
             return {"status": "skipped", "message": "No apply URL found"}
 
         from app.core.browser_pool import browser_pool
+        if browser_pool.is_simulation:
+            return {
+                "status": "failed",
+                "message": "Browser automation unavailable (Simulation mode active)",
+                "reason": "Browser unavailable"
+            }
+
         page = await browser_pool.get_new_page(candidate_id)
         try:
             logger.info(f"Opening apply page for job: {job.get('title', 'Unknown')} at {job.get('company', 'Unknown')}")

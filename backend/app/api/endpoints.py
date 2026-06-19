@@ -21,8 +21,10 @@ from app.models.models import (
     Company, Recruiter, LinkedInHiringPost, JobSource, JobMatch, SearchHistory, SavedJob,
     JobAgentRun, JobAgentLog, TelegramSource, CourseProgress, LearningEvent,
     VideoAnalytics, CourseAnalytics, OTP,
-    AIMentorSession, AIMentorMessage, AIMentorStudyPlan, AIMentorInsight, AIMentorArtifact, AIMentorUsage, UserCareerProfile, UserConsent
+    AIMentorSession, AIMentorMessage, AIMentorStudyPlan, AIMentorInsight, AIMentorArtifact, AIMentorUsage, UserCareerProfile, UserConsent,
+    MCPChatSession, MCPChatMessage
 )
+from fastapi.responses import StreamingResponse
 from app.services.mentor_profile import (
     get_learning_health, get_risk_analysis, get_smart_recommendations, trigger_background_insights
 )
@@ -99,6 +101,30 @@ import app.services.job_cache as job_cache
 
 # Global live-job store keyed by stable_id string (for save/apply lookup)
 _LIVE_JOB_STORE: dict = {}
+
+# Per-user resume upload rate limiting: {user_id: [timestamp, ...]}
+# Max 3 resume uploads per hour per user
+import time as _time
+_RESUME_UPLOAD_TIMESTAMPS: dict = {}
+_RESUME_UPLOAD_MAX = 3
+_RESUME_UPLOAD_WINDOW = 3600  # 1 hour in seconds
+
+def _check_resume_upload_rate_limit(user_id: int) -> None:
+    """Raises HTTPException(429) if the user has exceeded the upload rate limit."""
+    now = _time.time()
+    window_start = now - _RESUME_UPLOAD_WINDOW
+    timestamps = _RESUME_UPLOAD_TIMESTAMPS.get(user_id, [])
+    # Evict old timestamps outside the window
+    timestamps = [ts for ts in timestamps if ts > window_start]
+    if len(timestamps) >= _RESUME_UPLOAD_MAX:
+        oldest = timestamps[0]
+        retry_in = int(_RESUME_UPLOAD_WINDOW - (now - oldest))
+        raise HTTPException(
+            status_code=429,
+            detail=f"Resume upload rate limit exceeded. You can upload at most {_RESUME_UPLOAD_MAX} resumes per hour. Please retry in {retry_in // 60} min {retry_in % 60} sec."
+        )
+    timestamps.append(now)
+    _RESUME_UPLOAD_TIMESTAMPS[user_id] = timestamps
 
 
 def fetch_live_indian_jobs_yahoo(skills: List[str]) -> List[dict]:
@@ -551,129 +577,157 @@ def run_job_collection_agent_sync(db: Session):
     if not skills_list:
         skills_list = ["python", "react", "fastapi", "sql"]
         
+    db.close() # Close session during network operations
+    
     raw_jobs = fetch_live_indian_jobs_yahoo(skills_list)
     raw_posts = fetch_linkedin_hiring_posts(skills_list)
     
+    # Check existing posts before AI processing to avoid checking out DB connections during network calls
+    post_urls = [p["url"] for p in raw_posts]
+    existing_urls = set()
+    if post_urls:
+        from app.core.database import SessionLocal
+        db_temp = SessionLocal()
+        try:
+            rows = db_temp.query(LinkedInHiringPost.post_url).filter(LinkedInHiringPost.post_url.in_(post_urls)).all()
+            existing_urls = {r[0] for r in rows}
+        except Exception as e:
+            logger.error(f"Error checking existing posts in database: {e}")
+        finally:
+            db_temp.close()
+
+    new_posts = [p for p in raw_posts if p["url"] not in existing_urls]
+    
+    # Process AI extraction offline, completely disconnected from DB connection pool
+    processed_posts = []
+    for post in new_posts:
+        try:
+            details = extract_hiring_post_details_ai(post["raw_text"])
+            if details.get("is_hiring") and not details.get("is_spam_or_fake"):
+                processed_posts.append((post, details))
+        except Exception as e:
+            logger.error(f"Error extracting hiring post details for {post['url']}: {e}")
+
     hiring_posts_count = 0
     duplicates_count = 0
     
-    for post in raw_posts:
-        existing_post = db.query(LinkedInHiringPost).filter(LinkedInHiringPost.post_url == post["url"]).first()
-        if existing_post:
-            continue
-            
-        details = extract_hiring_post_details_ai(post["raw_text"])
-        if not details.get("is_hiring") or details.get("is_spam_or_fake"):
-            continue
-            
-        company_name = details.get("company", "Tech Company").strip()
-        company = db.query(Company).filter(Company.name.ilike(company_name)).first()
-        if not company:
-            company = Company(name=company_name)
-            db.add(company)
-            db.commit()
-            db.refresh(company)
-            
-        recruiter_name = details.get("recruiter_name")
-        recruiter = None
-        if recruiter_name:
-            recruiter = db.query(Recruiter).filter(Recruiter.name == recruiter_name, Recruiter.company_id == company.id).first()
-            if not recruiter:
-                recruiter = Recruiter(name=recruiter_name, profile_url=details.get("recruiter_profile_url"), company_id=company.id)
-                db.add(recruiter)
-                db.commit()
-                db.refresh(recruiter)
+    from app.core.database import SessionLocal
+    db = SessionLocal()
+    try:
+        for post, details in processed_posts:
+            # Recheck existence inside the write block in case of concurrency
+            existing_post = db.query(LinkedInHiringPost).filter(LinkedInHiringPost.post_url == post["url"]).first()
+            if existing_post:
+                continue
                 
-        hiring_post_record = LinkedInHiringPost(
-            post_url=post["url"],
-            raw_text=post["raw_text"],
-            extracted_title=details.get("title"),
-            extracted_company=company_name,
-            extracted_location=details.get("location"),
-            extracted_skills=", ".join(details.get("skills", [])),
-            extracted_experience=details.get("experience"),
-            extracted_salary=details.get("salary"),
-            extracted_contact_email=details.get("contact_email"),
-            extracted_apply_link=details.get("apply_link"),
-            recruiter_id=recruiter.id if recruiter else None
-        )
-        db.add(hiring_post_record)
-        db.commit()
-        hiring_posts_count += 1
-        
-        raw_jobs.append({
-            "title": details.get("title") or "Software Engineer",
-            "company": company_name,
-            "description": f"LinkedIn Hiring Post:\n{post['raw_text']}\n\nContact Email: {details.get('contact_email', 'N/A')}\nApply: {details.get('apply_link', 'N/A')}",
-            "location": details.get("location") or "India",
-            "tags": details.get("skills", []) + ["LinkedIn Hiring Post", "India"],
-            "url": post["url"]
-        })
-        
-    for j in raw_jobs:
-        company_name = j["company"].strip()
-        company = db.query(Company).filter(Company.name.ilike(company_name)).first()
-        if not company:
-            company = Company(name=company_name)
-            db.add(company)
-            db.commit()
-            db.refresh(company)
-            
-        title_clean = j["title"].strip()
-        existing_job = db.query(Job).filter(
-            Job.title.ilike(title_clean),
-            Job.department.ilike(company_name)
-        ).first()
-        
-        if existing_job:
-            existing_source = db.query(JobSource).filter(
-                JobSource.job_id == existing_job.id,
-                JobSource.source_url == j["url"]
-            ).first()
-            if not existing_source:
-                source_platform = j["tags"][1] if len(j["tags"]) > 1 else "Internet Search"
-                new_source = JobSource(
-                    job_id=existing_job.id,
-                    source_platform=source_platform,
-                    source_url=j["url"]
-                )
-                db.add(new_source)
+            company_name = details.get("company", "Tech Company").strip()
+            company = db.query(Company).filter(Company.name.ilike(company_name)).first()
+            if not company:
+                company = Company(name=company_name)
+                db.add(company)
                 db.commit()
-            duplicates_count += 1
-            continue
+                db.refresh(company)
+                
+            recruiter_name = details.get("recruiter_name")
+            recruiter = None
+            if recruiter_name:
+                recruiter = db.query(Recruiter).filter(Recruiter.name == recruiter_name, Recruiter.company_id == company.id).first()
+                if not recruiter:
+                    recruiter = Recruiter(name=recruiter_name, profile_url=details.get("recruiter_profile_url"), company_id=company.id)
+                    db.add(recruiter)
+                    db.commit()
+                    db.refresh(recruiter)
+                    
+            hiring_post_record = LinkedInHiringPost(
+                post_url=post["url"],
+                raw_text=post["raw_text"],
+                extracted_title=details.get("title"),
+                extracted_company=company_name,
+                extracted_location=details.get("location"),
+                extracted_skills=", ".join(details.get("skills", [])),
+                extracted_experience=details.get("experience"),
+                extracted_salary=details.get("salary"),
+                extracted_contact_email=details.get("contact_email"),
+                extracted_apply_link=details.get("apply_link"),
+                recruiter_id=recruiter.id if recruiter else None
+            )
+            db.add(hiring_post_record)
+            db.commit()
+            hiring_posts_count += 1
             
-        skills_str = ", ".join(j["tags"][:8])
-        exp_req = "Senior" if any(k in j["title"].lower() for k in ["senior", "lead", "principal"]) else "Entry-Level" if any(k in j["title"].lower() for k in ["junior", "entry", "intern"]) else "Mid-Level"
+            raw_jobs.append({
+                "title": details.get("title") or "Software Engineer",
+                "company": company_name,
+                "description": f"LinkedIn Hiring Post:\n{post['raw_text']}\n\nContact Email: {details.get('contact_email', 'N/A')}\nApply: {details.get('apply_link', 'N/A')}",
+                "location": details.get("location") or "India",
+                "tags": details.get("skills", []) + ["LinkedIn Hiring Post", "India"],
+                "url": post["url"]
+            })
+            
+        for j in raw_jobs:
+            company_name = j["company"].strip()
+            company = db.query(Company).filter(Company.name.ilike(company_name)).first()
+            if not company:
+                company = Company(name=company_name)
+                db.add(company)
+                db.commit()
+                db.refresh(company)
+                
+            title_clean = j["title"].strip()
+            existing_job = db.query(Job).filter(
+                Job.title.ilike(title_clean),
+                Job.department.ilike(company_name)
+            ).first()
+            
+            if existing_job:
+                existing_source = db.query(JobSource).filter(
+                    JobSource.job_id == existing_job.id,
+                    JobSource.source_url == j["url"]
+                ).first()
+                if not existing_source:
+                    source_platform = j["tags"][1] if len(j["tags"]) > 1 else "Internet Search"
+                    new_source = JobSource(
+                        job_id=existing_job.id,
+                        source_platform=source_platform,
+                        source_url=j["url"]
+                    )
+                    db.add(new_source)
+                    db.commit()
+                duplicates_count += 1
+                continue
+                
+            skills_str = ", ".join(j["tags"][:8])
+            exp_req = "Senior" if any(k in j["title"].lower() for k in ["senior", "lead", "principal"]) else "Entry-Level" if any(k in j["title"].lower() for k in ["junior", "entry", "intern"]) else "Mid-Level"
+            
+            db_job = Job(
+                title=j["title"],
+                description=j["description"],
+                required_skills=skills_str,
+                experience_level=exp_req,
+                salary_range="Not Disclosed",
+                location=j["location"],
+                department=company_name
+            )
+            db.add(db_job)
+            db.commit()
+            db.refresh(db_job)
+            
+            source_platform = j["tags"][1] if len(j["tags"]) > 1 else "Internet Search"
+            new_source = JobSource(
+                job_id=db_job.id,
+                source_platform=source_platform,
+                source_url=j["url"]
+            )
+            db.add(new_source)
+            db.commit()
+            
+        logger.info(f"Job Collection Agent complete. Extracted {hiring_posts_count} hiring posts. Merged {duplicates_count} duplicate listings.")
         
-        db_job = Job(
-            title=j["title"],
-            description=j["description"],
-            required_skills=skills_str,
-            experience_level=exp_req,
-            salary_range=None,
-            location=j["location"],
-            department=company_name,
-            company_id=company.id,
-            status="active"
-        )
-        db.add(db_job)
-        db.commit()
-        db.refresh(db_job)
-        
-        source_platform = j["tags"][1] if len(j["tags"]) > 1 else "Internet Search"
-        new_source = JobSource(
-            job_id=db_job.id,
-            source_platform=source_platform,
-            source_url=j["url"]
-        )
-        db.add(new_source)
-        db.commit()
-        
-    logger.info(f"Job Collection Agent complete. Extracted {hiring_posts_count} hiring posts. Merged {duplicates_count} duplicate listings.")
-    
-    global ADMIN_METRICS_JOB_AGENT
-    ADMIN_METRICS_JOB_AGENT["hiring_posts_extracted"] += hiring_posts_count
-    ADMIN_METRICS_JOB_AGENT["duplicate_jobs_removed"] += duplicates_count
+        global ADMIN_METRICS_JOB_AGENT
+        ADMIN_METRICS_JOB_AGENT["hiring_posts_extracted"] += hiring_posts_count
+        ADMIN_METRICS_JOB_AGENT["duplicate_jobs_removed"] += duplicates_count
+    finally:
+        db.close()
 
 import asyncio
 
@@ -2438,6 +2492,8 @@ def update_candidate_profile(profile_in: schemas.CandidateProfileUpdate, current
     candidate.status = "Profile Completed"
     candidate.current_step = "Resume"
     db.commit()
+    from app.services.resume_cache import invalidate_resume_analysis
+    invalidate_resume_analysis(candidate.id)
     db.refresh(candidate)
     return candidate
 
@@ -2446,9 +2502,47 @@ async def upload_resume(file: UploadFile = File(...), current_user: User = Depen
     candidate = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate profile not found")
+    
+    # Rate limit: max 3 uploads per hour per user
+    _check_resume_upload_rate_limit(current_user.id)
         
     content = await file.read()
+    
+    # Validation checks
+    # 1. Size limit (5 MB)
+    MAX_SIZE = 5 * 1024 * 1024
+    if len(content) > MAX_SIZE:
+        raise HTTPException(status_code=400, detail="File size exceeds the 5MB limit.")
+        
+    # 2. Extension validation
+    filename_lower = file.filename.lower()
+    if not (filename_lower.endswith(".pdf") or filename_lower.endswith(".docx")):
+        raise HTTPException(status_code=400, detail="Only PDF and DOCX file extensions are allowed.")
+        
+    # 3. MIME type validation using python-magic
+    allowed_mimes = [
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/msword"
+    ]
+    mime_type = None
+    try:
+        import magic
+        mime_type = magic.from_buffer(content, mime=True)
+    except Exception as e:
+        logger.warning(f"Could not import or run python-magic: {e}. Falling back to content_type check.")
+        mime_type = file.content_type
+        
+    if mime_type not in allowed_mimes:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file format: {mime_type}. Only PDF and DOCX files are allowed."
+        )
+
+        
     resume = await orchestrator.run_resume_collection_agent(db, candidate.id, content, file.filename)
+    from app.services.resume_cache import invalidate_resume_analysis
+    invalidate_resume_analysis(candidate.id)
     return {"message": "Resume uploaded and parsing completed", "url": resume.resume_url}
 
 @router.get("/candidates/resume")
@@ -2620,6 +2714,8 @@ def delete_candidate_resume(resume_id: int, current_user: User = Depends(get_cur
                     candidate.current_step = "Profile"
                 
         db.commit()
+        from app.services.resume_cache import invalidate_resume_analysis
+        invalidate_resume_analysis(candidate.id)
     except Exception as e:
         db.rollback()
         logger.error(f"Error deleting resume version: {e}")
@@ -2628,11 +2724,17 @@ def delete_candidate_resume(resume_id: int, current_user: User = Depends(get_cur
     return {"message": "Resume deleted successfully"}
 
 @router.post("/candidates/resume/analyze")
-async def analyze_resume(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def analyze_resume(force: bool = False, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Deterministic profile analysis — no fake/placeholder data."""
     candidate = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate profile not found")
+
+    from app.services.resume_cache import get_cached_resume_analysis, set_cached_resume_analysis
+    if not force:
+        cached_data = get_cached_resume_analysis(candidate.id)
+        if cached_data:
+            return cached_data
 
     # ── Gather candidate data from database ──
     skills = candidate.skills or ""
@@ -2737,6 +2839,10 @@ Certifications: {certifications or 'None'}
 Achievements: {achievements or 'None'}
 Summary: {summary or 'None'}"""
         try:
+            db.commit() # Commit transaction to avoid idle_in_transaction_session_timeout
+        except Exception:
+            db.rollback()
+        try:
             quality_resp = call_gemini(quality_prompt, json_mode=True)
             if quality_resp:
                 cleaned = quality_resp.strip()
@@ -2795,7 +2901,7 @@ Summary: {summary or 'None'}"""
         CandidateResume.candidate_id == candidate.id
     ).order_by(CandidateResume.uploaded_at.desc()).first()
 
-    return {
+    result = {
         "profile_completion": {
             "score": completion_score,
             "breakdown": breakdown,
@@ -2813,6 +2919,9 @@ Summary: {summary or 'None'}"""
         "strengths": strengths if strengths else ["Upload a resume to get started"],
         "recommendations": recommendations if recommendations else ["Your profile looks complete!"],
     }
+    set_cached_resume_analysis(candidate.id, result)
+    return result
+
 
 
 @router.post("/candidates/resume/ats")
@@ -3867,9 +3976,28 @@ async def chat_copilot(
 
     return schemas.ChatCopilotResponse(response=response_text, actions=actions if actions else None)
 
-# ─────────────── MCP UNIFIED CHAT ───────────────
+# ─────────────── MCP UNIFIED CHAT & SESSIONS ───────────────
 
-@router.post("/mcp/chat")
+def generate_chat_title(first_message: str) -> str:
+    try:
+        prompt = (
+            "You are a helpful assistant. Generate a short, concise, professional title "
+            "(maximum 4 words) representing the user's first query in a chat session. "
+            "Do not include quotes, markdown, punctuation, or explanations. Respond with ONLY the title.\n\n"
+            f"Query: {first_message}\n\nTitle:"
+        )
+        title = call_gemini(prompt)
+        if not title:
+            title = call_nvidia(prompt)
+        title = title.strip().replace('"', '').replace("'", "")
+        if title and len(title.split()) <= 6:
+            return title
+    except Exception as e:
+        logger.error(f"Error generating chat title: {e}")
+    return first_message[:40] + "..." if len(first_message) > 40 else first_message
+
+
+@router.post("/mcp/chat", response_model=schemas.MCPChatResponse)
 async def mcp_chat(
     payload: schemas.MCPChatRequest,
     db: Session = Depends(get_db),
@@ -3881,31 +4009,335 @@ async def mcp_chat(
     """
     from app.agents.supervisor_agent import supervisor_agent
     from app.models.models import Candidate
+    import uuid
 
     cand = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
     if not cand:
         raise HTTPException(status_code=404, detail="Candidate profile not found")
 
+    session_id = payload.session_id
+    session = None
+
+    if session_id:
+        session = db.query(MCPChatSession).filter(
+            MCPChatSession.id == session_id,
+            MCPChatSession.user_id == current_user.id,
+            MCPChatSession.is_deleted == False
+        ).first()
+        if not session:
+            raise HTTPException(status_code=404, detail="Chat session not found")
+    else:
+        # Create a new session
+        title = generate_chat_title(payload.message)
+        session = MCPChatSession(
+            id=str(uuid.uuid4()),
+            user_id=current_user.id,
+            title=title,
+            mode=payload.mode
+        )
+        db.add(session)
+        db.commit()
+        db.refresh(session)
+        session_id = session.id
+
+    # Load history from DB
+    db_messages = db.query(MCPChatMessage).filter(
+        MCPChatMessage.session_id == session_id
+    ).order_by(MCPChatMessage.created_at.asc()).all()
+
+    # Build history list of dicts for supervisor agent
+    history = []
+    for m in db_messages:
+        history.append({
+            "role": "user" if m.sender == "user" else "assistant",
+            "content": m.text
+        })
+
+    # Save user's message
+    user_msg = MCPChatMessage(
+        id=str(uuid.uuid4()),
+        session_id=session_id,
+        user_id=current_user.id,
+        sender="user",
+        text=payload.message
+    )
+    db.add(user_msg)
+    db.commit()
+
+    # Run supervisor agent
     result = supervisor_agent.route(
         message=payload.message,
         mode=payload.mode,
         candidate_id=cand.id,
         user_id=current_user.id,
-        history=[h.dict() for h in payload.history],
+        history=history,
         context_hint=payload.context_hint,
         db=db
     )
 
+    # Save assistant's message
+    assistant_msg = MCPChatMessage(
+        id=str(uuid.uuid4()),
+        session_id=session_id,
+        user_id=current_user.id,
+        sender="tush",
+        text=result.response,
+        actions=result.actions if result.actions else [],
+        action_cards=result.action_cards if result.action_cards else [],
+        memory_updated=result.memory_updated
+    )
+    db.add(assistant_msg)
+
+    # Update session updated_at
+    session.updated_at = datetime.utcnow()
+    db.commit()
+
+    return schemas.MCPChatResponse(
+        response=result.response,
+        action_cards=result.action_cards if result.action_cards else [],
+        haq_required=result.haq_required,
+        haq_item=result.haq_item,
+        memory_updated=result.memory_updated,
+        intent=result.intent,
+        agent_used=result.agent_used,
+        session_id=session_id
+    )
+
+
+@router.post("/mcp/chat/stream")
+async def mcp_chat_stream(
+    payload: schemas.MCPChatRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Unified MCP chat endpoint with Server-Sent Events (SSE) streaming.
+    Streams assistant reply and action card metadata.
+    """
+    from app.agents.supervisor_agent import supervisor_agent
+    from app.models.models import Candidate
+    import uuid
+    import asyncio
+
+    cand = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
+    if not cand:
+        raise HTTPException(status_code=404, detail="Candidate profile not found")
+
+    session_id = payload.session_id
+    session = None
+
+    if session_id:
+        session = db.query(MCPChatSession).filter(
+            MCPChatSession.id == session_id,
+            MCPChatSession.user_id == current_user.id,
+            MCPChatSession.is_deleted == False
+        ).first()
+        if not session:
+            raise HTTPException(status_code=404, detail="Chat session not found")
+    else:
+        title = generate_chat_title(payload.message)
+        session = MCPChatSession(
+            id=str(uuid.uuid4()),
+            user_id=current_user.id,
+            title=title,
+            mode=payload.mode
+        )
+        db.add(session)
+        db.commit()
+        db.refresh(session)
+        session_id = session.id
+
+    db_messages = db.query(MCPChatMessage).filter(
+        MCPChatMessage.session_id == session_id
+    ).order_by(MCPChatMessage.created_at.asc()).all()
+
+    history = []
+    for m in db_messages:
+        history.append({
+            "role": "user" if m.sender == "user" else "assistant",
+            "content": m.text
+        })
+
+    user_msg = MCPChatMessage(
+        id=str(uuid.uuid4()),
+        session_id=session_id,
+        user_id=current_user.id,
+        sender="user",
+        text=payload.message
+    )
+    db.add(user_msg)
+    db.commit()
+
+    # Run agent to get response, cards, and update memory
+    result = supervisor_agent.route(
+        message=payload.message,
+        mode=payload.mode,
+        candidate_id=cand.id,
+        user_id=current_user.id,
+        history=history,
+        context_hint=payload.context_hint,
+        db=db
+    )
+
+    # Save assistant reply
+    assistant_msg = MCPChatMessage(
+        id=str(uuid.uuid4()),
+        session_id=session_id,
+        user_id=current_user.id,
+        sender="tush",
+        text=result.response,
+        actions=result.actions if result.actions else [],
+        action_cards=result.action_cards if result.action_cards else [],
+        memory_updated=result.memory_updated
+    )
+    db.add(assistant_msg)
+    session.updated_at = datetime.utcnow()
+    db.commit()
+
+    async def sse_generator():
+        # 1. Send session info
+        session_payload = {
+            "type": "session",
+            "session_id": session_id,
+            "title": session.title
+        }
+        yield f"data: {json.dumps(session_payload)}\n\n"
+        await asyncio.sleep(0.01)
+
+        # 2. Stream response text in chunks
+        words = result.response.split(" ")
+        for i, word in enumerate(words):
+            chunk_text = word + (" " if i < len(words) - 1 else "")
+            content_payload = {
+                "type": "content",
+                "text": chunk_text
+            }
+            yield f"data: {json.dumps(content_payload)}\n\n"
+            await asyncio.sleep(0.015)  # smooth speed
+
+        # 3. Send done payload
+        done_payload = {
+            "type": "done",
+            "action_cards": result.action_cards if result.action_cards else [],
+            "haq_required": result.haq_required,
+            "haq_item": result.haq_item,
+            "memory_updated": result.memory_updated,
+            "intent": result.intent,
+            "agent_used": result.agent_used
+        }
+        yield f"data: {json.dumps(done_payload)}\n\n"
+
+    return StreamingResponse(sse_generator(), media_type="text/event-stream")
+
+
+@router.get("/mcp/sessions", response_model=schemas.MCPChatSessionListResponse)
+def list_mcp_chat_sessions(
+    page: int = 1,
+    limit: int = 20,
+    search: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    query = db.query(MCPChatSession).filter(
+        MCPChatSession.user_id == current_user.id,
+        MCPChatSession.is_deleted == False,
+        MCPChatSession.is_archived == False
+    )
+
+    if search:
+        query = query.filter(MCPChatSession.title.ilike(f"%{search}%"))
+
+    total_count = query.count()
+
+    # Sort: Pinned first, then by updated_at desc
+    sessions = query.order_by(
+        MCPChatSession.is_pinned.desc(),
+        MCPChatSession.updated_at.desc()
+    ).offset((page - 1) * limit).limit(limit).all()
+
+    import math
+    pages = math.ceil(total_count / limit) if limit > 0 else 1
+
     return {
-        "response": result.response,
-        "action_cards": result.action_cards,
-        "haq_required": result.haq_required,
-        "haq_item": result.haq_item,
-        "memory_updated": result.memory_updated,
-        "intent": result.intent,
-        "agent_used": result.agent_used,
-        "actions": [],  # backward compat
+        "sessions": sessions,
+        "total_count": total_count,
+        "page": page,
+        "pages": pages
     }
+
+
+@router.get("/mcp/sessions/{session_id}/messages")
+def get_mcp_session_messages(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    session = db.query(MCPChatSession).filter(
+        MCPChatSession.id == session_id,
+        MCPChatSession.user_id == current_user.id
+    ).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Chat session not found")
+
+    messages = db.query(MCPChatMessage).filter(
+        MCPChatMessage.session_id == session_id
+    ).order_by(MCPChatMessage.created_at.asc()).all()
+
+    return [{
+        "id": m.id,
+        "sender": m.sender,
+        "text": m.text,
+        "actions": m.actions,
+        "action_cards": m.action_cards,
+        "memory_updated": m.memory_updated,
+        "created_at": m.created_at
+    } for m in messages]
+
+
+@router.put("/mcp/sessions/{session_id}", response_model=schemas.MCPChatSessionResponse)
+def update_mcp_chat_session(
+    session_id: str,
+    payload: schemas.MCPChatSessionUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    session = db.query(MCPChatSession).filter(
+        MCPChatSession.id == session_id,
+        MCPChatSession.user_id == current_user.id
+    ).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Chat session not found")
+
+    if payload.title is not None:
+        session.title = payload.title
+    if payload.is_pinned is not None:
+        session.is_pinned = payload.is_pinned
+    if payload.is_archived is not None:
+        session.is_archived = payload.is_archived
+
+    session.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(session)
+    return session
+
+
+@router.delete("/mcp/sessions/{session_id}")
+def delete_mcp_chat_session(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    session = db.query(MCPChatSession).filter(
+        MCPChatSession.id == session_id,
+        MCPChatSession.user_id == current_user.id
+    ).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Chat session not found")
+
+    session.is_deleted = True
+    session.deleted_at = datetime.utcnow()
+    db.commit()
+    return {"message": "Chat session deleted successfully"}
 
 
 # ─────────────── HUMAN ACTION QUEUE ───────────────
@@ -3960,6 +4392,95 @@ async def dismiss_haq_item(
     if not item:
         raise HTTPException(status_code=404, detail="Action item not found")
     return {"status": "dismissed", "callback_key": callback_key}
+
+
+# ─────────────── AUTO APPLY PIPELINE ───────────────
+
+@router.post("/candidate/agent/auto-apply/{job_id}")
+async def auto_apply_job_endpoint(
+    job_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Queues an autonomous application for a specific job."""
+    candidate = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate profile not found")
+        
+    db_job_id = ensure_job_in_db(db, job_id, create_if_missing=True)
+    if not db_job_id:
+         raise HTTPException(status_code=404, detail="Job not found")
+         
+    # Check if application already exists
+    app = db.query(Application).filter(
+        Application.candidate_id == candidate.id,
+        Application.job_id == db_job_id
+    ).first()
+    
+    # Get latest resume version
+    resumes = db.query(CandidateResume).filter(
+        CandidateResume.candidate_id == candidate.id
+    ).order_by(CandidateResume.uploaded_at.desc()).all()
+    
+    resume_id = resumes[0].id if resumes else None
+    
+    if not app:
+        app = Application(
+            candidate_id=candidate.id,
+            job_id=db_job_id,
+            resume_id=resume_id,
+            status="queued"
+        )
+        db.add(app)
+        db.commit()
+        db.refresh(app)
+    else:
+        # If already applied or in progress
+        if app.status in ("queued", "applying", "applied"):
+            return {"status": app.status, "message": f"Application status: {app.status}"}
+        # Reset status to queued
+        app.status = "queued"
+        app.resume_id = resume_id
+        db.commit()
+        
+    from app.core.queue import enqueue_auto_apply
+    try:
+        enqueue_auto_apply(candidate.id, db_job_id)
+    except Exception as e:
+        app.status = "failed"
+        db.commit()
+        raise HTTPException(status_code=503, detail=str(e))
+        
+    return {"status": "queued", "message": "Auto-apply task enqueued successfully"}
+
+
+@router.get("/candidate/agent/auto-apply/status/{job_id}")
+async def get_auto_apply_status_endpoint(
+    job_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Retrieves status of an auto-apply task for a specific job."""
+    candidate = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate profile not found")
+        
+    db_job_id = ensure_job_in_db(db, job_id, create_if_missing=False)
+    if not db_job_id:
+        return {"status": "not_started", "message": "No application has been initiated for this job."}
+        
+    app = db.query(Application).filter(
+        Application.candidate_id == candidate.id,
+        Application.job_id == db_job_id
+    ).first()
+    
+    if not app:
+        return {"status": "not_started", "message": "No application has been initiated for this job."}
+        
+    return {
+        "status": app.status,
+        "message": f"Job application status is '{app.status}'."
+    }
 
 
 # ─────────────── AGENT ACTIVITY FEED ───────────────
@@ -4669,32 +5190,24 @@ def create_course(req: CourseCreateRequest, db: Session = Depends(get_db), curre
     return {"status": "success", "course_id": course_id, "title": req.title}
 
 
-@router.get("/courses/{course_id}/curriculum")
-def get_course_curriculum(course_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    def load_json_safely(val):
-        if not val:
-            return []
-        if isinstance(val, (dict, list)):
-            return val
-        try:
-            return json.loads(val)
-        except Exception:
-            return []
+def load_json_safely(val):
+    if not val:
+        return []
+    if isinstance(val, (dict, list)):
+        return val
+    try:
+        return json.loads(val)
+    except Exception:
+        return []
 
+
+def _build_curriculum_payload(db: Session, course_id: str, user_id: Optional[int] = None) -> dict:
+    """Build the static structural layout of a course's curriculum (without user-specific details)."""
     # Check if course exists
     course = db.execute(text("SELECT id, title, description FROM courses WHERE id=:course_id"), {"course_id": course_id}).fetchone()
     if not course:
-        raise HTTPException(status_code=404, detail="Course not found")
-        
-    # Check if user is enrolled
-    enrollment = db.execute(
-        text("SELECT progress, status FROM enrollments WHERE course_id=:course_id AND user_id=:user_id"),
-        {"course_id": course_id, "user_id": current_user.id}
-    ).fetchone()
-    
-    enrolled = enrollment is not None
-    progress = enrollment[0] if enrolled else 0.0
-    
+        return {}
+
     # Fetch modules
     modules_res = db.execute(
         text("SELECT id, title, moduleNo, unlockOrder FROM modules WHERE courseId=:course_id ORDER BY unlockOrder"),
@@ -4703,24 +5216,6 @@ def get_course_curriculum(course_id: str, db: Session = Depends(get_db), current
     
     mod_ids = [m[0] for m in modules_res]
     
-    # Fetch user progress for all modules in one query
-    progress_map = {}
-    if mod_ids:
-        prog_res = db.execute(
-            text('SELECT "moduleId", "videoCompleted", "pdfCompleted", "quizCompleted", "writtenCompleted", "interviewCompleted", "moduleUnlocked", "nextModuleUnlocked" FROM user_progress WHERE "userId"=:user_id AND "courseId"=:course_id'),
-            {"user_id": current_user.id, "course_id": course_id}
-        ).fetchall()
-        for r in prog_res:
-            progress_map[r[0]] = {
-                "video_completed": bool(r[1]),
-                "pdf_completed": bool(r[2]),
-                "quiz_completed": bool(r[3]),
-                "written_completed": bool(r[4]),
-                "interview_completed": bool(r[5]),
-                "unlocked": bool(r[6]),
-                "next_unlocked": bool(r[7]),
-            }
-            
     # Fetch topics for all modules in one query
     topics_res = []
     module_topics = {}
@@ -4787,7 +5282,7 @@ def get_course_curriculum(course_id: str, db: Session = Depends(get_db), current
                 "id": r[0],
                 "title": r[2],
                 "passPercentage": r[3],
-                "questions_json": r[4]
+                "questions": load_json_safely(r[4])
             }
             
         written_res = db.execute(
@@ -4799,7 +5294,7 @@ def get_course_curriculum(course_id: str, db: Session = Depends(get_db), current
                 "id": r[0],
                 "title": r[2],
                 "passPercentage": r[3],
-                "questions_json": r[4]
+                "questions": load_json_safely(r[4])
             }
             
         interviews_res = db.execute(
@@ -4811,14 +5306,194 @@ def get_course_curriculum(course_id: str, db: Session = Depends(get_db), current
                 "id": r[0],
                 "title": r[2],
                 "passPercentage": r[3],
-                "questions_json": r[4]
+                "questions": load_json_safely(r[4])
+            }
+
+    # Assemble static modules list
+    modules = []
+    for mod_row in modules_res:
+        mod_id = mod_row[0]
+        mod_title = mod_row[1]
+        mod_no = mod_row[2]
+        unlock_order = mod_row[3]
+        
+        topics = []
+        for t in module_topics.get(mod_id, []):
+            t_id = t["topicId"]
+            
+            # Video
+            video_data = None
+            raw_les = lessons_map.get(t_id)
+            if raw_les:
+                video_data = {
+                    "id": raw_les["id"],
+                    "title": raw_les["title"],
+                    "youtubeUrl": raw_les["youtubeUrl"],
+                    "duration": raw_les["duration"],
+                    "completed": False
+                }
+                
+            # PDF
+            pdf_data = None
+            raw_pdf = pdfs_map.get(t_id)
+            if raw_pdf:
+                pdf_data = {
+                    "id": raw_pdf["id"],
+                    "title": raw_pdf["title"],
+                    "pdfUrl": raw_pdf["pdfUrl"],
+                    "completed": False
+                }
+                
+            topics.append({
+                "topicId": t_id,
+                "title": t["title"],
+                "description": t["description"],
+                "topicNo": t["topicNo"],
+                "duration": t["duration"],
+                "video": video_data,
+                "pdf": pdf_data
+            })
+            
+        # Quiz
+        quiz_data = None
+        raw_quiz = quizzes_map.get(mod_id)
+        if raw_quiz:
+            quiz_data = {
+                "id": raw_quiz["id"],
+                "title": raw_quiz["title"],
+                "passPercentage": raw_quiz["passPercentage"],
+                "locked": True,
+                "completed": False,
+                "questions": raw_quiz["questions"]
             }
             
-    # Fetch best attempts for written assessments and AI interviews
+        # Written Assessment
+        written_data = None
+        raw_written = written_map.get(mod_id)
+        if raw_written:
+            written_data = {
+                "id": raw_written["id"],
+                "title": raw_written["title"],
+                "passPercentage": raw_written["passPercentage"],
+                "locked": True,
+                "completed": False,
+                "questions": raw_written["questions"],
+                "bestScore": 0.0,
+                "passed": False,
+                "feedback": ""
+            }
+            
+        # AI Interview
+        interview_data = None
+        raw_int = interviews_map.get(mod_id)
+        if raw_int:
+            interview_data = {
+                "id": raw_int["id"],
+                "title": raw_int["title"],
+                "passPercentage": raw_int["passPercentage"],
+                "locked": True,
+                "completed": False,
+                "questions": raw_int["questions"],
+                "bestScore": 0.0,
+                "passed": False,
+                "feedback": ""
+            }
+            
+        modules.append({
+            "moduleId": mod_id,
+            "moduleNo": mod_no,
+            "moduleName": mod_title,
+            "unlockOrder": unlock_order,
+            "unlocked": False,
+            "topics": topics,
+            "quiz": quiz_data,
+            "writtenAssessment": written_data,
+            "aiInterview": interview_data
+        })
+        
+    return {
+        "courseId": course[0],
+        "courseName": course[1],
+        "description": course[2],
+        "enrolled": False,
+        "progress": 0.0,
+        "modules": modules
+    }
+
+
+@router.get("/courses/{course_id}/curriculum")
+def get_course_curriculum(course_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # 1. Get the updated_at timestamp from the course table to version check the cache
+    course_row = db.execute(
+        text("SELECT updated_at FROM courses WHERE id = :id"),
+        {"id": course_id}
+    ).fetchone()
+    if not course_row:
+        raise HTTPException(status_code=404, detail="Course not found")
+        
+    updated_at = course_row[0]
+    import datetime
+    if isinstance(updated_at, datetime.datetime):
+        updated_at_unix = int(updated_at.timestamp())
+    else:
+        import time
+        updated_at_unix = int(time.time())
+        
+    # 2. Check Redis cache using app.services.curriculum_cache
+    from app.services.curriculum_cache import get_course_cache, set_course_cache
+    
+    static_payload = get_course_cache(course_id, updated_at_unix)
+    if not static_payload:
+        # Build the static structure from the DB
+        static_payload = _build_curriculum_payload(db, course_id)
+        if static_payload:
+            set_course_cache(course_id, updated_at_unix, static_payload)
+            
+    if not static_payload:
+        # Fallback if DB build failed or returned empty
+        raise HTTPException(status_code=404, detail="Course curriculum not found")
+
+    # 3. Check if user is enrolled
+    enrollment = db.execute(
+        text("SELECT progress, status FROM enrollments WHERE course_id=:course_id AND user_id=:user_id"),
+        {"course_id": course_id, "user_id": current_user.id}
+    ).fetchone()
+    
+    enrolled = enrollment is not None
+    progress = enrollment[0] if enrolled else 0.0
+    
+    # 4. Fetch user progress for all modules in one query
+    progress_map = {}
+    mod_ids = [m["moduleId"] for m in static_payload["modules"]]
+    
+    if mod_ids:
+        prog_res = db.execute(
+            text('SELECT "moduleId", "videoCompleted", "pdfCompleted", "quizCompleted", "writtenCompleted", "interviewCompleted", "moduleUnlocked", "nextModuleUnlocked" FROM user_progress WHERE "userId"=:user_id AND "courseId"=:course_id'),
+            {"user_id": current_user.id, "course_id": course_id}
+        ).fetchall()
+        for r in prog_res:
+            progress_map[r[0]] = {
+                "video_completed": bool(r[1]),
+                "pdf_completed": bool(r[2]),
+                "quiz_completed": bool(r[3]),
+                "written_completed": bool(r[4]),
+                "interview_completed": bool(r[5]),
+                "unlocked": bool(r[6]),
+                "next_unlocked": bool(r[7]),
+            }
+            
+    # 5. Fetch best attempts for written assessments and AI interviews
     written_attempts = {}
     interview_attempts = {}
     
-    written_ids = [w["id"] for w in written_map.values()]
+    written_ids = []
+    interview_ids = []
+    for mod in static_payload["modules"]:
+        if mod.get("writtenAssessment"):
+            written_ids.append(mod["writtenAssessment"]["id"])
+        if mod.get("aiInterview"):
+            interview_ids.append(mod["aiInterview"]["id"])
+            
     if written_ids:
         written_attempts_res = db.execute(
             text("SELECT written_assessment_id, score, passed, feedback FROM written_assessment_attempts WHERE user_id=:user_id AND written_assessment_id IN :written_ids"),
@@ -4832,7 +5507,6 @@ def get_course_curriculum(course_id: str, db: Session = Depends(get_db), current
             if wa_id not in written_attempts or score > written_attempts[wa_id]["score"]:
                 written_attempts[wa_id] = {"score": score, "passed": passed, "feedback": feedback}
                 
-    interview_ids = [i["id"] for i in interviews_map.values()]
     if interview_ids:
         interview_attempts_res = db.execute(
             text("SELECT ai_interview_id, interview_score, passed, feedback FROM ai_interview_attempts WHERE user_id=:user_id AND ai_interview_id IN :interview_ids"),
@@ -4846,17 +5520,21 @@ def get_course_curriculum(course_id: str, db: Session = Depends(get_db), current
             if ai_id not in interview_attempts or score > interview_attempts[ai_id]["score"]:
                 interview_attempts[ai_id] = {"score": score, "passed": passed, "feedback": feedback}
                 
-    # Evaluate 500-lesson budget limit (combining video lessons & PDFs)
-    total_lessons = len(lessons_map) + len(pdfs_map)
+    # 6. Evaluate 500-lesson budget limit (combining video lessons & PDFs)
+    total_lessons = 0
+    for mod in static_payload["modules"]:
+        for t in mod["topics"]:
+            if t.get("video"):
+                total_lessons += 1
+            if t.get("pdf"):
+                total_lessons += 1
     lazy_load = total_lessons > 500
     
-    # Assemble curriculum tree
+    # 7. Assemble/Overlay curriculum tree
     modules = []
-    for mod_row in modules_res:
-        mod_id = mod_row[0]
-        mod_title = mod_row[1]
-        mod_no = mod_row[2]
-        unlock_order = mod_row[3]
+    for mod in static_payload["modules"]:
+        mod_id = mod["moduleId"]
+        unlock_order = mod["unlockOrder"]
         
         prog = progress_map.get(mod_id)
         if prog:
@@ -4878,8 +5556,8 @@ def get_course_curriculum(course_id: str, db: Session = Depends(get_db), current
         if lazy_load and not unlocked:
             modules.append({
                 "moduleId": mod_id,
-                "moduleNo": mod_no,
-                "moduleName": mod_title,
+                "moduleNo": mod["moduleNo"],
+                "moduleName": mod["moduleName"],
                 "unlocked": unlocked,
                 "topics": [],
                 "quiz": None,
@@ -4888,36 +5566,21 @@ def get_course_curriculum(course_id: str, db: Session = Depends(get_db), current
             })
             continue
             
-        # Topics
+        # Overlay topics
         topics = []
-        for t in module_topics.get(mod_id, []):
-            t_id = t["topicId"]
-            
-            # Video
+        for t in mod["topics"]:
             video_data = None
-            raw_les = lessons_map.get(t_id)
-            if raw_les:
-                video_data = {
-                    "id": raw_les["id"],
-                    "title": raw_les["title"],
-                    "youtubeUrl": raw_les["youtubeUrl"],
-                    "duration": raw_les["duration"],
-                    "completed": video_completed
-                }
+            if t.get("video"):
+                video_data = dict(t["video"])
+                video_data["completed"] = video_completed
                 
-            # PDF
             pdf_data = None
-            raw_pdf = pdfs_map.get(t_id)
-            if raw_pdf:
-                pdf_data = {
-                    "id": raw_pdf["id"],
-                    "title": raw_pdf["title"],
-                    "pdfUrl": raw_pdf["pdfUrl"],
-                    "completed": pdf_completed
-                }
+            if t.get("pdf"):
+                pdf_data = dict(t["pdf"])
+                pdf_data["completed"] = pdf_completed
                 
             topics.append({
-                "topicId": t_id,
+                "topicId": t["topicId"],
                 "title": t["title"],
                 "description": t["description"],
                 "topicNo": t["topicNo"],
@@ -4928,62 +5591,42 @@ def get_course_curriculum(course_id: str, db: Session = Depends(get_db), current
             
         # Quiz
         quiz_data = None
-        raw_quiz = quizzes_map.get(mod_id)
-        if raw_quiz:
+        if mod.get("quiz"):
             quiz_locked = not (video_completed and pdf_completed)
-            quiz_data = {
-                "id": raw_quiz["id"],
-                "title": raw_quiz["title"],
-                "passPercentage": raw_quiz["passPercentage"],
-                "locked": quiz_locked,
-                "completed": quiz_completed,
-                "questions": load_json_safely(raw_quiz["questions_json"])
-            }
+            quiz_data = dict(mod["quiz"])
+            quiz_data["locked"] = quiz_locked
+            quiz_data["completed"] = quiz_completed
             
         # Written Assessment
         written_data = None
-        raw_written = written_map.get(mod_id)
-        if raw_written:
-            written_id = raw_written["id"]
+        if mod.get("writtenAssessment"):
+            written_id = mod["writtenAssessment"]["id"]
             written_locked = not quiz_completed
             best_att = written_attempts.get(written_id, {"score": 0.0, "passed": False, "feedback": ""})
-            
-            written_data = {
-                "id": written_id,
-                "title": raw_written["title"],
-                "passPercentage": raw_written["passPercentage"],
-                "locked": written_locked,
-                "completed": written_completed,
-                "questions": load_json_safely(raw_written["questions_json"]),
-                "bestScore": best_att["score"],
-                "passed": best_att["passed"],
-                "feedback": best_att["feedback"]
-            }
+            written_data = dict(mod["writtenAssessment"])
+            written_data["locked"] = written_locked
+            written_data["completed"] = written_completed
+            written_data["bestScore"] = best_att["score"]
+            written_data["passed"] = best_att["passed"]
+            written_data["feedback"] = best_att["feedback"]
             
         # AI Interview
         interview_data = None
-        raw_int = interviews_map.get(mod_id)
-        if raw_int:
-            interview_id = raw_int["id"]
+        if mod.get("aiInterview"):
+            interview_id = mod["aiInterview"]["id"]
             interview_locked = not written_completed
             best_att = interview_attempts.get(interview_id, {"score": 0.0, "passed": False, "feedback": ""})
-            
-            interview_data = {
-                "id": interview_id,
-                "title": raw_int["title"],
-                "passPercentage": raw_int["passPercentage"],
-                "locked": interview_locked,
-                "completed": interview_completed,
-                "questions": load_json_safely(raw_int["questions_json"]),
-                "bestScore": best_att["score"],
-                "passed": best_att["passed"],
-                "feedback": best_att["feedback"]
-            }
+            interview_data = dict(mod["aiInterview"])
+            interview_data["locked"] = interview_locked
+            interview_data["completed"] = interview_completed
+            interview_data["bestScore"] = best_att["score"]
+            interview_data["passed"] = best_att["passed"]
+            interview_data["feedback"] = best_att["feedback"]
             
         modules.append({
             "moduleId": mod_id,
-            "moduleNo": mod_no,
-            "moduleName": mod_title,
+            "moduleNo": mod["moduleNo"],
+            "moduleName": mod["moduleName"],
             "unlocked": unlocked,
             "topics": topics,
             "quiz": quiz_data,
@@ -4992,9 +5635,9 @@ def get_course_curriculum(course_id: str, db: Session = Depends(get_db), current
         })
         
     return {
-        "courseId": course[0],
-        "courseName": course[1],
-        "description": course[2],
+        "courseId": static_payload["courseId"],
+        "courseName": static_payload["courseName"],
+        "description": static_payload["description"],
         "enrolled": enrolled,
         "progress": progress,
         "modules": modules
