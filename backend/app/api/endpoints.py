@@ -21,7 +21,7 @@ from app.models.models import (
     Company, Recruiter, LinkedInHiringPost, JobSource, JobMatch, SearchHistory, SavedJob,
     JobAgentRun, JobAgentLog, TelegramSource, CourseProgress, LearningEvent,
     VideoAnalytics, CourseAnalytics, OTP,
-    AIMentorSession, AIMentorMessage, AIMentorStudyPlan, AIMentorInsight, AIMentorArtifact, AIMentorUsage, UserCareerProfile
+    AIMentorSession, AIMentorMessage, AIMentorStudyPlan, AIMentorInsight, AIMentorArtifact, AIMentorUsage, UserCareerProfile, UserConsent
 )
 from app.services.mentor_profile import (
     get_learning_health, get_risk_analysis, get_smart_recommendations, trigger_background_insights
