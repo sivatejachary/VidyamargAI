@@ -4087,7 +4087,7 @@ async def mcp_chat(
                 action_cards_data.append(card)
 
     actions_data = []
-    if result.actions:
+    if hasattr(result, "actions") and result.actions:
         for action in result.actions:
             if hasattr(action, "dict"):
                 actions_data.append(action.dict())
@@ -4112,6 +4112,34 @@ async def mcp_chat(
     # Update session updated_at
     session.updated_at = datetime.utcnow()
     db.commit()
+
+    # Broadcast user message and assistant message via WebSocket for instant updates
+    try:
+        await manager.broadcast_to_user(current_user.email, {
+            "type": "mcp_chat_message",
+            "session_id": session_id,
+            "message": {
+                "id": user_msg.id,
+                "sender": "user",
+                "text": user_msg.text,
+                "created_at": user_msg.created_at.isoformat() if hasattr(user_msg.created_at, "isoformat") else str(user_msg.created_at)
+            }
+        })
+        await manager.broadcast_to_user(current_user.email, {
+            "type": "mcp_chat_message",
+            "session_id": session_id,
+            "message": {
+                "id": assistant_msg.id,
+                "sender": "tush",
+                "text": assistant_msg.text,
+                "actions": assistant_msg.actions,
+                "action_cards": assistant_msg.action_cards,
+                "memory_updated": assistant_msg.memory_updated,
+                "created_at": assistant_msg.created_at.isoformat() if hasattr(assistant_msg.created_at, "isoformat") else str(assistant_msg.created_at)
+            }
+        })
+    except Exception:
+        pass
 
     return schemas.MCPChatResponse(
         response=result.response,
@@ -4212,7 +4240,7 @@ async def mcp_chat_stream(
                 action_cards_data.append(card)
 
     actions_data = []
-    if result.actions:
+    if hasattr(result, "actions") and result.actions:
         for action in result.actions:
             if hasattr(action, "dict"):
                 actions_data.append(action.dict())
@@ -4235,6 +4263,34 @@ async def mcp_chat_stream(
     db.add(assistant_msg)
     session.updated_at = datetime.utcnow()
     db.commit()
+
+    # Broadcast user message and assistant message via WebSocket for instant updates
+    try:
+        await manager.broadcast_to_user(current_user.email, {
+            "type": "mcp_chat_message",
+            "session_id": session_id,
+            "message": {
+                "id": user_msg.id,
+                "sender": "user",
+                "text": user_msg.text,
+                "created_at": user_msg.created_at.isoformat() if hasattr(user_msg.created_at, "isoformat") else str(user_msg.created_at)
+            }
+        })
+        await manager.broadcast_to_user(current_user.email, {
+            "type": "mcp_chat_message",
+            "session_id": session_id,
+            "message": {
+                "id": assistant_msg.id,
+                "sender": "tush",
+                "text": assistant_msg.text,
+                "actions": assistant_msg.actions,
+                "action_cards": assistant_msg.action_cards,
+                "memory_updated": assistant_msg.memory_updated,
+                "created_at": assistant_msg.created_at.isoformat() if hasattr(assistant_msg.created_at, "isoformat") else str(assistant_msg.created_at)
+            }
+        })
+    except Exception:
+        pass
 
     async def sse_generator():
         # 1. Send session info

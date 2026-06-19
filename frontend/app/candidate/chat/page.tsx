@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { apiService } from "@/services/api";
+import { useWebSockets } from "@/hooks/useWebSockets";
 import {
   Sparkles, Mic, Send, Briefcase, FileText, ClipboardList,
   User, Bot, Loader2, ChevronRight, Globe, BarChart3, Target,
@@ -63,7 +64,7 @@ const quickSuggestions = [
 ];
 
 export default function TushAIChat() {
-  const { fullName } = useAuthStore();
+  const { fullName, email } = useAuthStore();
   const [query, setQuery] = useState("");
   const [isChatActive, setIsChatActive] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -71,6 +72,9 @@ export default function TushAIChat() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const landingTextareaRef = useRef<HTMLTextAreaElement>(null);
   const chatTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Cache messages locally for instant load
+  const [sessionMessagesCache, setSessionMessagesCache] = useState<Record<string, Message[]>>({});
 
   // Sidebar history state
   const [sessions, setSessions] = useState<any[]>([]);
@@ -105,6 +109,43 @@ export default function TushAIChat() {
     fetchSessions(1, true);
   }, [searchQuery]);
 
+  // Connect websocket for live message updates
+  const { addMessageListener } = useWebSockets(email || "candidate");
+
+  useEffect(() => {
+    if (!email) return;
+    const unsubscribe = addMessageListener((event: any) => {
+      if (event.type === "mcp_chat_message") {
+        const { session_id, message } = event;
+        const formattedMsg: Message = {
+          sender: message.sender === "user" ? ("user" as const) : ("tush" as const),
+          text: message.text,
+          timestamp: new Date(message.created_at),
+          actions: message.actions,
+          action_cards: message.action_cards,
+          memory_updated: message.memory_updated
+        };
+
+        // Update cache
+        setSessionMessagesCache((prev) => {
+          const list = prev[session_id] || [];
+          // Avoid duplicate messages
+          if (list.some((m) => m.text === formattedMsg.text && m.sender === formattedMsg.sender)) return prev;
+          return { ...prev, [session_id]: [...list, formattedMsg] };
+        });
+
+        // Update active messages list in real-time if matches active session
+        if (session_id === activeSessionId) {
+          setMessages((prev) => {
+            if (prev.some((m) => m.text === formattedMsg.text && m.sender === formattedMsg.sender)) return prev;
+            return [...prev, formattedMsg];
+          });
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, [email, activeSessionId, addMessageListener]);
+
   const fetchSessions = async (page = 1, replace = false) => {
     try {
       setLoadingSessions(true);
@@ -136,19 +177,38 @@ export default function TushAIChat() {
 
   const selectSession = async (sessionId: string) => {
     try {
-      setLoading(true);
-      setIsChatActive(true);
-      setActiveSessionId(sessionId);
+      // Check cache first for instant load
+      if (sessionMessagesCache[sessionId]) {
+        setMessages(sessionMessagesCache[sessionId]);
+        setIsChatActive(true);
+        setActiveSessionId(sessionId);
+        // Set loading to false so there's no visual loading blocker
+        setLoading(false);
+      } else {
+        setLoading(true);
+        setIsChatActive(true);
+        setActiveSessionId(sessionId);
+      }
+
       const dbMsgs = await apiService.getMcpSessionMessages(sessionId);
       const formatted = dbMsgs.map((m: any) => ({
         sender: m.sender === "user" ? ("user" as const) : ("tush" as const),
         text: m.text,
-        timestamp: new Date(m.created_at),
+        timestamp: m.created_at ? new Date(m.created_at) : new Date(),
         actions: m.actions,
         action_cards: m.action_cards,
         memory_updated: m.memory_updated
       }));
+
+      // Update cache
+      setSessionMessagesCache(prev => ({
+        ...prev,
+        [sessionId]: formatted
+      }));
+
+      // Update messages if session is still active
       setMessages(formatted);
+
       setTimeout(() => {
         chatTextareaRef.current?.focus();
       }, 50);
@@ -435,6 +495,14 @@ export default function TushAIChat() {
                     action_cards: data.action_cards,
                     memory_updated: data.memory_updated
                   };
+                }
+                // Save to cache
+                const currentSessId = activeSessionId || data.session_id;
+                if (currentSessId) {
+                  setSessionMessagesCache(prev => ({
+                    ...prev,
+                    [currentSessId]: next
+                  }));
                 }
                 return next;
               });
@@ -848,7 +916,9 @@ export default function TushAIChat() {
                         </div>
                       )}
                       <span className="text-[10px] text-app-text-muted self-end">
-                        {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        {msg.timestamp instanceof Date && !isNaN(msg.timestamp.getTime())
+                          ? msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                          : ""}
                       </span>
                     </div>
                   </div>
