@@ -11,7 +11,6 @@ import {
   PanelLeftClose, PanelLeftOpen, Search, Download, FileUp
 } from "lucide-react";
 import Link from "next/link";
-import AgentActivityFeed from "@/components/AgentActivityFeed";
 import HumanActionQueue from "@/components/HumanActionQueue";
 import AIActionCard from "@/components/AIActionCard";
 
@@ -89,6 +88,18 @@ export default function TushAIChat() {
   // Export dropdown
   const [showExportMenu, setShowExportMenu] = useState(false);
 
+  // Lock parent layout scroll on chat page
+  useEffect(() => {
+    const mainEl = document.querySelector("main");
+    if (mainEl) {
+      const originalOverflow = mainEl.style.overflow;
+      mainEl.style.overflow = "hidden";
+      return () => {
+        mainEl.style.overflow = originalOverflow;
+      };
+    }
+  }, []);
+
   // Load chat sessions on mount and when search query changes
   useEffect(() => {
     fetchSessions(1, true);
@@ -138,6 +149,9 @@ export default function TushAIChat() {
         memory_updated: m.memory_updated
       }));
       setMessages(formatted);
+      setTimeout(() => {
+        chatTextareaRef.current?.focus();
+      }, 50);
     } catch (err) {
       console.error("Failed to load session messages:", err);
     } finally {
@@ -149,6 +163,9 @@ export default function TushAIChat() {
     setActiveSessionId(null);
     setMessages([]);
     setIsChatActive(false);
+    setTimeout(() => {
+      landingTextareaRef.current?.focus();
+    }, 50);
   };
 
   const togglePinSession = async (sessionId: string, currentPinned: boolean, e: React.MouseEvent) => {
@@ -347,6 +364,10 @@ export default function TushAIChat() {
     setQuery("");
     setAttachments([]);
     setLoading(true);
+
+    setTimeout(() => {
+      chatTextareaRef.current?.focus();
+    }, 50);
 
     try {
       const history = updated.slice(0, -1).map((m) => ({
@@ -743,7 +764,7 @@ export default function TushAIChat() {
           </div>
         ) : (
           // Active Chat Panel
-          <div className="flex-1 flex flex-col md:flex-row h-full max-w-6xl w-full mx-auto p-4 md:p-6 gap-6 overflow-hidden print-full-width">
+          <div className="flex-1 flex flex-col h-full max-w-4xl w-full mx-auto px-4 md:px-6 pt-4 pb-0 overflow-hidden print-full-width">
             
             {/* Main Chat Panel */}
             <div className="flex-1 flex flex-col h-full justify-between overflow-hidden print-full-width">
@@ -844,7 +865,7 @@ export default function TushAIChat() {
                 <div ref={chatEndRef} />
               </div>
 
-              <div className="pt-2 pb-1 no-print">
+              <div className="pt-2 pb-4 no-print">
                 <div className="flex flex-col bg-card border border-border rounded-2xl p-2 pl-4 pr-3 shadow-custom-glass hover:border-border-hover dark:hover:border-neutral-700 focus-within:border-primary/50 dark:focus-within:border-primary/40 focus-within:shadow-[0_8px_30px_rgba(59,130,246,0.08)] transition-all duration-300 w-full">
                   {attachments.length > 0 && (
                     <div className="flex flex-wrap gap-2 px-1 pt-2 pb-1.5 border-b border-gray-100 dark:border-zinc-800 mb-2">
@@ -897,11 +918,6 @@ export default function TushAIChat() {
                   Tush AI · Personalized career guidance
                 </p>
               </div>
-            </div>
-
-            {/* Activity Feed Sidebar (Desktop) */}
-            <div className="hidden lg:block w-80 shrink-0 border-l border-app-border pl-6 overflow-y-auto no-print">
-              <AgentActivityFeed maxItems={15} />
             </div>
           </div>
         )}
