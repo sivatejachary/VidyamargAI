@@ -45,11 +45,14 @@ def check_alerting_rules():
         if not is_redis_connected():
             send_critical_system_alert("Redis database disconnected! Application fell back to database queue mode.")
 
-        # Rule 4: MCP latency P95 > 1000ms -> Warning
+        # Rule 4: MCP latency P95 > 1000ms -> Warning (only for successful calls, min 10 samples)
         twenty_four_hours_ago = datetime.utcnow() - timedelta(hours=24)
-        logs = db.query(MCPAuditLog.latency).filter(MCPAuditLog.created_at >= twenty_four_hours_ago).all()
+        logs = db.query(MCPAuditLog.latency).filter(
+            MCPAuditLog.created_at >= twenty_four_hours_ago,
+            MCPAuditLog.status == "success"
+        ).all()
         latencies = [l[0] for l in logs]
-        if latencies:
+        if len(latencies) >= 10:
             sorted_latencies = sorted(latencies)
             idx = int((len(sorted_latencies) - 1) * 0.95)
             p95 = sorted_latencies[idx]
