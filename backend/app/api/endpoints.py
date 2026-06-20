@@ -4217,113 +4217,123 @@ async def mcp_chat_stream(
     db.add(user_msg)
     db.commit()
 
-    # Run agent to get response, cards, and update memory
-    result = supervisor_agent.route(
-        message=payload.message,
-        mode=payload.mode,
-        candidate_id=cand.id,
-        user_id=current_user.id,
-        history=history,
-        context_hint=payload.context_hint,
-        db=db
-    )
-
-    # Convert action_cards (Pydantic objects) and actions to serializable dicts
-    action_cards_data = []
-    if result.action_cards:
-        for card in result.action_cards:
-            if hasattr(card, "dict"):
-                action_cards_data.append(card.dict())
-            elif hasattr(card, "model_dump"):
-                action_cards_data.append(card.model_dump())
-            else:
-                action_cards_data.append(card)
-
-    actions_data = []
-    if hasattr(result, "actions") and result.actions:
-        for action in result.actions:
-            if hasattr(action, "dict"):
-                actions_data.append(action.dict())
-            elif hasattr(action, "model_dump"):
-                actions_data.append(action.model_dump())
-            else:
-                actions_data.append(action)
-
-    # Save assistant reply
-    assistant_msg = MCPChatMessage(
-        id=str(uuid.uuid4()),
-        session_id=session_id,
-        user_id=current_user.id,
-        sender="tush",
-        text=result.response,
-        actions=actions_data,
-        action_cards=action_cards_data,
-        memory_updated=result.memory_updated
-    )
-    db.add(assistant_msg)
-    session.updated_at = datetime.utcnow()
-    db.commit()
-
-    # Broadcast user message and assistant message via WebSocket for instant updates
-    try:
-        await manager.broadcast_to_user(current_user.email, {
-            "type": "mcp_chat_message",
-            "session_id": session_id,
-            "message": {
-                "id": user_msg.id,
-                "sender": "user",
-                "text": user_msg.text,
-                "created_at": user_msg.created_at.isoformat() if hasattr(user_msg.created_at, "isoformat") else str(user_msg.created_at)
-            }
-        })
-        await manager.broadcast_to_user(current_user.email, {
-            "type": "mcp_chat_message",
-            "session_id": session_id,
-            "message": {
-                "id": assistant_msg.id,
-                "sender": "tush",
-                "text": assistant_msg.text,
-                "actions": assistant_msg.actions,
-                "action_cards": assistant_msg.action_cards,
-                "memory_updated": assistant_msg.memory_updated,
-                "created_at": assistant_msg.created_at.isoformat() if hasattr(assistant_msg.created_at, "isoformat") else str(assistant_msg.created_at)
-            }
-        })
-    except Exception:
-        pass
-
     async def sse_generator():
-        # 1. Send session info
-        session_payload = {
-            "type": "session",
-            "session_id": session_id,
-            "title": session.title
-        }
-        yield f"data: {json.dumps(session_payload)}\n\n"
-        await asyncio.sleep(0.01)
-
-        # 2. Stream response text in chunks
-        words = result.response.split(" ")
-        for i, word in enumerate(words):
-            chunk_text = word + (" " if i < len(words) - 1 else "")
-            content_payload = {
-                "type": "content",
-                "text": chunk_text
+        try:
+            # 1. Send session info instantly (prevents Vercel/Railway gateway timeout)
+            session_payload = {
+                "type": "session",
+                "session_id": session_id,
+                "title": session.title
             }
-            yield f"data: {json.dumps(content_payload)}\n\n"
-            await asyncio.sleep(0.015)  # smooth speed
+            yield f"data: {json.dumps(session_payload)}\n\n"
+            await asyncio.sleep(0.01)
 
-        # 3. Send done payload
-        done_payload = {
-            "type": "done",
-            "action_cards": result.action_cards if result.action_cards else [],
-            "haq_required": result.haq_required,
-            "haq_item": result.haq_item,
-            "memory_updated": result.memory_updated,
-            "intent": result.intent,
-            "agent_used": result.agent_used
-        }
-        yield f"data: {json.dumps(done_payload)}\n\n"
+            # 2. Run supervisor agent (slow LLM call)
+            # Run in executor to keep event loop unblocked
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(
+                None,
+                lambda: supervisor_agent.route(
+                    message=payload.message,
+                    mode=payload.mode,
+                    candidate_id=cand.id,
+                    user_id=current_user.id,
+                    history=history,
+                    context_hint=payload.context_hint,
+                    db=db
+                )
+            )
+
+            # Convert action_cards (Pydantic objects) and actions to serializable dicts
+            action_cards_data = []
+            if result.action_cards:
+                for card in result.action_cards:
+                    if hasattr(card, "dict"):
+                        action_cards_data.append(card.dict())
+                    elif hasattr(card, "model_dump"):
+                        action_cards_data.append(card.model_dump())
+                    else:
+                        action_cards_data.append(card)
+
+            actions_data = []
+            if hasattr(result, "actions") and result.actions:
+                for action in result.actions:
+                    if hasattr(action, "dict"):
+                        actions_data.append(action.dict())
+                    elif hasattr(action, "model_dump"):
+                        actions_data.append(action.model_dump())
+                    else:
+                        actions_data.append(action)
+
+            # 3. Stream response text in chunks
+            words = result.response.split(" ")
+            for i, word in enumerate(words):
+                chunk_text = word + (" " if i < len(words) - 1 else "")
+                content_payload = {
+                    "type": "content",
+                    "text": chunk_text
+                }
+                yield f"data: {json.dumps(content_payload)}\n\n"
+                await asyncio.sleep(0.015)  # smooth speed
+
+            # 4. Save assistant reply to DB
+            assistant_msg = MCPChatMessage(
+                id=str(uuid.uuid4()),
+                session_id=session_id,
+                user_id=current_user.id,
+                sender="tush",
+                text=result.response,
+                actions=actions_data,
+                action_cards=action_cards_data,
+                memory_updated=result.memory_updated
+            )
+            db.add(assistant_msg)
+            session.updated_at = datetime.utcnow()
+            db.commit()
+
+            # 5. Broadcast user message and assistant message via WebSocket for instant updates
+            try:
+                await manager.broadcast_to_user(current_user.email, {
+                    "type": "mcp_chat_message",
+                    "session_id": session_id,
+                    "message": {
+                        "id": user_msg.id,
+                        "sender": "user",
+                        "text": user_msg.text,
+                        "created_at": user_msg.created_at.isoformat() if hasattr(user_msg.created_at, "isoformat") else str(user_msg.created_at)
+                    }
+                })
+                await manager.broadcast_to_user(current_user.email, {
+                    "type": "mcp_chat_message",
+                    "session_id": session_id,
+                    "message": {
+                        "id": assistant_msg.id,
+                        "sender": "tush",
+                        "text": assistant_msg.text,
+                        "actions": assistant_msg.actions,
+                        "action_cards": assistant_msg.action_cards,
+                        "memory_updated": assistant_msg.memory_updated,
+                        "created_at": assistant_msg.created_at.isoformat() if hasattr(assistant_msg.created_at, "isoformat") else str(assistant_msg.created_at)
+                    }
+                })
+            except Exception:
+                pass
+
+            # 6. Send done payload
+            done_payload = {
+                "type": "done",
+                "action_cards": action_cards_data,
+                "haq_required": result.haq_required,
+                "haq_item": result.haq_item,
+                "memory_updated": result.memory_updated,
+                "intent": result.intent,
+                "agent_used": result.agent_used
+            }
+            yield f"data: {json.dumps(done_payload)}\n\n"
+
+        except Exception as e:
+            logger.error(f"Error in sse_generator: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'text': f'Error: {str(e)}'})}\n\n"
 
     return StreamingResponse(sse_generator(), media_type="text/event-stream")
 

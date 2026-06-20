@@ -429,6 +429,9 @@ export default function TushAIChat() {
       chatTextareaRef.current?.focus();
     }, 50);
 
+    let currentSessId = activeSessionId;
+    let receivedDone = false;
+
     try {
       const history = updated.slice(0, -1).map((m) => ({
         role: m.sender === "user" ? ("user" as const) : ("assistant" as const),
@@ -472,6 +475,7 @@ export default function TushAIChat() {
           try {
             const data = JSON.parse(trimmed.slice(6));
             if (data.type === "session") {
+              currentSessId = data.session_id;
               setActiveSessionId(data.session_id);
               fetchSessions(1, true);
             } else if (data.type === "content") {
@@ -486,6 +490,7 @@ export default function TushAIChat() {
                 return next;
               });
             } else if (data.type === "done") {
+              receivedDone = true;
               setMessages((p) => {
                 const next = [...p];
                 if (next[assistantMsgIndex]) {
@@ -497,11 +502,10 @@ export default function TushAIChat() {
                   };
                 }
                 // Save to cache
-                const currentSessId = activeSessionId || data.session_id;
                 if (currentSessId) {
                   setSessionMessagesCache(prev => ({
                     ...prev,
-                    [currentSessId]: next
+                    [currentSessId as string]: next
                   }));
                 }
                 return next;
@@ -514,8 +518,67 @@ export default function TushAIChat() {
           }
         }
       }
+
+      // Fallback: If the stream closed but we never received the "done" event (e.g. gateway timeout),
+      // we wait a moment and fetch the session messages from the DB to sync.
+      if (!receivedDone) {
+        console.log("Stream closed without 'done' event, falling back to DB fetch...");
+        // Wait 2.5 seconds for backend to finish processing/committing
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+        if (currentSessId) {
+          try {
+            const dbMsgs = await apiService.getMcpSessionMessages(currentSessId);
+            if (dbMsgs && dbMsgs.length > 0) {
+              const formatted = dbMsgs.map((m: any) => ({
+                sender: m.sender === "user" ? ("user" as const) : ("tush" as const),
+                text: m.text,
+                timestamp: m.created_at ? new Date(m.created_at) : new Date(),
+                actions: m.actions,
+                action_cards: m.action_cards,
+                memory_updated: m.memory_updated
+              }));
+              setMessages(formatted);
+              setSessionMessagesCache(prev => ({
+                ...prev,
+                [currentSessId as string]: formatted
+              }));
+            }
+          } catch (err) {
+            console.error("Fallback DB fetch failed:", err);
+          }
+        }
+        setLoading(false);
+      }
+
     } catch (err) {
       console.error(err);
+
+      // Fallback DB fetch on actual exception too, just in case the backend succeeded but connection broke
+      if (!receivedDone && currentSessId) {
+        try {
+          const dbMsgs = await apiService.getMcpSessionMessages(currentSessId);
+          if (dbMsgs && dbMsgs.length > 0) {
+            const formatted = dbMsgs.map((m: any) => ({
+              sender: m.sender === "user" ? ("user" as const) : ("tush" as const),
+              text: m.text,
+              timestamp: m.created_at ? new Date(m.created_at) : new Date(),
+              actions: m.actions,
+              action_cards: m.action_cards,
+              memory_updated: m.memory_updated
+            }));
+            setMessages(formatted);
+            setSessionMessagesCache(prev => ({
+              ...prev,
+              [currentSessId as string]: formatted
+            }));
+            setLoading(false);
+            return;
+          }
+        } catch (dbErr) {
+          console.error("Fallback DB fetch on catch block failed:", dbErr);
+        }
+      }
+
       setMessages((p) => [...p, {
         sender: "tush",
         text: "I encountered an issue. Please try again.",
