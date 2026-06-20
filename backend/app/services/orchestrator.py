@@ -35,7 +35,7 @@ def call_gemini(prompt: str, json_mode: bool = False) -> str:
                 "responseMimeType": "application/json",
                 "maxOutputTokens": 8192
             }
-        res = requests.post(url, headers=headers, json=payload, timeout=12)
+        res = requests.post(url, headers=headers, json=payload, timeout=20)
         if res.status_code == 200:
             data = res.json()
             return data["candidates"][0]["content"]["parts"][0]["text"]

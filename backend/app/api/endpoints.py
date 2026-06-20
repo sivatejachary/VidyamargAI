@@ -450,6 +450,8 @@ def calculate_and_save_job_match(db: Session, candidate_id: int, job: Job, candi
     return match_record
 
 def extract_hiring_post_details_ai(raw_text: str) -> dict:
+    # Truncate to 1200 chars — reduces tokens sent to AI, speeds up response, fewer timeouts
+    raw_text = raw_text[:1200] if len(raw_text) > 1200 else raw_text
     prompt = f"""You are an expert AI recruiter. Extract structured job details from the following unstructured LinkedIn hiring post. Return ONLY valid JSON with no markdown formatting around it (no ```json).
 
 Post Content:
@@ -482,10 +484,19 @@ JSON Format:
         try:
             cleaned = result.strip()
             if cleaned.startswith("```"):
-                cleaned = "\n".join(cleaned.split("\n")[1:-1])
+                lines = cleaned.split("\n")
+                cleaned = "\n".join(lines[1:-1] if lines[-1] == "```" else lines[1:])
             if cleaned.startswith("json"):
                 cleaned = cleaned[4:].strip()
-            return json.loads(cleaned)
+            # First try direct parse (single clean JSON object)
+            try:
+                return json.loads(cleaned)
+            except json.JSONDecodeError:
+                # NVIDIA sometimes returns multiple concatenated JSON objects.
+                # Use raw_decode to extract only the first complete one.
+                decoder = json.JSONDecoder()
+                obj, _ = decoder.raw_decode(cleaned)
+                return obj
         except Exception as e:
             logger.error(f"Error parsing AI response: {e}. Raw response: {result}")
             
@@ -743,6 +754,10 @@ def _run_background_job_collection():
         db.close()
 
 async def periodic_job_collection_agent_runner():
+    # Wait 5 minutes after startup before first run.
+    # This prevents API spam during deploy and lets Railway health checks pass cleanly.
+    logger.info("Job collection agent scheduled: first run in 5 minutes.")
+    await asyncio.sleep(300)
     while True:
         try:
             await asyncio.to_thread(_run_background_job_collection)
