@@ -731,16 +731,24 @@ def run_job_collection_agent_sync(db: Session):
 
 import asyncio
 
+def _run_background_job_collection():
+    from app.core.database import SessionLocal
+    db = SessionLocal()
+    try:
+        run_job_collection_agent_sync(db)
+    except Exception as e:
+        logger.error(f"Error in background Job Collection Agent: {e}")
+    finally:
+        db.close()
+
 async def periodic_job_collection_agent_runner():
     while True:
         try:
-            from app.core.database import SessionLocal
-            db = SessionLocal()
-            run_job_collection_agent_sync(db)
-            db.close()
+            await asyncio.to_thread(_run_background_job_collection)
         except Exception as e:
-            logger.error(f"Error in background Job Collection Agent: {e}")
+            logger.error(f"Error in periodic_job_collection_agent_runner: {e}")
         await asyncio.sleep(3600)
+
 
 @router.on_event("startup")
 async def start_job_collection_agent():
