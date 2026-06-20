@@ -682,7 +682,7 @@ export default function TushAIChat() {
 
 
   return (
-    <div className="w-full h-full bg-app-bg text-app-text flex flex-row font-sans transition-colors duration-300 relative overflow-hidden">
+    <div className="w-full h-[calc(100vh-8rem)] md:h-screen bg-app-bg text-app-text flex flex-row font-sans transition-colors duration-300 relative overflow-hidden">
       
       {/* 1. Collapsible Left Chat History Sidebar */}
       {isHistoryOpen && (
@@ -920,10 +920,6 @@ export default function TushAIChat() {
                   </div>
                   <div>
                     <h2 className="text-sm font-bold text-app-text">Tush AI</h2>
-                    <span className="text-[10px] text-emerald-500 font-medium flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                      Active Session
-                    </span>
                   </div>
                 </div>
 
