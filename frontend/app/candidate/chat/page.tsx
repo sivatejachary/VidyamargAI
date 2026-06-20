@@ -80,6 +80,13 @@ export default function TushAIChat() {
   const [sessions, setSessions] = useState<any[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(true);
+
+  // Sidebar responsive check on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsHistoryOpen(window.innerWidth >= 768);
+    }
+  }, []);
   const [sessionsPage, setSessionsPage] = useState(1);
   const [sessionsHasMore, setSessionsHasMore] = useState(true);
   const [loadingSessions, setLoadingSessions] = useState(false);
@@ -679,113 +686,119 @@ export default function TushAIChat() {
       
       {/* 1. Collapsible Left Chat History Sidebar */}
       {isHistoryOpen && (
-        <aside className="no-print w-72 shrink-0 border-r border-app-border bg-app-surface/90 backdrop-blur-md flex flex-col h-full transition-all duration-300 ease-in-out">
-          {/* Header & New Chat */}
-          <div className="p-4 flex flex-col gap-3 shrink-0">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-widest text-app-text-muted">Chat History</span>
+        <>
+          <div
+            onClick={() => setIsHistoryOpen(false)}
+            className="md:hidden fixed inset-0 z-30 bg-slate-950/20 dark:bg-black/40 backdrop-blur-xs"
+          />
+          <aside className="no-print w-72 fixed md:relative z-40 inset-y-0 left-0 border-r border-app-border bg-app-surface/90 backdrop-blur-md flex flex-col h-full transition-all duration-300 ease-in-out">
+            {/* Header & New Chat */}
+            <div className="p-4 flex flex-col gap-3 shrink-0">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-widest text-app-text-muted">Chat History</span>
+                <button
+                  onClick={() => setIsHistoryOpen(false)}
+                  className="p-1.5 rounded-lg text-app-text-muted hover:text-app-text hover:bg-app-bg transition-colors"
+                  title="Hide Sidebar"
+                >
+                  <PanelLeftClose size={16} />
+                </button>
+              </div>
+
               <button
-                onClick={() => setIsHistoryOpen(false)}
-                className="p-1.5 rounded-lg text-app-text-muted hover:text-app-text hover:bg-app-bg transition-colors"
-                title="Hide Sidebar"
+                onClick={startNewChat}
+                className="flex items-center justify-center gap-2 w-full py-3.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-md hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
               >
-                <PanelLeftClose size={16} />
+                <Plus size={14} /> New Chat
               </button>
+
+              {/* Search Box */}
+              <div className="relative flex items-center bg-app-bg border border-app-border rounded-xl px-3 py-2 focus-within:border-primary/50 transition-colors">
+                <Search size={14} className="text-app-text-muted shrink-0 mr-2" />
+                <input
+                  type="text"
+                  placeholder="Search chats..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-transparent text-xs font-semibold text-app-text outline-none placeholder-app-text-muted"
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery("")} className="text-app-text-muted hover:text-app-text">
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
             </div>
 
-            <button
-              onClick={startNewChat}
-              className="flex items-center justify-center gap-2 w-full py-3.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-md hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+            {/* Sessions List with Infinite Scroll */}
+            <div
+              onScroll={handleSessionsScroll}
+              className="flex-1 overflow-y-auto px-3 pb-6 space-y-4 custom-scrollbar"
             >
-              <Plus size={14} /> New Chat
-            </button>
+              {/* Pinned Chats */}
+              {grouped.pinned.length > 0 && (
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-app-text-muted uppercase tracking-wider pl-3 block mb-1">Pinned</span>
+                  {grouped.pinned.map((s) => (
+                    <SessionItem key={s.id} s={s} />
+                  ))}
+                </div>
+              )}
 
-            {/* Search Box */}
-            <div className="relative flex items-center bg-app-bg border border-app-border rounded-xl px-3 py-2 focus-within:border-primary/50 transition-colors">
-              <Search size={14} className="text-app-text-muted shrink-0 mr-2" />
-              <input
-                type="text"
-                placeholder="Search chats..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-transparent text-xs font-semibold text-app-text outline-none placeholder-app-text-muted"
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery("")} className="text-app-text-muted hover:text-app-text">
-                  <X size={12} />
-                </button>
+              {/* Today */}
+              {grouped.today.length > 0 && (
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-app-text-muted uppercase tracking-wider pl-3 block mb-1">Today</span>
+                  {grouped.today.map((s) => (
+                    <SessionItem key={s.id} s={s} />
+                  ))}
+                </div>
+              )}
+
+              {/* Yesterday */}
+              {grouped.yesterday.length > 0 && (
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-app-text-muted uppercase tracking-wider pl-3 block mb-1">Yesterday</span>
+                  {grouped.yesterday.map((s) => (
+                    <SessionItem key={s.id} s={s} />
+                  ))}
+                </div>
+              )}
+
+              {/* Last 7 Days */}
+              {grouped.previous7Days.length > 0 && (
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-app-text-muted uppercase tracking-wider pl-3 block mb-1">Previous 7 Days</span>
+                  {grouped.previous7Days.map((s) => (
+                    <SessionItem key={s.id} s={s} />
+                  ))}
+                </div>
+              )}
+
+              {/* Older */}
+              {grouped.older.length > 0 && (
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-app-text-muted uppercase tracking-wider pl-3 block mb-1">Older</span>
+                  {grouped.older.map((s) => (
+                    <SessionItem key={s.id} s={s} />
+                  ))}
+                </div>
+              )}
+
+              {loadingSessions && (
+                <div className="flex justify-center py-2 text-app-text-muted">
+                  <Loader2 size={16} className="animate-spin" />
+                </div>
+              )}
+
+              {!loadingSessions && sessions.length === 0 && (
+                <div className="text-center py-8 text-xs text-app-text-muted">
+                  No past conversations found.
+                </div>
               )}
             </div>
-          </div>
-
-          {/* Sessions List with Infinite Scroll */}
-          <div
-            onScroll={handleSessionsScroll}
-            className="flex-1 overflow-y-auto px-3 pb-6 space-y-4 custom-scrollbar"
-          >
-            {/* Pinned Chats */}
-            {grouped.pinned.length > 0 && (
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold text-app-text-muted uppercase tracking-wider pl-3 block mb-1">Pinned</span>
-                {grouped.pinned.map((s) => (
-                  <SessionItem key={s.id} s={s} />
-                ))}
-              </div>
-            )}
-
-            {/* Today */}
-            {grouped.today.length > 0 && (
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold text-app-text-muted uppercase tracking-wider pl-3 block mb-1">Today</span>
-                {grouped.today.map((s) => (
-                  <SessionItem key={s.id} s={s} />
-                ))}
-              </div>
-            )}
-
-            {/* Yesterday */}
-            {grouped.yesterday.length > 0 && (
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold text-app-text-muted uppercase tracking-wider pl-3 block mb-1">Yesterday</span>
-                {grouped.yesterday.map((s) => (
-                  <SessionItem key={s.id} s={s} />
-                ))}
-              </div>
-            )}
-
-            {/* Last 7 Days */}
-            {grouped.previous7Days.length > 0 && (
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold text-app-text-muted uppercase tracking-wider pl-3 block mb-1">Previous 7 Days</span>
-                {grouped.previous7Days.map((s) => (
-                  <SessionItem key={s.id} s={s} />
-                ))}
-              </div>
-            )}
-
-            {/* Older */}
-            {grouped.older.length > 0 && (
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold text-app-text-muted uppercase tracking-wider pl-3 block mb-1">Older</span>
-                {grouped.older.map((s) => (
-                  <SessionItem key={s.id} s={s} />
-                ))}
-              </div>
-            )}
-
-            {loadingSessions && (
-              <div className="flex justify-center py-2 text-app-text-muted">
-                <Loader2 size={16} className="animate-spin" />
-              </div>
-            )}
-
-            {!loadingSessions && sessions.length === 0 && (
-              <div className="text-center py-8 text-xs text-app-text-muted">
-                No past conversations found.
-              </div>
-            )}
-          </div>
-        </aside>
+          </aside>
+        </>
       )}
 
       {/* 2. Main Content Area */}
@@ -820,7 +833,7 @@ export default function TushAIChat() {
               Your AI-powered career companion
             </p>
 
-              <div className="flex flex-col bg-card border border-border rounded-2xl p-2 pl-4 pr-3 shadow-custom-glass hover:border-border-hover dark:hover:border-neutral-700 focus-within:border-primary/50 dark:focus-within:border-primary/40 focus-within:shadow-[0_8px_30px_rgba(59,130,246,0.08)] transition-all duration-300 w-full">
+              <div className="flex flex-col bg-card border border-border rounded-2xl md:rounded-3xl p-1.5 pl-3 pr-2 md:p-2 md:pl-4 md:pr-3 shadow-custom-glass hover:border-border-hover dark:hover:border-neutral-700 focus-within:border-primary/50 dark:focus-within:border-primary/40 focus-within:shadow-[0_8px_30px_rgba(59,130,246,0.08)] transition-all duration-300 w-full">
                 {attachments.length > 0 && (
                   <div className="flex flex-wrap gap-2 px-1 pt-2 pb-1.5 border-b border-gray-100 dark:border-zinc-800 mb-2">
                     {attachments.map((file, idx) => (
@@ -850,7 +863,7 @@ export default function TushAIChat() {
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(query); } }}
-                      placeholder="Ask Tush AI anything about your career, jobs, learning..."
+                      placeholder="Message Tush AI..."
                       className="chat-input-textarea w-full bg-transparent resize-none border-none outline-none focus:ring-0 text-sm text-foreground placeholder-muted-foreground py-1 max-h-48 h-6"
                     />
                   </div>
@@ -901,7 +914,7 @@ export default function TushAIChat() {
             <div className="flex-1 flex flex-col h-full justify-between overflow-hidden print-full-width">
               {/* Chat Header */}
               <div className="flex items-center justify-between pb-3 border-b border-app-border no-print">
-                <div className="flex items-center gap-3 pl-8 md:pl-0">
+                <div className="flex items-center gap-3 pl-14 md:pl-0">
                   <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-xl flex items-center justify-center shadow-md">
                     <Sparkles size={16} />
                   </div>
@@ -999,7 +1012,7 @@ export default function TushAIChat() {
               </div>
 
               <div className="pt-2 pb-4 no-print">
-                <div className="flex flex-col bg-card border border-border rounded-2xl p-2 pl-4 pr-3 shadow-custom-glass hover:border-border-hover dark:hover:border-neutral-700 focus-within:border-primary/50 dark:focus-within:border-primary/40 focus-within:shadow-[0_8px_30px_rgba(59,130,246,0.08)] transition-all duration-300 w-full">
+                <div className="flex flex-col bg-card border border-border rounded-2xl md:rounded-3xl p-1.5 pl-3 pr-2 md:p-2 md:pl-4 md:pr-3 shadow-custom-glass hover:border-border-hover dark:hover:border-neutral-700 focus-within:border-primary/50 dark:focus-within:border-primary/40 focus-within:shadow-[0_8px_30px_rgba(59,130,246,0.08)] transition-all duration-300 w-full">
                   {attachments.length > 0 && (
                     <div className="flex flex-wrap gap-2 px-1 pt-2 pb-1.5 border-b border-gray-100 dark:border-zinc-800 mb-2">
                       {attachments.map((file, idx) => (
@@ -1029,7 +1042,7 @@ export default function TushAIChat() {
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(query); } }}
-                        placeholder="Ask Tush AI anything about your career, jobs, learning..."
+                        placeholder="Message Tush AI..."
                         className="chat-input-textarea w-full bg-transparent resize-none border-none outline-none focus:ring-0 text-sm text-foreground placeholder-muted-foreground py-1 max-h-48 h-6"
                       />
                     </div>

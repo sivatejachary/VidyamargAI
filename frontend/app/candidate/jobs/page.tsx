@@ -445,37 +445,38 @@ export default function CandidateJobs() {
   const poolWorkModes = ["All", ...Array.from(new Set(jobPool.map(j => j.work_mode)))].sort();
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-20">
+    <div className="min-h-screen bg-background text-foreground pb-20 max-w-full overflow-x-hidden">
       {/* Header */}
-      <div className="bg-card border-b border-border py-6 sticky top-0 z-20 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-100">
-              <Sparkles className="w-6 h-6 animate-pulse" />
+      <div className="bg-card border-b border-border py-3 md:py-6 sticky top-0 z-20 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4">
+          <div className="flex items-center gap-2 md:gap-3">
+            <div className="w-9 h-9 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-100 shrink-0">
+              <Sparkles className="w-4.5 h-4.5 md:w-6 md:h-6 animate-pulse" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
+              <h1 className="text-base md:text-xl font-bold text-foreground flex items-center gap-1.5">
                 Autonomous Recruiter Agent
               </h1>
-              <p className="text-xs text-muted-foreground font-medium">
+              <p className="text-[10px] md:text-xs text-muted-foreground font-medium">
                 AI Agent active · Continuously searching, verifying, and matching live jobs
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 w-full sm:w-auto shrink-0">
             <Button
               onClick={triggerAgentRun}
               loading={agentStatus === "running"}
+              className="w-full sm:w-auto py-2 text-xs"
             >
-              <RefreshCw className={`w-4 h-4 ${agentStatus === "running" ? "animate-spin" : ""}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${agentStatus === "running" ? "animate-spin" : ""}`} />
               <span>Re-Run Job Agent</span>
             </Button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 space-y-4 md:py-8 md:space-y-8">
         {error && (
           <Alert variant="error">
             {error}
@@ -483,39 +484,39 @@ export default function CandidateJobs() {
         )}
 
         {/* Tab selection buttons */}
-        <div className="flex space-x-1 bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl w-max border border-slate-200/50 dark:border-slate-800/40">
+        <div className="flex overflow-x-auto max-w-full space-x-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl md:rounded-2xl w-full md:w-max border border-slate-200/50 dark:border-slate-800/40 scrollbar-none shrink-0">
           <button
             onClick={() => setActiveTab("ai_search")}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+            className={`px-3 py-2 md:px-4 md:py-2.5 rounded-lg md:rounded-xl text-11 md:text-xs font-bold shrink-0 transition flex items-center gap-1.5 md:gap-2 cursor-pointer ${
               activeTab === "ai_search"
                 ? "bg-white dark:bg-slate-800 text-foreground shadow-xs border border-slate-200/30 dark:border-slate-700/30"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5" />
+            <Sparkles className="w-3 h-3 md:w-3.5 md:h-3.5" />
             AI Search Agent
           </button>
           <button
             onClick={() => setActiveTab("job_pool")}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+            className={`px-3 py-2 md:px-4 md:py-2.5 rounded-lg md:rounded-xl text-11 md:text-xs font-bold shrink-0 transition flex items-center gap-1.5 md:gap-2 cursor-pointer ${
               activeTab === "job_pool"
                 ? "bg-white dark:bg-slate-800 text-foreground shadow-xs border border-slate-200/30 dark:border-slate-700/30"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Briefcase className="w-3.5 h-3.5" />
-            Job Pool (Pre-collected)
+            <Briefcase className="w-3 h-3 md:w-3.5 md:h-3.5" />
+            Job Pool
           </button>
           <button
             onClick={() => setActiveTab("saved")}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+            className={`px-3 py-2 md:px-4 md:py-2.5 rounded-lg md:rounded-xl text-11 md:text-xs font-bold shrink-0 transition flex items-center gap-1.5 md:gap-2 cursor-pointer ${
               activeTab === "saved"
                 ? "bg-white dark:bg-slate-800 text-foreground shadow-xs border border-slate-200/30 dark:border-slate-700/30"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Bookmark className="w-3.5 h-3.5" />
-            Saved Jobs ({savedJobIds.size})
+            <Bookmark className="w-3 h-3 md:w-3.5 md:h-3.5" />
+            Saved ({savedJobIds.size})
           </button>
         </div>
 
@@ -634,7 +635,7 @@ export default function CandidateJobs() {
                       return (
                         <div
                           key={job.id}
-                          className="bg-card text-card-foreground border border-border rounded-3xl p-6 shadow-xs hover:border-muted-foreground/30 hover:shadow-md transition-all duration-200 relative overflow-hidden flex flex-col justify-between"
+                          className="bg-card text-card-foreground border border-border rounded-3xl p-4 md:p-6 shadow-xs hover:border-muted-foreground/30 hover:shadow-md transition-all duration-200 relative overflow-hidden flex flex-col justify-between"
                         >
                           <div className={`absolute top-0 right-0 px-2.5 py-1 rounded-bl-lg border-l border-b border-border text-10 font-extrabold flex items-center gap-1 ${styles.bg} ${styles.text}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${styles.dot}`} />
@@ -647,8 +648,8 @@ export default function CandidateJobs() {
                                 <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-slate-700 to-slate-900 flex items-center justify-center text-white text-sm font-extrabold shrink-0 shadow-inner">
                                   {job.company.charAt(0).toUpperCase()}
                                 </div>
-                                <div className="min-w-0 pr-6">
-                                  <h3 className="font-bold text-slate-800 text-sm leading-snug line-clamp-2 min-h-10 flex items-center">
+                                <div className="min-w-0 pr-2 md:pr-6">
+                                  <h3 className="font-bold text-slate-800 text-xs md:text-sm leading-snug line-clamp-2 min-h-8 md:min-h-10 flex items-center">
                                     {job.title}
                                   </h3>
                                   <p className="text-slate-500 font-semibold text-11 mt-0.5 truncate">
@@ -770,8 +771,8 @@ export default function CandidateJobs() {
                       <h2 className="text-lg font-bold text-foreground">All Ranked Opportunities</h2>
                       <p className="text-xs text-muted-foreground mt-0.5">Explore full ranked pipeline of matched listings</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="relative">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                      <div className="relative w-full sm:w-44">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <Input
                           type="text"
@@ -781,7 +782,7 @@ export default function CandidateJobs() {
                             setSearchQuery(e.target.value);
                             setCurrentPage(1);
                           }}
-                          className="pl-9 w-44 py-2 text-xs"
+                          className="pl-9 w-full py-2 text-xs"
                         />
                       </div>
 
@@ -792,7 +793,7 @@ export default function CandidateJobs() {
                             setSelectedSource(e.target.value);
                             setCurrentPage(1);
                           }}
-                          className="py-2 text-xs w-32"
+                          className="py-2 text-xs w-full sm:w-32 animate-none"
                         >
                           {uniqueSources.map(src => (
                             <option key={src} value={src}>{src}</option>
@@ -946,8 +947,8 @@ export default function CandidateJobs() {
             </Card>
 
             {/* Filter controls */}
-            <Card className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/50">
-              <div className="relative flex-1">
+            <Card className="p-4 md:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-50/50">
+              <div className="relative flex-1 w-full">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input
                   type="text"
@@ -958,13 +959,13 @@ export default function CandidateJobs() {
                 />
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex flex-col gap-1">
+              <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 w-full lg:w-auto">
+                <div className="flex flex-col gap-1 w-full sm:w-36">
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Source</span>
                   <Select
                     value={poolSelectedSource}
                     onChange={(e) => setPoolSelectedSource(e.target.value)}
-                    className="py-1 text-xs w-36 bg-white"
+                    className="py-1 text-xs w-full bg-white animate-none"
                   >
                     {poolSources.map(src => (
                       <option key={src} value={src}>{src}</option>
@@ -972,12 +973,12 @@ export default function CandidateJobs() {
                   </Select>
                 </div>
 
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1 w-full sm:w-32">
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Mode</span>
                   <Select
                     value={poolSelectedWorkMode}
                     onChange={(e) => setPoolSelectedWorkMode(e.target.value)}
-                    className="py-1 text-xs w-32 bg-white"
+                    className="py-1 text-xs w-full bg-white animate-none"
                   >
                     {poolWorkModes.map(mode => (
                       <option key={mode} value={mode}>{mode}</option>
@@ -985,12 +986,12 @@ export default function CandidateJobs() {
                   </Select>
                 </div>
 
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1 w-full sm:w-32">
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Min Opp Score</span>
                   <Select
                     value={poolMinScore}
                     onChange={(e) => setPoolMinScore(Number(e.target.value))}
-                    className="py-1 text-xs w-32 bg-white"
+                    className="py-1 text-xs w-full bg-white animate-none"
                   >
                     <option value="0">All Scores</option>
                     <option value="60">60% (Good+)</option>
@@ -1003,7 +1004,7 @@ export default function CandidateJobs() {
                   onClick={fetchJobPool}
                   disabled={loadingJobPool}
                   variant="outline"
-                  className="mt-5 text-xs py-2 h-[34px]"
+                  className="mt-0 sm:mt-5 text-xs py-2 h-[34px] w-full sm:w-auto shrink-0"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${loadingJobPool ? "animate-spin" : ""}`} />
                 </Button>
