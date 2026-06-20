@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     
     # Security
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "super-secret-recruit-tara-key-987654321")
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
     
@@ -81,7 +81,7 @@ except Exception:
     class ManualSettings:
         PROJECT_NAME = "HireAI API"
         API_V1_STR = "/api/v1"
-        SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-recruit-tara-key-987654321")
+        SECRET_KEY = os.getenv("SECRET_KEY", "")
         ALGORITHM = "HS256"
         ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
         DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/hireai")
@@ -106,3 +106,7 @@ except Exception:
         SEARCH_ENABLED = os.getenv("SEARCH_ENABLED", "True").lower() == "true"
         ANALYTICS_ENABLED = os.getenv("ANALYTICS_ENABLED", "False").lower() == "true"
     settings = ManualSettings()
+
+if not settings.SECRET_KEY:
+    raise RuntimeError("SECRET_KEY env var is required")
+
