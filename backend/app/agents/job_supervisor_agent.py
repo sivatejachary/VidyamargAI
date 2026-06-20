@@ -192,13 +192,27 @@ Return ONLY a JSON object in this format:
                     logger.warning(f"Query generation provider failed: {e}")
                     raise e
 
+        def safe_parse_json(text: str) -> dict:
+            cleaned = text.strip()
+            if cleaned.startswith("```"):
+                lines = cleaned.split("\n")
+                cleaned = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
+            if cleaned.startswith("json"):
+                cleaned = cleaned[4:].strip()
+            try:
+                return json.loads(cleaned)
+            except json.JSONDecodeError:
+                decoder = json.JSONDecoder()
+                obj, _ = decoder.raw_decode(cleaned)
+                return obj
+
         # 1. Primary: Gemini
         try:
             if self.log_cb:
                 self.log_cb("Query generation: Trying Gemini...", "info")
             res_text = call_with_timeout(call_gemini, prompt, json_mode=True, timeout=10)
             if res_text:
-                data = json.loads(res_text)
+                data = safe_parse_json(res_text)
                 if "queries" in data and isinstance(data["queries"], list):
                     queries = [q.strip() for q in data["queries"] if q.strip()]
                     query_provider = "gemini"
@@ -215,7 +229,7 @@ Return ONLY a JSON object in this format:
                     self.log_cb("Query generation: Trying NVIDIA NIM...", "info")
                 res_text = call_with_timeout(call_nvidia, prompt, json_mode=True, timeout=10)
                 if res_text:
-                    data = json.loads(res_text)
+                    data = safe_parse_json(res_text)
                     if "queries" in data and isinstance(data["queries"], list):
                         queries = [q.strip() for q in data["queries"] if q.strip()]
                         query_provider = "nvidia"
