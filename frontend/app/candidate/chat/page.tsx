@@ -9,7 +9,7 @@ import {
   User, Bot, Loader2, ChevronRight, Globe, BarChart3, Target,
   Rocket, Plus, ArrowUp, GraduationCap, BookOpen, Brain,
   TrendingUp, Zap, X, Pin, PinOff, Archive, Trash2, Edit2, Check,
-  PanelLeftClose, PanelLeftOpen, Search, Download, FileUp
+  PanelLeftClose, PanelLeftOpen, Search, Download, FileUp, MoreVertical
 } from "lucide-react";
 import Link from "next/link";
 import HumanActionQueue from "@/components/HumanActionQueue";
@@ -95,6 +95,9 @@ export default function TushAIChat() {
   // Inline rename state
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editTitleText, setEditTitleText] = useState("");
+
+  // 3-Dots Menu active session ID
+  const [activeMenuSessionId, setActiveMenuSessionId] = useState<string | null>(null);
 
   // Export dropdown
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -633,7 +636,7 @@ export default function TushAIChat() {
         </div>
 
         {/* Hover Action Buttons */}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity no-print">
+        <div className="flex items-center gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity no-print relative z-10">
           {isEditing ? (
             <button
               onClick={(e) => { e.stopPropagation(); saveRename(s.id); }}
@@ -643,7 +646,7 @@ export default function TushAIChat() {
               <Check size={11} />
             </button>
           ) : (
-            <>
+            <div className="flex items-center gap-0.5">
               <button
                 onClick={(e) => togglePinSession(s.id, s.is_pinned, e)}
                 className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-app-text-muted hover:text-app-text"
@@ -651,28 +654,49 @@ export default function TushAIChat() {
               >
                 <Pin size={11} className={s.is_pinned ? "text-blue-500 rotate-45" : ""} />
               </button>
-              <button
-                onClick={(e) => startRename(s.id, s.title, e)}
-                className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-app-text-muted hover:text-app-text"
-                title="Rename Chat"
-              >
-                <Edit2 size={11} />
-              </button>
-              <button
-                onClick={(e) => archiveSession(s.id, e)}
-                className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-app-text-muted hover:text-app-text"
-                title="Archive Chat"
-              >
-                <Archive size={11} />
-              </button>
-              <button
-                onClick={(e) => deleteSession(s.id, e)}
-                className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-950/20 text-app-text-muted hover:text-red-500"
-                title="Delete Chat"
-              >
-                <Trash2 size={11} />
-              </button>
-            </>
+
+              <div className="relative">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setActiveMenuSessionId(activeMenuSessionId === s.id ? null : s.id); }}
+                  className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-app-text-muted hover:text-app-text"
+                  title="More actions"
+                >
+                  <MoreVertical size={13} />
+                </button>
+
+                {activeMenuSessionId === s.id && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40 cursor-default" 
+                      onClick={(e) => { e.stopPropagation(); setActiveMenuSessionId(null); }}
+                    />
+                    <div 
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute right-0 mt-1 w-28 bg-app-surface border border-app-border rounded-lg shadow-lg z-50 p-1 flex flex-col gap-0.5"
+                    >
+                      <button
+                        onClick={(e) => { setEditingSessionId(s.id); setEditTitleText(s.title); setActiveMenuSessionId(null); e.stopPropagation(); }}
+                        className="flex items-center gap-1.5 w-full text-left px-2 py-1.5 text-[10px] font-semibold text-app-text-secondary hover:text-app-text hover:bg-slate-100 dark:hover:bg-slate-800/40 rounded"
+                      >
+                        <Edit2 size={10} /> Rename
+                      </button>
+                      <button
+                        onClick={(e) => { archiveSession(s.id, e); setActiveMenuSessionId(null); }}
+                        className="flex items-center gap-1.5 w-full text-left px-2 py-1.5 text-[10px] font-semibold text-app-text-secondary hover:text-app-text hover:bg-slate-100 dark:hover:bg-slate-800/40 rounded"
+                      >
+                        <Archive size={10} /> Archive
+                      </button>
+                      <button
+                        onClick={(e) => { deleteSession(s.id, e); setActiveMenuSessionId(null); }}
+                        className="flex items-center gap-1.5 w-full text-left px-2 py-1.5 text-[10px] font-semibold text-app-text-secondary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded"
+                      >
+                        <Trash2 size={10} /> Delete
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </div>
