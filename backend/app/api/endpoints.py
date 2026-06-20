@@ -472,10 +472,11 @@ JSON Format:
 }}
 """
     messages = [{"role": "user", "content": prompt}]
-    result = call_nvidia(messages)
+    # Try Gemini first (more reliable from Railway infra), NVIDIA as fallback
+    result = call_gemini(prompt, json_mode=True)
     
     if not result:
-        result = call_gemini(prompt, json_mode=True)
+        result = call_nvidia(messages)
         
     if result:
         try:

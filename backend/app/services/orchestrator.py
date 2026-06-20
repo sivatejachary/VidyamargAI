@@ -19,46 +19,31 @@ logger = logging.getLogger(__name__)
 
 def call_gemini(prompt: str, json_mode: bool = False) -> str:
     """
-    Direct HTTPS call to Gemini 3.5 Flash API to avoid dependency issues.
-    Falls back to NVIDIA Llama-3.3 if Gemini is rate limited or returns an error.
+    Direct HTTPS call to Gemini 3.5 Flash API.
+    Returns empty string on failure — callers are responsible for any LLM fallback.
     """
-    gemini_worked = False
-    res_text = ""
-    if settings.GEMINI_API_KEY:
-        try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={settings.GEMINI_API_KEY}"
-            headers = {"Content-Type": "application/json"}
-            payload = {
-                "contents": [{"parts": [{"text": prompt}]}]
+    if not settings.GEMINI_API_KEY:
+        return ""
+    try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={settings.GEMINI_API_KEY}"
+        headers = {"Content-Type": "application/json"}
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}]
+        }
+        if json_mode:
+            payload["generationConfig"] = {
+                "responseMimeType": "application/json",
+                "maxOutputTokens": 8192
             }
-            if json_mode:
-                payload["generationConfig"] = {
-                    "responseMimeType": "application/json",
-                    "maxOutputTokens": 8192
-                }
-                
-            res = requests.post(url, headers=headers, json=payload, timeout=12)
-            if res.status_code == 200:
-                data = res.json()
-                res_text = data["candidates"][0]["content"]["parts"][0]["text"]
-                gemini_worked = True
-            else:
-                logger.error(f"Gemini API returned status code {res.status_code}: {res.text}")
-        except Exception as e:
-            logger.error(f"Error calling Gemini: {e}")
-
-    if not gemini_worked:
-        # Fall back to NVIDIA if configured
-        if settings.NVIDIA_API_KEY:
-            logger.warning("Gemini API call failed or missing key. Falling back to NVIDIA API...")
-            try:
-                res_text = call_nvidia(prompt, json_mode=json_mode)
-                if res_text:
-                    return res_text
-            except Exception as e:
-                logger.error(f"NVIDIA fallback also failed: {e}")
-
-    return res_text
+        res = requests.post(url, headers=headers, json=payload, timeout=12)
+        if res.status_code == 200:
+            data = res.json()
+            return data["candidates"][0]["content"]["parts"][0]["text"]
+        else:
+            logger.error(f"Gemini API returned status code {res.status_code}: {res.text}")
+    except Exception as e:
+        logger.error(f"Error calling Gemini: {e}")
+    return ""
 
 def call_nvidia(messages, json_mode: bool = False) -> str:
     """
@@ -106,7 +91,8 @@ def call_nvidia(messages, json_mode: bool = False) -> str:
                     "top_p": 1,
                     "max_tokens": 4096
                 }
-                res = requests.post(url, headers=headers, json=payload, timeout=12)
+                # (connect_timeout=3s, read_timeout=8s) — fail fast so callers can try Gemini
+                res = requests.post(url, headers=headers, json=payload, timeout=(3, 8))
                 if res.status_code == 200:
                     data = res.json()
                     content = data["choices"][0]["message"]["content"]
