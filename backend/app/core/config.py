@@ -57,6 +57,8 @@ class Settings(BaseSettings):
     NVIDIA_API_KEY: str = os.getenv("NVIDIA_API_KEY", "")
     NVIDIA_API_KEY_FALLBACK: str = os.getenv("NVIDIA_API_KEY_FALLBACK", "")
     SERPER_API_KEY: str = os.getenv("SERPER_API_KEY", "")
+    QDRANT_URL: str = os.getenv("QDRANT_URL", "")
+    QDRANT_API_KEY: str = os.getenv("QDRANT_API_KEY", "")
     
     # Telegram API
     TG_API_ID: str = os.getenv("TG_API_ID", os.getenv("api_id", ""))
@@ -97,8 +99,11 @@ except Exception:
         NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
         NVIDIA_API_KEY_FALLBACK = os.getenv("NVIDIA_API_KEY_FALLBACK", "")
         SERPER_API_KEY = os.getenv("SERPER_API_KEY", "")
+        QDRANT_URL = os.getenv("QDRANT_URL", "")
+        QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
         TG_API_ID = os.getenv("TG_API_ID", os.getenv("api_id", ""))
         TG_API_HASH = os.getenv("TG_API_HASH", os.getenv("api_hash", ""))
+
         AI_MENTOR_ENABLED = os.getenv("AI_MENTOR_ENABLED", "True").lower() == "true"
         VOICE_MENTOR_ENABLED = os.getenv("VOICE_MENTOR_ENABLED", "False").lower() == "true"
         STUDY_PLAN_ENABLED = os.getenv("STUDY_PLAN_ENABLED", "True").lower() == "true"

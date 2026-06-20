@@ -58,8 +58,10 @@ class TestCoursesEndpoints(unittest.TestCase):
                 totalmodules INTEGER,
                 level TEXT,
                 status TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
+
         """))
         db.execute(text("""
             CREATE TABLE IF NOT EXISTS modules (

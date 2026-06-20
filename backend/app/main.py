@@ -600,6 +600,15 @@ async def startup_event():
     init_db_safely()
     asyncio.create_task(seed_external_jobs_bg())
     
+    # Initialize Qdrant Collections
+    try:
+        from app.services.vector_store import vector_store
+        asyncio.create_task(asyncio.to_thread(vector_store.init_collections))
+        logger.info("Qdrant collection initialization scheduled in background.")
+    except Exception as e:
+        logger.error(f"Failed to schedule Qdrant collection initialization: {e}")
+
+    
     # Initialize Event Bus
     try:
         from app.core.event_bus import event_bus

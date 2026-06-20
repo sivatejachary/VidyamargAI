@@ -42,6 +42,8 @@ async def _fetch_board(client, company: str) -> List[LiveJob]:
         data = resp.json()
         jobs = []
         for job in data:
+            if not isinstance(job, dict):
+                continue
             categories = job.get("categories", {})
             location = categories.get("location") or "India"
             
@@ -52,19 +54,25 @@ async def _fetch_board(client, company: str) -> List[LiveJob]:
                 if content:
                     description += " " + _strip_html(content)
 
+            title = job.get("title") or job.get("text") or "Software Engineer"
+            apply_url = job.get("hostedUrl") or job.get("applyUrl") or ""
+            if not apply_url:
+                continue
+
             jobs.append(LiveJob(
-                title=job["title"],
+                title=title,
                 company=company.replace("-", " ").title(),
                 location=location,
                 experience="",
                 skills=_extract_skills_from_content(description),
-                apply_url=job["hostedUrl"],
+                apply_url=apply_url,
                 posted_date="", # Lever public posting does not reliably provide updated dates in mode=json
                 source="Lever",
                 description=description,
                 work_mode=_detect_work_mode(job),
                 company_logo=None,
             ))
+
         return jobs
     except Exception as e:
         logger.warning(f"Failed to fetch Lever board for {company}: {e}")

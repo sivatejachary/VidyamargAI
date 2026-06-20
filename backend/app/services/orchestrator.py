@@ -77,6 +77,7 @@ def call_nvidia(messages, json_mode: bool = False) -> str:
         models_to_try.append(model_env)
 
     def _try_call(key_to_use: str) -> str:
+        import json
         for model in models_to_try:
             try:
                 url = "https://integrate.api.nvidia.com/v1/chat/completions"
@@ -89,13 +90,28 @@ def call_nvidia(messages, json_mode: bool = False) -> str:
                     "messages": messages,
                     "temperature": 0.1,
                     "top_p": 1,
-                    "max_tokens": 4096
+                    "max_tokens": 1024,
+                    "stream": True
                 }
-                # (connect_timeout=3s, read_timeout=8s) — fail fast so callers can try Gemini
-                res = requests.post(url, headers=headers, json=payload, timeout=(3, 8))
+                res = requests.post(url, headers=headers, json=payload, timeout=(10, 120), stream=True)
                 if res.status_code == 200:
-                    data = res.json()
-                    content = data["choices"][0]["message"]["content"]
+                    content_chunks = []
+                    for line in res.iter_lines():
+                        if not line:
+                            continue
+                        line_str = line.decode("utf-8").strip()
+                        if line_str.startswith("data: "):
+                            data_str = line_str[6:]
+                            if data_str == "[DONE]":
+                                break
+                            try:
+                                chunk = json.loads(data_str)
+                                delta = chunk.get("choices", [{}])[0].get("delta", {})
+                                if "content" in delta:
+                                    content_chunks.append(delta["content"])
+                            except Exception:
+                                pass
+                    content = "".join(content_chunks)
                     if content:
                         return content
                 else:
@@ -103,6 +119,7 @@ def call_nvidia(messages, json_mode: bool = False) -> str:
             except Exception as e:
                 logger.error(f"Error calling NVIDIA API with model {model}: {e}")
         return ""
+
 
     # Try primary key first
     res_text = _try_call(settings.NVIDIA_API_KEY) if settings.NVIDIA_API_KEY else ""
@@ -1161,9 +1178,19 @@ class AgentOrchestrator:
             profile.parsed_metadata = json.dumps(profile_data)
             db.commit()
             logger.info(f"Candidate profile rebuilt successfully for candidate {candidate.id}")
+            
+            # Upsert to Qdrant Vector Store
+            try:
+                from app.services.vector_store import vector_store
+                resume_text = f"Roles: {', '.join(profile_data.get('preferred_roles', []))}\nDomain: {profile_data.get('domain', '')}\nSkills: {', '.join(profile_data.get('skills', []))}\nExperience: {profile_data.get('experience_years', 0)} years\nSummary: {profile_data.get('summary', '')}"
+                await vector_store.upsert_resume(candidate.id, resume_text, profile_data.get("skills", []))
+                logger.info(f"Upserted resume to Qdrant vector store for candidate {candidate.id}")
+            except Exception as q_err:
+                logger.error(f"Error upserting resume to Qdrant: {q_err}")
         except Exception as e:
             logger.error(f"Error rebuilding candidate profile: {e}")
             db.rollback()
+
 
 
 def calculate_experience_intervals(exp_json) -> dict:

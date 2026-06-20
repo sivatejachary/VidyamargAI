@@ -23,15 +23,24 @@ RSS_FEEDS = {
 async def fetch_rss_jobs(queries: List[str], skills: List[str]) -> List[LiveJob]:
     """Parse multiple RSS/Atom feeds in parallel."""
     tasks = []
+    seen_urls = set()
     for name, url_template in RSS_FEEDS.items():
-        for query in queries[:3]:
-            # Format url template
-            skill_val = skills[0].lower() if skills else "python"
-            url = url_template.format(
-                query=query.replace(" ", "+"),
-                skill=skill_val
-            )
-            tasks.append(_parse_feed(name, url))
+        if "{query}" in url_template or "{skill}" in url_template:
+            for query in queries[:3]:
+                skill_val = skills[0].lower() if skills else "python"
+                url = url_template.format(
+                    query=query.replace(" ", "+"),
+                    skill=skill_val
+                )
+                if url not in seen_urls:
+                    seen_urls.add(url)
+                    tasks.append(_parse_feed(name, url))
+        else:
+            url = url_template
+            if url not in seen_urls:
+                seen_urls.add(url)
+                tasks.append(_parse_feed(name, url))
+
 
     results = await asyncio.gather(*tasks, return_exceptions=True)
     all_jobs = []

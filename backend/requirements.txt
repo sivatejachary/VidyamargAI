@@ -28,6 +28,7 @@ feedparser>=6.0.8
 apscheduler>=3.10.4
 playwright>=1.42.0
 python-magic>=0.4.27
+qdrant-client
 
 
 

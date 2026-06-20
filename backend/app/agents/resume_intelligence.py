@@ -1,7 +1,7 @@
 import json
 import logging
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 from app.models.models import Candidate
 
@@ -20,6 +20,16 @@ class CandidateProfileData(BaseModel):
     preferred_roles: List[str] = []
     career_level: Optional[str] = "Mid-level"
     locations: List[str] = []
+
+    @field_validator("skills", "certifications", "subdomains", "preferred_roles", "locations", mode="before")
+    @classmethod
+    def coerce_string_to_list(cls, v):
+        if isinstance(v, str):
+            return [x.strip() for x in v.split(",") if x.strip()]
+        if v is None:
+            return []
+        return v
+
 
 
 class ResumeIntelligenceAgent:
