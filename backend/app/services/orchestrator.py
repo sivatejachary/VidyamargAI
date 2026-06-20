@@ -36,7 +36,7 @@ def call_gemini(prompt: str, json_mode: bool = False) -> str:
                     "maxOutputTokens": 8192
                 }
                 
-            res = requests.post(url, headers=headers, json=payload, timeout=45)
+            res = requests.post(url, headers=headers, json=payload, timeout=12)
             if res.status_code == 200:
                 data = res.json()
                 res_text = data["candidates"][0]["content"]["parts"][0]["text"]
@@ -82,7 +82,7 @@ def call_nvidia(messages, json_mode: bool = False) -> str:
             "top_p": 1,
             "max_tokens": 4096
         }
-        res = requests.post(url, headers=headers, json=payload, timeout=90)
+        res = requests.post(url, headers=headers, json=payload, timeout=12)
         if res.status_code == 200:
             data = res.json()
             return data["choices"][0]["message"]["content"]
