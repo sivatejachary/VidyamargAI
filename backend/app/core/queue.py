@@ -94,14 +94,23 @@ def run_agent_flow_sync_wrapper(run_id: int, candidate_id: int):
 def enqueue_agent_run(run_id: int, candidate_id: int) -> str:
     """
     Enqueues an agent run job. 
-    Uses Redis Queue if available, otherwise falls back to Postgres-backed local executor.
+    Uses Redis Queue if available and active workers exist, otherwise falls back to Postgres-backed local executor.
     """
     global redis_failover_active
     from app.core.database import SessionLocal
     from app.models.models import JobAgentRun
     from app.models.mcp_models import DeadLetterJob
     
+    has_rq_workers = False
     if is_redis_connected():
+        try:
+            from rq import Worker
+            workers = Worker.all(connection=redis_conn)
+            has_rq_workers = any("default" in w.queue_names() for w in workers)
+        except Exception:
+            pass
+
+    if is_redis_connected() and has_rq_workers:
         try:
             default_queue.enqueue(run_agent_flow_sync_wrapper, run_id, candidate_id)
             logger.info(f"Successfully enqueued run_id={run_id} to RQ default queue.")
@@ -244,7 +253,16 @@ def run_auto_apply_sync_wrapper(candidate_id: int, db_job_id: int):
 
 def enqueue_auto_apply(candidate_id: int, db_job_id: int) -> str:
     """Enqueues an auto apply task using Redis default queue or ThreadPoolExecutor fallback."""
+    has_rq_workers = False
     if is_redis_connected():
+        try:
+            from rq import Worker
+            workers = Worker.all(connection=redis_conn)
+            has_rq_workers = any("default" in w.queue_names() for w in workers)
+        except Exception:
+            pass
+
+    if is_redis_connected() and has_rq_workers:
         try:
             default_queue.enqueue(run_auto_apply_sync_wrapper, candidate_id, db_job_id)
             logger.info(f"Successfully enqueued auto apply to RQ default queue.")
