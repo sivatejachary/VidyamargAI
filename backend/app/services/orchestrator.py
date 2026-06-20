@@ -62,35 +62,49 @@ def call_gemini(prompt: str, json_mode: bool = False) -> str:
 def call_nvidia(messages, json_mode: bool = False) -> str:
     """
     Direct HTTPS call to NVIDIA Chat Completions API.
-    Falls back to empty string on missing key or network error.
+    Falls back to a secondary key if the primary key fails or is missing,
+    and returns empty string on failure.
     """
-    if not settings.NVIDIA_API_KEY:
+    api_key = settings.NVIDIA_API_KEY or settings.NVIDIA_API_KEY_FALLBACK
+    if not api_key:
         return ""
     if isinstance(messages, str):
         messages = [{"role": "user", "content": messages}]
-    try:
-        url = "https://integrate.api.nvidia.com/v1/chat/completions"
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {settings.NVIDIA_API_KEY}"
-        }
-        import os
-        payload = {
-            "model": os.getenv("NVIDIA_MODEL", "nvidia/llama-3.3-nemotron-super-49b-v1.5"),
-            "messages": messages,
-            "temperature": 0.1,
-            "top_p": 1,
-            "max_tokens": 4096
-        }
-        res = requests.post(url, headers=headers, json=payload, timeout=12)
-        if res.status_code == 200:
-            data = res.json()
-            return data["choices"][0]["message"]["content"]
-        else:
-            logger.error(f"NVIDIA API returned status code {res.status_code}: {res.text}")
-    except Exception as e:
-        logger.error(f"Error calling NVIDIA API: {e}")
-    return ""
+        
+    def _try_call(key_to_use: str) -> str:
+        try:
+            url = "https://integrate.api.nvidia.com/v1/chat/completions"
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {key_to_use}"
+            }
+            import os
+            payload = {
+                "model": os.getenv("NVIDIA_MODEL", "nvidia/llama-3.3-nemotron-super-49b-v1.5"),
+                "messages": messages,
+                "temperature": 0.1,
+                "top_p": 1,
+                "max_tokens": 4096
+            }
+            res = requests.post(url, headers=headers, json=payload, timeout=12)
+            if res.status_code == 200:
+                data = res.json()
+                return data["choices"][0]["message"]["content"]
+            else:
+                logger.error(f"NVIDIA API returned status code {res.status_code}: {res.text}")
+        except Exception as e:
+            logger.error(f"Error calling NVIDIA API: {e}")
+        return ""
+
+    # Try primary key first
+    res_text = _try_call(settings.NVIDIA_API_KEY) if settings.NVIDIA_API_KEY else ""
+    
+    # Try fallback key if primary failed/skipped and fallback exists
+    if not res_text and settings.NVIDIA_API_KEY_FALLBACK and settings.NVIDIA_API_KEY_FALLBACK != settings.NVIDIA_API_KEY:
+        logger.warning("Primary NVIDIA API call failed or missing. Trying fallback NVIDIA API key...")
+        res_text = _try_call(settings.NVIDIA_API_KEY_FALLBACK)
+        
+    return res_text
 
 def extract_text_from_pdf(pdf_bytes: bytes) -> str:
     import io
