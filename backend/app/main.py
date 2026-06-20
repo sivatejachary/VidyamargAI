@@ -24,15 +24,15 @@ def init_db_safely():
     import sys
     import os
     if os.getenv("TESTING") == "true" or "pytest" in sys.modules:
-        print("Bypassing database initialization in testing environment.")
+        logger.debug("Bypassing database initialization in testing environment.")
         return
     try:
-        print("Creating all tables via SQLAlchemy metadata...")
+        logger.debug("Ensuring database tables exist (create_all with checkfirst)...")
         import app.models
         Base.metadata.create_all(bind=engine)
-        print("Database tables created successfully.")
+        logger.debug("Database tables ensured.")
     except Exception as e:
-        print(f"Error during Base.metadata.create_all: {e}")
+        logger.error(f"Error during Base.metadata.create_all: {e}")
         # If Base creation fails, skip subsequent database queries to avoid crashing
         return
 
@@ -63,17 +63,17 @@ def init_db_safely():
                     "freshershunt",
                     "jobseekeras"
                 ]
-                print(f"Seeding {len(default_channels)} default Telegram channels...")
+                logger.info(f"Seeding {len(default_channels)} default Telegram channels...")
                 for ch in default_channels:
                     db_session.add(TelegramSource(channel_name=ch, active=True))
                 db_session.commit()
-                print("Default Telegram channels seeded successfully.")
+                logger.info("Default Telegram channels seeded successfully.")
 
             # Auto-seed default tool permissions if empty
             from app.models.mcp_models import ToolPermission
             perms_count = db_session.query(ToolPermission).count()
             if perms_count == 0:
-                print("Seeding default ToolPermissions...")
+                logger.info("Seeding default ToolPermissions...")
                 default_perms = [
                     ToolPermission(role="candidate", tool="*", grants="read,write,apply"),
                     ToolPermission(role="recruiter", tool="*", grants="read,write"),
@@ -82,13 +82,13 @@ def init_db_safely():
                 for p in default_perms:
                     db_session.add(p)
                 db_session.commit()
-                print("Default ToolPermissions seeded successfully.")
+                logger.info("Default ToolPermissions seeded successfully.")
         except Exception as e:
-            print(f"Auto-seed warning: {e}")
+            logger.warning(f"Auto-seed warning: {e}")
         finally:
             db_session.close()
     except Exception as e:
-        print(f"Auto-seed warning initialization failed: {e}")
+        logger.warning(f"Auto-seed warning initialization failed: {e}")
 
     def _get_columns(conn, table_name: str):
         """Return list of column names for a table in PostgreSQL or SQLite."""
@@ -530,13 +530,13 @@ def init_db_safely():
                         if col_name not in existing_cols:
                             try:
                                 conn.execute(text(f"ALTER TABLE {tbl} ADD COLUMN {col_name} {col_type}"))
-                                print(f"Migration: Added column {col_name} ({col_type}) to table {tbl}")
+                                logger.info(f"Migration: Added column {col_name} ({col_type}) to table {tbl}")
                             except Exception as e:
-                                print(f"Failed to add column {col_name} to {tbl}: {e}")
+                                logger.warning(f"Failed to add column {col_name} to {tbl}: {e}")
 
-            print("Migration: courses/modules/enrollments/certificates and curriculum tables ensured.")
+            logger.debug("Migration: curriculum tables ensured.")
     except Exception as e:
-        print(f"Migration error: {e}")
+        logger.error(f"Migration error: {e}")
 
 
 
