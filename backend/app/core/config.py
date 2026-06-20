@@ -72,6 +72,17 @@ class Settings(BaseSettings):
     SEARCH_ENABLED: bool = os.getenv("SEARCH_ENABLED", "True").lower() == "true"
     ANALYTICS_ENABLED: bool = os.getenv("ANALYTICS_ENABLED", "False").lower() == "true"
     
+    # Auto Apply Agent
+    CREDENTIAL_ENCRYPTION_KEY: str = os.getenv("CREDENTIAL_ENCRYPTION_KEY", "")
+    AUTO_APPLY_MAX_CONCURRENT: int = int(os.getenv("AUTO_APPLY_MAX_CONCURRENT", "5"))
+    AUTO_APPLY_DAILY_CAP: int = int(os.getenv("AUTO_APPLY_DAILY_CAP", "50"))
+    AUTO_APPLY_MIN_MATCH_SCORE: float = float(os.getenv("AUTO_APPLY_MIN_MATCH_SCORE", "80.0"))
+    AUTO_APPLY_MIN_SKILL_MATCH: float = float(os.getenv("AUTO_APPLY_MIN_SKILL_MATCH", "70.0"))
+    AUTO_APPLY_MAX_JOB_AGE_DAYS: int = int(os.getenv("AUTO_APPLY_MAX_JOB_AGE_DAYS", "2"))
+    AUTO_APPLY_CHECKPOINT_DB: str = os.getenv("AUTO_APPLY_CHECKPOINT_DB", "storage/langgraph_checkpoints/auto_apply.db")
+    PLATFORM_DISABLE_THRESHOLD: float = float(os.getenv("PLATFORM_DISABLE_THRESHOLD", "0.20"))
+    PLATFORM_MIN_ATTEMPTS_BEFORE_CHECK: int = int(os.getenv("PLATFORM_MIN_ATTEMPTS_BEFORE_CHECK", "10"))
+    
     class Config:
         case_sensitive = True
 
@@ -110,6 +121,17 @@ except Exception:
         ARTIFACTS_ENABLED = os.getenv("ARTIFACTS_ENABLED", "True").lower() == "true"
         SEARCH_ENABLED = os.getenv("SEARCH_ENABLED", "True").lower() == "true"
         ANALYTICS_ENABLED = os.getenv("ANALYTICS_ENABLED", "False").lower() == "true"
+        
+        # Auto Apply Agent
+        CREDENTIAL_ENCRYPTION_KEY = os.getenv("CREDENTIAL_ENCRYPTION_KEY", "")
+        AUTO_APPLY_MAX_CONCURRENT = int(os.getenv("AUTO_APPLY_MAX_CONCURRENT", "5"))
+        AUTO_APPLY_DAILY_CAP = int(os.getenv("AUTO_APPLY_DAILY_CAP", "50"))
+        AUTO_APPLY_MIN_MATCH_SCORE = float(os.getenv("AUTO_APPLY_MIN_MATCH_SCORE", "80.0"))
+        AUTO_APPLY_MIN_SKILL_MATCH = float(os.getenv("AUTO_APPLY_MIN_SKILL_MATCH", "70.0"))
+        AUTO_APPLY_MAX_JOB_AGE_DAYS = int(os.getenv("AUTO_APPLY_MAX_JOB_AGE_DAYS", "2"))
+        AUTO_APPLY_CHECKPOINT_DB = os.getenv("AUTO_APPLY_CHECKPOINT_DB", "storage/langgraph_checkpoints/auto_apply.db")
+        PLATFORM_DISABLE_THRESHOLD = float(os.getenv("PLATFORM_DISABLE_THRESHOLD", "0.20"))
+        PLATFORM_MIN_ATTEMPTS_BEFORE_CHECK = int(os.getenv("PLATFORM_MIN_ATTEMPTS_BEFORE_CHECK", "10"))
     settings = ManualSettings()
 
 if not settings.SECRET_KEY:

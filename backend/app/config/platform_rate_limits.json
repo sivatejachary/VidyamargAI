@@ -1,0 +1,23 @@
+{
+  "greenhouse":      { "max_per_day": 100, "delay_between_ms": 5000  },
+  "lever":           { "max_per_day": 80,  "delay_between_ms": 5000  },
+  "workday":         { "max_per_day": 50,  "delay_between_ms": 10000 },
+  "ashby":           { "max_per_day": 100, "delay_between_ms": 3000  },
+  "smartrecruiters": { "max_per_day": 100, "delay_between_ms": 3000  },
+  "icims":           { "max_per_day": 50,  "delay_between_ms": 8000  },
+  "jobvite":         { "max_per_day": 80,  "delay_between_ms": 5000  },
+  "successfactors":  { "max_per_day": 40,  "delay_between_ms": 12000 },
+  "taleo":           { "max_per_day": 30,  "delay_between_ms": 15000 },
+  "oracle_hcm":      { "max_per_day": 30,  "delay_between_ms": 15000 },
+  "bamboohr":        { "max_per_day": 80,  "delay_between_ms": 5000  },
+  "teamtailor":      { "max_per_day": 100, "delay_between_ms": 3000  },
+  "recruitee":       { "max_per_day": 80,  "delay_between_ms": 5000  },
+  "comeet":          { "max_per_day": 80,  "delay_between_ms": 5000  },
+  "zoho_recruit":    { "max_per_day": 50,  "delay_between_ms": 8000  },
+  "google_forms":    { "max_per_day": 50,  "delay_between_ms": 8000  },
+  "microsoft_forms": { "max_per_day": 50,  "delay_between_ms": 8000  },
+  "typeform":        { "max_per_day": 50,  "delay_between_ms": 8000  },
+  "email_apply":     { "max_per_day": 30,  "delay_between_ms": 15000 },
+  "generic":         { "max_per_day": 50,  "delay_between_ms": 8000  },
+  "default":         { "max_per_day": 50,  "delay_between_ms": 8000  }
+}

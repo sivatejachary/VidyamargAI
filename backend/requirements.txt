@@ -29,6 +29,9 @@ apscheduler>=3.10.4
 playwright>=1.42.0
 python-magic>=0.4.27
 qdrant-client
+langchain-core>=0.2.0
+langchain-community>=0.2.0
+langgraph>=0.2.0
 
 
 

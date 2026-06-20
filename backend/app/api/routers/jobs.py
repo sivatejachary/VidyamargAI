@@ -161,195 +161,9 @@ def is_job_skills_compatible(candidate_skills_lower: List[str], job_skills: List
 
 def _generate_fallback_jobs(skills: List[str], cand_years: float = 0.0) -> List[LiveJob]:
     """
-    Generate curated realistic Indian job listings based on candidate skills.
-    Used as fallback when all web scrapers fail (e.g., network not reachable).
-    Returns LiveJob objects — no salary, real company names, real Indian cities.
+    Returns an empty list as synthetic/fake fallback jobs are no longer supported.
     """
-    import random
-
-    COMPANIES = [
-        ("Infosys", "Bangalore, India"),
-        ("TCS", "Chennai, India"),
-        ("Wipro", "Hyderabad, India"),
-        ("HCLTech", "Noida, India"),
-        ("Tech Mahindra", "Pune, India"),
-        ("Razorpay", "Bangalore, India"),
-        ("Zepto", "Mumbai, India"),
-        ("CRED", "Bangalore, India"),
-        ("Swiggy", "Bangalore, India"),
-        ("Zomato", "Gurgaon, India"),
-        ("PhonePe", "Bangalore, India"),
-        ("Meesho", "Bangalore, India"),
-        ("Freshworks", "Chennai, India"),
-        ("Zoho", "Chennai, India"),
-        ("Juspay", "Bangalore, India"),
-        ("Navi Technologies", "Bangalore, India"),
-        ("Groww", "Bangalore, India"),
-        ("Ola", "Bangalore, India"),
-        ("Byju's", "Bangalore, India"),
-        ("Paytm", "Noida, India"),
-        ("MakeMyTrip", "Gurgaon, India"),
-        ("Flipkart", "Bangalore, India"),
-        ("Amazon India", "Hyderabad, India"),
-        ("Microsoft India", "Hyderabad, India"),
-        ("Google India", "Hyderabad, India"),
-        ("IBM India", "Pune, India"),
-        ("Accenture", "Mumbai, India"),
-        ("Capgemini", "Mumbai, India"),
-        ("Mindtree", "Bangalore, India"),
-        ("Persistent Systems", "Pune, India"),
-    ]
-
-    SKILL_ROLES = {
-        "python": [
-            ("Python Backend Developer", "3-5 Years", ["Python", "FastAPI", "PostgreSQL", "Redis"], "Remote, India"),
-            ("Python Engineer", "1-3 Years", ["Python", "Django", "REST API", "SQL"], "Bangalore, India"),
-            ("Senior Python Developer", "5+ Years", ["Python", "Microservices", "AWS", "Docker"], "Hyderabad, India"),
-        ],
-        "react": [
-            ("React Developer", "2-4 Years", ["React", "TypeScript", "Redux", "REST API"], "Bangalore, India"),
-            ("Frontend Engineer", "1-3 Years", ["React", "JavaScript", "HTML", "CSS"], "Remote, India"),
-            ("Senior Frontend Developer", "4+ Years", ["React", "Next.js", "GraphQL", "Testing"], "Pune, India"),
-        ],
-        "javascript": [
-            ("JavaScript Developer", "1-3 Years", ["JavaScript", "React", "Node.js", "REST API"], "Bangalore, India"),
-            ("Full Stack Developer", "2-4 Years", ["JavaScript", "Node.js", "React", "MongoDB"], "Hyderabad, India"),
-        ],
-        "node.js": [
-            ("Node.js Backend Developer", "2-4 Years", ["Node.js", "Express", "MongoDB", "Redis"], "Bangalore, India"),
-            ("Backend Engineer - Node", "1-3 Years", ["Node.js", "REST API", "PostgreSQL", "AWS"], "Mumbai, India"),
-        ],
-        "java": [
-            ("Java Backend Developer", "3-5 Years", ["Java", "Spring Boot", "Microservices", "SQL"], "Pune, India"),
-            ("Senior Java Engineer", "5+ Years", ["Java", "Spring", "Kafka", "Docker"], "Bangalore, India"),
-        ],
-        "machine learning": [
-            ("Machine Learning Engineer", "2-4 Years", ["Python", "TensorFlow", "Scikit-learn", "SQL"], "Bangalore, India"),
-            ("ML Research Engineer", "3-5 Years", ["PyTorch", "Deep Learning", "NLP", "Python"], "Hyderabad, India"),
-        ],
-        "flutter": [
-            ("Flutter Developer", "1-3 Years", ["Flutter", "Dart", "Firebase", "REST API"], "Bangalore, India"),
-            ("Mobile Developer - Flutter", "2-4 Years", ["Flutter", "Dart", "Android", "iOS"], "Remote, India"),
-        ],
-        "aws": [
-            ("Cloud Engineer - AWS", "2-4 Years", ["AWS", "Terraform", "Docker", "Python"], "Bangalore, India"),
-            ("DevOps Engineer", "3-5 Years", ["AWS", "Kubernetes", "CI/CD", "Linux"], "Hyderabad, India"),
-        ],
-        "devops": [
-            ("DevOps Engineer", "2-4 Years", ["Docker", "Kubernetes", "CI/CD", "AWS"], "Bangalore, India"),
-            ("SRE Engineer", "3-5 Years", ["Kubernetes", "Terraform", "Python", "Monitoring"], "Remote, India"),
-        ],
-        "sql": [
-            ("Data Analyst", "1-3 Years", ["SQL", "Python", "Excel", "Tableau"], "Mumbai, India"),
-            ("Database Engineer", "2-4 Years", ["SQL", "PostgreSQL", "Query Optimization", "ETL"], "Pune, India"),
-        ],
-        "data science": [
-            ("Data Scientist", "2-4 Years", ["Python", "SQL", "Machine Learning", "Statistics"], "Bangalore, India"),
-            ("Senior Data Scientist", "4+ Years", ["Python", "Deep Learning", "NLP", "Spark"], "Hyderabad, India"),
-        ],
-        "typescript": [
-            ("TypeScript Developer", "1-3 Years", ["TypeScript", "React", "Node.js", "REST API"], "Bangalore, India"),
-            ("Full Stack TypeScript Engineer", "2-4 Years", ["TypeScript", "Next.js", "PostgreSQL", "Docker"], "Remote, India"),
-        ],
-    }
-
-    # Generic roles as fallback
-    GENERIC_ROLES = [
-        ("Software Engineer", "1-3 Years", ["Problem Solving", "Data Structures", "System Design"], "Bangalore, India"),
-        ("Backend Developer", "2-4 Years", ["API Development", "Databases", "Microservices"], "Hyderabad, India"),
-        ("Full Stack Developer", "2-4 Years", ["Frontend", "Backend", "Database"], "Pune, India"),
-        ("Junior Software Developer", "Fresher / 0-1 Yrs", ["Programming", "Git", "Agile"], "Chennai, India"),
-    ]
-
-    skills_lower = [s.lower() for s in skills]
-    jobs_pool: List[LiveJob] = []
-
-    # Add role-specific jobs for matching skills
-    for skill in skills_lower:
-        key = skill.replace(".", "").strip()
-        for k, role_list in SKILL_ROLES.items():
-            if k in key or key in k:
-                for (title, exp, job_skills, location) in role_list:
-                    if not is_job_experience_compatible(cand_years, exp):
-                        continue
-                    company, comp_city = random.choice(COMPANIES)
-                    # Prefer company in same city as job location
-                    matching = [(c, cl) for c, cl in COMPANIES if cl.lower().split(",")[0] in location.lower()]
-                    if matching:
-                        company, comp_city = random.choice(matching)
-                    work_mode = "Remote" if "Remote" in location else random.choice(["On-site", "Hybrid", "On-site"])
-                    source = random.choice(["LinkedIn", "Naukri", "Foundit", "Wellfound"])
-                    slug = f"{title.lower().replace(' ', '-')}-{company.lower().replace(' ', '-')}"
-                    url_map = {
-                        "LinkedIn": f"https://in.linkedin.com/jobs/view/{slug}-{random.randint(3800000000, 3999999999)}",
-                        "Naukri": f"https://www.naukri.com/job-listings-{slug}-{random.randint(100000, 999999)}",
-                        "Foundit": f"https://www.foundit.in/job/{slug}-{random.randint(10000, 99999)}",
-                        "Wellfound": f"https://wellfound.com/jobs/{slug}",
-                    }
-                    jobs_pool.append(LiveJob(
-                        title=title,
-                        company=company,
-                        location=comp_city,
-                        experience=exp,
-                        skills=job_skills,
-                        apply_url=url_map[source],
-                        posted_date="Recently",
-                        source=source,
-                        description=(
-                            f"We are looking for a talented {title} to join {company} in {comp_city}.\n\n"
-                            f"Required Skills: {', '.join(job_skills)}\n"
-                            f"Experience: {exp}\n"
-                            f"Work Mode: {work_mode}\n\n"
-                            f"You will work on challenging problems at scale, collaborate with world-class engineers, "
-                            f"and make a direct impact on millions of users across India.\n\n"
-                            f"Apply on {source}: {url_map[source]}"
-                        ),
-                        work_mode=work_mode,
-                    ))
-                break  # Only match first role bucket per skill
-
-    # Fill with generic roles if needed
-    random.shuffle(COMPANIES)
-    for i, (title, exp, job_skills, location) in enumerate(GENERIC_ROLES):
-        if not is_job_experience_compatible(cand_years, exp):
-            continue
-        company, comp_city = COMPANIES[i % len(COMPANIES)]
-        source = random.choice(["LinkedIn", "Naukri"])
-        slug = f"{title.lower().replace(' ', '-')}-{company.lower().replace(' ', '-')}"
-        url = (
-            f"https://in.linkedin.com/jobs/view/{slug}-{random.randint(3800000000, 3999999999)}"
-            if source == "LinkedIn"
-            else f"https://www.naukri.com/job-listings-{slug}-{random.randint(100000, 999999)}"
-        )
-        jobs_pool.append(LiveJob(
-            title=title,
-            company=company,
-            location=comp_city,
-            experience=exp,
-            skills=skills[:4] + job_skills if skills else job_skills,
-            apply_url=url,
-            posted_date="Recently",
-            source=source,
-            description=(
-                f"Exciting {title} opportunity at {company}.\n\n"
-                f"Join our growing engineering team and work on products used by millions in India.\n\n"
-                f"Required: {', '.join(job_skills)}\n"
-                f"Experience: {exp}\n\n"
-                f"Apply: {url}"
-            ),
-            work_mode=random.choice(["On-site", "Hybrid", "Remote"]),
-        ))
-
-    # Deduplicate and shuffle
-    seen = set()
-    unique = []
-    for j in jobs_pool:
-        key = (j.title.lower(), j.company.lower())
-        if key not in seen:
-            seen.add(key)
-            unique.append(j)
-    random.shuffle(unique)
-    return unique[:25]
+    return []
 
 
 
@@ -677,6 +491,7 @@ def delete_job(job_id: int, db: Session = Depends(get_db), admin: User = Depends
 @router.post("/candidate/agent/run")
 async def start_job_agent_run(
     background_tasks: BackgroundTasks,
+    max_job_age_days: Optional[int] = 2,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -700,7 +515,11 @@ async def start_job_agent_run(
             return {"run_id": active_run.id, "status": "running", "message": "An agent run is already in progress"}
 
     # Start new run
-    new_run = JobAgentRun(candidate_id=candidate.id, status="queued")
+    new_run = JobAgentRun(
+        candidate_id=candidate.id, 
+        status="queued",
+        stats={"max_job_age_days": max_job_age_days}
+    )
     db.add(new_run)
     db.commit()
     db.refresh(new_run)

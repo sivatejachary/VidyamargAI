@@ -112,7 +112,7 @@ class TestJobAgentSuite(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(len(jobs) > 0)
             self.assertEqual(jobs[0].title, "Python Developer")
 
-    def test_search_agent_fallback_generation(self):
+    def test_search_agent_empty_results(self):
         with patch('app.agents.search.linkedin_jobs.fetch', return_value=[]), \
              patch('app.agents.search.naukri.fetch', return_value=[]), \
              patch('app.agents.search.indeed.fetch', return_value=[]), \
@@ -127,18 +127,9 @@ class TestJobAgentSuite(unittest.IsolatedAsyncioTestCase):
             queries = ["Python Backend Developer India"]
             agent = SearchAgent(queries, ["Python", "FastAPI"], exp_years=2.5)
             
-            # Test template generator fallback directly (without call_nvidia)
+            # Test that execute_search returns an empty list since all sources returned empty, with no hardcoded fallbacks
             jobs = agent.execute_search()
-            self.assertEqual(len(jobs), 12)
-            self.assertTrue(any("Python" in j.title or "FastAPI" in j.title for j in jobs))
-            self.assertTrue(any(j.company in ["Swiggy", "Zoho", "CRED", "Razorpay", "Paytm", "Flipkart", "Zomato", "Freshworks", "Ola", "InMobi", "Tata Consultancy Services", "Infosys", "Wipro", "HCLTech", "Cognizant", "Accenture"] for j in jobs))
-            
-            # Verify URL uniqueness and correctness
-            urls = [j.apply_url for j in jobs]
-            self.assertEqual(len(urls), len(set(urls)))
-            for j in jobs:
-                clean_name = j.company.lower().replace(" ", "").replace(".", "").replace(",", "")
-                self.assertTrue(clean_name in j.apply_url or "careers" in j.apply_url or "jobs" in j.apply_url)
+            self.assertEqual(len(jobs), 0)
 
     def test_verification_agent_deduplication(self):
         job1 = LiveJob(

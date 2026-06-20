@@ -88,6 +88,7 @@ class CandidateResume(Base):
     candidate_id = Column(Integer, ForeignKey("candidates.id"), nullable=False)
     resume_url = Column(String, nullable=False)
     uploaded_at = Column(DateTime, default=datetime.utcnow)
+    resume_type = Column(String(20), default="general")  # general | swe | ai | ds | ml
     
     candidate = relationship("Candidate", back_populates="resumes")
     applications = relationship("Application", back_populates="resume")
@@ -470,6 +471,16 @@ class UserPreference(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
     theme = Column(String, default="light")  # light, dark, system
     
+    auto_apply_enabled = Column(Boolean, default=False)
+    auto_apply_approval_mode = Column(String(20), default="always")  # auto | always | new_company
+    auto_apply_min_score = Column(Float, default=80.0)
+    auto_apply_min_skill_match = Column(Float, default=70.0)
+    auto_apply_daily_cap = Column(Integer, default=50)
+    auto_apply_remote_only = Column(Boolean, default=False)
+    auto_apply_max_job_age_days = Column(Integer, default=2)
+    auto_apply_locations = Column(Text, default="[]")   # JSON list
+    auto_apply_domains = Column(Text, default="[]")     # JSON list
+    
     user = relationship("User", back_populates="preferences")
 
 
@@ -655,12 +666,14 @@ class UserConsent(Base):
     
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    consent_type = Column(String, nullable=False)  # "account_access", "app_submission", "resume_upload", "data_storage"
+    consent_type = Column(String, nullable=False)  # "account_access", "app_submission", "resume_upload", "data_storage", "credential_storage", "auto_apply", "cover_letter_generation", "screening_answer_generation"
     granted = Column(Boolean, default=False, nullable=False)
     granted_at = Column(DateTime, nullable=True)
     ip_address = Column(String, nullable=True)
     user_agent = Column(String, nullable=True)
     consent_ref = Column(String, nullable=False, default=lambda: str(uuid.uuid4()))
+    revoked_at = Column(DateTime, nullable=True)                         # NULL = still active
+    metadata_json = Column(JSON, default=dict)                           # platform, purpose, etc.
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

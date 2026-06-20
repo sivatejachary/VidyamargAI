@@ -25,6 +25,7 @@ from app.core.config import settings
 from app.core.database import Base
 # Import all models so metadata is fully loaded
 from app.models.models import *
+from app.models.auto_apply_models import *
 
 target_metadata = Base.metadata
 

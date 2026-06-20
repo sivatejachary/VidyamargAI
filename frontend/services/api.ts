@@ -597,8 +597,9 @@ export const apiService = {
   },
 
 
-  async startAgentRun() {
-    const res = await customFetch(`${getBaseUrl()}/candidate/agent/run`, {
+  async startAgentRun(maxJobAgeDays?: number) {
+    const query = maxJobAgeDays ? `?max_job_age_days=${maxJobAgeDays}` : "";
+    const res = await customFetch(`${getBaseUrl()}/candidate/agent/run${query}`, {
       method: "POST",
       headers: getHeaders(),
     });
@@ -1086,6 +1087,35 @@ export const apiService = {
       { headers: getHeaders() }
     );
     if (!res.ok) return { status: "unknown" };
+    return res.json();
+  },
+
+  /** Trigger a new Auto Apply All run — queues all matched jobs. */
+  async triggerAutoApplyRun() {
+    const res = await customFetch(`${getBaseUrl()}/auto-apply/run`, {
+      method: "POST",
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to start Auto Apply run");
+    return res.json(); // { run_id, status }
+  },
+
+  /** Poll the latest Auto Apply run: returns tasks[] + metrics. */
+  async getAutoApplyRuns() {
+    const res = await customFetch(`${getBaseUrl()}/auto-apply/runs`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) return { tasks: [], metrics: {} };
+    return res.json(); // { run_id, tasks: ApplicationTask[], metrics: ApplyAllMetrics }
+  },
+
+  /** Perform an action on a specific task: approve | reject | resume | cancel */
+  async autoApplyTaskAction(taskId: number, action: "approve" | "reject" | "resume" | "cancel") {
+    const res = await customFetch(`${getBaseUrl()}/auto-apply/tasks/${taskId}/${action}`, {
+      method: "POST",
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error(`Failed to ${action} task`);
     return res.json();
   },
 

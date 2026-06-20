@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from app.api.routers import (
     auth, profile, resume, jobs, matching, learning, mentor,
-    chat, interview, assessments, notifications, admin, offers, haq
+    chat, interview, assessments, notifications, admin, offers, haq, auto_apply
 )
 
 # Backward compatibility exports
@@ -12,12 +12,14 @@ from app.api.routers.jobs import (
 )
 from app.api.routers.learning import _build_curriculum_payload
 from app.api.routers.mentor import call_llm_with_fallback
+from app.api.routers.resume import delete_candidate_resume
 
 
 
 router = APIRouter()
 
 router.include_router(auth.router)
+router.include_router(auto_apply.router)
 router.include_router(profile.router)
 router.include_router(resume.router)
 router.include_router(jobs.router)

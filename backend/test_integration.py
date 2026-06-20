@@ -26,6 +26,22 @@ class TestHireAIEngine(unittest.IsolatedAsyncioTestCase):
         Base.metadata.create_all(bind=self.engine)
         self.db = TestingSessionLocal()
         
+        # Clean up existing test data from previous runs to avoid UniqueViolations
+        try:
+            self.db.query(EmailNotification).delete()
+            self.db.query(Offer).delete()
+            self.db.query(Interview).delete()
+            self.db.query(AssessmentAttempt).delete()
+            self.db.query(Application).delete()
+            self.db.query(Job).delete()
+            self.db.query(CandidateProfile).delete()
+            self.db.query(CandidateResume).delete()
+            self.db.query(Candidate).delete()
+            self.db.query(User).delete()
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+        
         # Start call_gemini patcher
         def mock_call_gemini(prompt, json_mode=False):
             prompt_lower = prompt.lower()

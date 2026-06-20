@@ -597,10 +597,16 @@ Telegram posts:
 
         # Commit and log success per channel
         for src in active_sources:
-            src.last_checked = datetime.utcnow()
-            self.db.commit()
-            if log_fn:
-                log_fn(f"Successfully collected {source_jobs_count[src.id]} jobs from @{src.channel_name}", "success")
+            try:
+                src.last_checked = datetime.utcnow()
+                self.db.commit()
+                if log_fn:
+                    log_fn(f"Successfully collected {source_jobs_count[src.id]} jobs from @{src.channel_name}", "success")
+            except Exception as e:
+                logger.error(f"Failed to commit last_checked for @{src.channel_name}: {e}")
+                self.db.rollback()
+                if log_fn:
+                    log_fn(f"Failed to update last checked status for @{src.channel_name}", "warning")
 
         return all_live_jobs
 
