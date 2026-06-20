@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { apiService } from "@/services/api";
 import { useWebSockets } from "@/hooks/useWebSockets";
@@ -81,10 +81,129 @@ export default function TushAIChat() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(true);
 
+  // Track active session for background fetch race conditions
+  const activeSessionIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    activeSessionIdRef.current = activeSessionId;
+  }, [activeSessionId]);
+
+  // Track prefetch requests in progress
+  const prefetchingRef = useRef<Set<string>>(new Set());
+
+  // Load cache from sessionStorage on mount (hydration safe)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = sessionStorage.getItem("tush_chat_cache");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && parsed.version === 1 && parsed.sessions) {
+            setTimeout(() => {
+              setSessionMessagesCache(parsed.sessions);
+            }, 0);
+          } else {
+            sessionStorage.removeItem("tush_chat_cache");
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load chat cache:", err);
+      }
+    }
+  }, []);
+
+  // Persist cache to sessionStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== "undefined" && Object.keys(sessionMessagesCache).length > 0) {
+      try {
+        sessionStorage.setItem("tush_chat_cache", JSON.stringify({
+          version: 1,
+          sessions: sessionMessagesCache
+        }));
+      } catch (err) {
+        console.error("Failed to save chat cache:", err);
+      }
+    }
+  }, [sessionMessagesCache]);
+
+  // Prune cache keys that are not in the active sessions list (handles deleted/archived/old sessions)
+  useEffect(() => {
+    if (sessions.length === 0) return;
+    const validIds = new Set(sessions.map((s) => s.id));
+    setTimeout(() => {
+      setSessionMessagesCache((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        Object.keys(next).forEach((id) => {
+          if (!validIds.has(id)) {
+            delete next[id];
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
+    }, 0);
+  }, [sessions]);
+
+  // Prefetch messages for sessions in background
+  useEffect(() => {
+    if (sessions.length === 0) return;
+    
+    // Find sessions in the list that aren't cached and aren't already being fetched
+    const toPrefetch = sessions.filter(
+      (s) => !sessionMessagesCache[s.id] && !prefetchingRef.current.has(s.id)
+    );
+    if (toPrefetch.length === 0) return;
+
+    // Mark all as prefetching immediately to prevent duplicate triggers
+    toPrefetch.forEach((s) => prefetchingRef.current.add(s.id));
+
+    const prefetchData = async () => {
+      // Process in small chunks (e.g., 3 at a time) to prevent overloading the server
+      for (let i = 0; i < toPrefetch.length; i += 3) {
+        const chunk = toPrefetch.slice(i, i + 3);
+        await Promise.all(
+          chunk.map(async (s) => {
+            try {
+              const dbMsgs = await apiService.getMcpSessionMessages(s.id);
+              const formatted = dbMsgs.map((m: any) => ({
+                sender: m.sender === "user" ? ("user" as const) : ("tush" as const),
+                text: m.text,
+                timestamp: m.created_at ? new Date(m.created_at) : new Date(),
+                actions: m.actions,
+                action_cards: m.action_cards,
+                memory_updated: m.memory_updated
+              }));
+
+              setSessionMessagesCache((prev) => {
+                const next = { ...prev };
+                delete next[s.id];
+                next[s.id] = formatted;
+                
+                const keys = Object.keys(next);
+                if (keys.length > 50) {
+                  delete next[keys[0]];
+                }
+                return next;
+              });
+            } catch (err) {
+              console.error(`Failed to prefetch session ${s.id}:`, err);
+            } finally {
+              prefetchingRef.current.delete(s.id);
+            }
+          })
+        );
+      }
+    };
+
+    prefetchData();
+  }, [sessions, sessionMessagesCache]);
+
   // Sidebar responsive check on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setIsHistoryOpen(window.innerWidth >= 768);
+      setTimeout(() => {
+        setIsHistoryOpen(window.innerWidth >= 768);
+      }, 0);
     }
   }, []);
   const [sessionsPage, setSessionsPage] = useState(1);
@@ -102,6 +221,28 @@ export default function TushAIChat() {
   // Export dropdown
   const [showExportMenu, setShowExportMenu] = useState(false);
 
+  const fetchSessions = useCallback(async (page = 1, replace = false) => {
+    try {
+      setLoadingSessions(true);
+      const res = await apiService.getMcpSessions(page, 20, searchQuery);
+      if (replace) {
+        setSessions(res.sessions || []);
+      } else {
+        setSessions((prev) => {
+          const existingIds = new Set(prev.map((s) => s.id));
+          const filtered = (res.sessions || []).filter((s: any) => !existingIds.has(s.id));
+          return [...prev, ...filtered];
+        });
+      }
+      setSessionsHasMore(page < (res.pages || 1));
+      setSessionsPage(page);
+    } catch (err) {
+      console.error("Failed to load chat sessions:", err);
+    } finally {
+      setLoadingSessions(false);
+    }
+  }, [searchQuery]);
+
   // Lock parent layout scroll on chat page
   useEffect(() => {
     const mainEl = document.querySelector("main");
@@ -116,8 +257,10 @@ export default function TushAIChat() {
 
   // Load chat sessions on mount and when search query changes
   useEffect(() => {
-    fetchSessions(1, true);
-  }, [searchQuery]);
+    setTimeout(() => {
+      fetchSessions(1, true);
+    }, 0);
+  }, [searchQuery, fetchSessions]);
 
   // Connect websocket for live message updates
   const { addMessageListener } = useWebSockets(email || "candidate");
@@ -141,7 +284,15 @@ export default function TushAIChat() {
           const list = prev[session_id] || [];
           // Avoid duplicate messages
           if (list.some((m) => m.text === formattedMsg.text && m.sender === formattedMsg.sender)) return prev;
-          return { ...prev, [session_id]: [...list, formattedMsg] };
+          const next = { ...prev };
+          delete next[session_id];
+          next[session_id] = [...list, formattedMsg];
+          
+          const keys = Object.keys(next);
+          if (keys.length > 50) {
+            delete next[keys[0]];
+          }
+          return next;
         });
 
         // Update active messages list in real-time if matches active session
@@ -156,28 +307,6 @@ export default function TushAIChat() {
     return () => unsubscribe();
   }, [email, activeSessionId, addMessageListener]);
 
-  const fetchSessions = async (page = 1, replace = false) => {
-    try {
-      setLoadingSessions(true);
-      const res = await apiService.getMcpSessions(page, 20, searchQuery);
-      if (replace) {
-        setSessions(res.sessions || []);
-      } else {
-        setSessions((prev) => {
-          const existingIds = new Set(prev.map((s) => s.id));
-          const filtered = (res.sessions || []).filter((s: any) => !existingIds.has(s.id));
-          return [...prev, ...filtered];
-        });
-      }
-      setSessionsHasMore(page < (res.pages || 1));
-      setSessionsPage(page);
-    } catch (err) {
-      console.error("Failed to load chat sessions:", err);
-    } finally {
-      setLoadingSessions(false);
-    }
-  };
-
   const handleSessionsScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
     if (scrollHeight - scrollTop - clientHeight < 40 && sessionsHasMore && !loadingSessions) {
@@ -187,18 +316,21 @@ export default function TushAIChat() {
 
   const selectSession = async (sessionId: string) => {
     try {
-      // Check cache first for instant load
-      if (sessionMessagesCache[sessionId]) {
-        setMessages(sessionMessagesCache[sessionId]);
+      const cached = sessionMessagesCache[sessionId];
+      if (cached) {
+        setMessages(cached);
         setIsChatActive(true);
         setActiveSessionId(sessionId);
-        // Set loading to false so there's no visual loading blocker
         setLoading(false);
       } else {
         setLoading(true);
         setIsChatActive(true);
         setActiveSessionId(sessionId);
+        setMessages([]); // Clear previous messages to avoid flicker
       }
+
+      // Track this request to avoid prefetch overlap
+      prefetchingRef.current.add(sessionId);
 
       const dbMsgs = await apiService.getMcpSessionMessages(sessionId);
       const formatted = dbMsgs.map((m: any) => ({
@@ -210,14 +342,23 @@ export default function TushAIChat() {
         memory_updated: m.memory_updated
       }));
 
-      // Update cache
-      setSessionMessagesCache(prev => ({
-        ...prev,
-        [sessionId]: formatted
-      }));
+      // Update cache (LRU and size limited to 50)
+      setSessionMessagesCache((prev) => {
+        const next = { ...prev };
+        delete next[sessionId];
+        next[sessionId] = formatted;
+        
+        const keys = Object.keys(next);
+        if (keys.length > 50) {
+          delete next[keys[0]];
+        }
+        return next;
+      });
 
       // Update messages if session is still active
-      setMessages(formatted);
+      if (activeSessionIdRef.current === sessionId) {
+        setMessages(formatted);
+      }
 
       setTimeout(() => {
         chatTextareaRef.current?.focus();
@@ -225,7 +366,10 @@ export default function TushAIChat() {
     } catch (err) {
       console.error("Failed to load session messages:", err);
     } finally {
-      setLoading(false);
+      prefetchingRef.current.delete(sessionId);
+      if (activeSessionIdRef.current === sessionId) {
+        setLoading(false);
+      }
     }
   };
 
@@ -513,10 +657,17 @@ export default function TushAIChat() {
                 }
                 // Save to cache
                 if (currentSessId) {
-                  setSessionMessagesCache(prev => ({
-                    ...prev,
-                    [currentSessId as string]: next
-                  }));
+                  setSessionMessagesCache(prev => {
+                    const cacheNext = { ...prev };
+                    delete cacheNext[currentSessId as string];
+                    cacheNext[currentSessId as string] = next;
+                    
+                    const keys = Object.keys(cacheNext);
+                    if (keys.length > 50) {
+                      delete cacheNext[keys[0]];
+                    }
+                    return cacheNext;
+                  });
                 }
                 return next;
               });
@@ -548,10 +699,17 @@ export default function TushAIChat() {
                 memory_updated: m.memory_updated
               }));
               setMessages(formatted);
-              setSessionMessagesCache(prev => ({
-                ...prev,
-                [currentSessId as string]: formatted
-              }));
+              setSessionMessagesCache(prev => {
+                const cacheNext = { ...prev };
+                delete cacheNext[currentSessId as string];
+                cacheNext[currentSessId as string] = formatted;
+                
+                const keys = Object.keys(cacheNext);
+                if (keys.length > 50) {
+                  delete cacheNext[keys[0]];
+                }
+                return cacheNext;
+              });
             }
           } catch (err) {
             console.error("Fallback DB fetch failed:", err);
@@ -577,10 +735,17 @@ export default function TushAIChat() {
               memory_updated: m.memory_updated
             }));
             setMessages(formatted);
-            setSessionMessagesCache(prev => ({
-              ...prev,
-              [currentSessId as string]: formatted
-            }));
+            setSessionMessagesCache(prev => {
+              const cacheNext = { ...prev };
+              delete cacheNext[currentSessId as string];
+              cacheNext[currentSessId as string] = formatted;
+              
+              const keys = Object.keys(cacheNext);
+              if (keys.length > 50) {
+                delete cacheNext[keys[0]];
+              }
+              return cacheNext;
+            });
             setLoading(false);
             return;
           }
