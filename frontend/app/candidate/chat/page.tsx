@@ -927,38 +927,6 @@ export default function TushAIChat() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  {/* Export Button */}
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowExportMenu(!showExportMenu)}
-                      className="flex items-center gap-1.5 text-xs font-semibold text-app-text-secondary hover:text-app-text px-3 py-1.5 rounded-lg border border-app-border hover:bg-app-surface transition-colors cursor-pointer"
-                    >
-                      <Download size={14} /> Export
-                    </button>
-                    {showExportMenu && (
-                      <div className="absolute right-0 mt-1.5 w-44 bg-app-surface border border-app-border rounded-xl shadow-lg z-50 p-1">
-                        <button
-                          onClick={handleExportMarkdown}
-                          className="flex items-center gap-2 w-full text-left px-3 py-2 text-xs font-semibold text-app-text-secondary hover:text-app-text hover:bg-slate-100 dark:hover:bg-slate-800/40 rounded-lg"
-                        >
-                          <FileText size={13} /> Export as Markdown
-                        </button>
-                        <button
-                          onClick={handleExportPDF}
-                          className="flex items-center gap-2 w-full text-left px-3 py-2 text-xs font-semibold text-app-text-secondary hover:text-app-text hover:bg-slate-100 dark:hover:bg-slate-800/40 rounded-lg"
-                        >
-                          <GraduationCap size={13} /> Export as PDF
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={startNewChat}
-                    className="text-xs font-semibold text-app-text-secondary hover:text-app-text px-3 py-1.5 rounded-lg border border-app-border hover:bg-app-surface transition-colors cursor-pointer"
-                  >New Chat</button>
-                </div>
               </div>
 
               {/* Messages */}
