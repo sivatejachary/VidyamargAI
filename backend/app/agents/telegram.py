@@ -504,8 +504,8 @@ Telegram posts:
                 try:
                     api_id = int(api_id_str)
                     from telethon import TelegramClient
-                    client = TelegramClient(session_path, api_id, api_hash)
-                    await client.connect()
+                    client = TelegramClient(session_path, api_id, api_hash, connection_retries=1, timeout=5)
+                    await asyncio.wait_for(client.connect(), timeout=5.0)
                     if not await client.is_user_authorized():
                         if log_fn:
                             log_fn("Telegram session is unauthorized. Falling back to web preview.", "warning")

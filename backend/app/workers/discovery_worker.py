@@ -207,7 +207,7 @@ async def match_pool_jobs_for_candidate(candidate: Candidate, db: Session, candi
     profile = resume_agent.extract_profile()
     
     # Construct query string representing candidate's profile
-    resume_text = f"Roles: {', '.join(profile.preferred_roles or [])}\nDomain: {profile.domain or ''}\nSkills: {', '.join(profile.skills or [])}\nExperience: {profile.total_experience_years or 0} years"
+    resume_text = f"Roles: {', '.join(profile.preferred_roles or [])}\nDomain: {profile.domain or ''}\nSkills: {', '.join(profile.skills or [])}\nExperience: {profile.experience_years or 0} years"
     
     # Attempt Qdrant semantic search
     from app.services.vector_store import vector_store

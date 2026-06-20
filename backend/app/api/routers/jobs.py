@@ -781,6 +781,25 @@ def get_job_pool(
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
         
+    # Check if there are any unmatched jobs for this candidate in the pool
+    unmatched_count = db.query(JobPool).outerjoin(
+        JobPoolMatch,
+        (JobPoolMatch.job_pool_id == JobPool.id) & (JobPoolMatch.candidate_id == candidate.id)
+    ).filter(JobPoolMatch.id == None).count()
+    
+    if unmatched_count > 0:
+        logger.info(f"get_job_pool: Found {unmatched_count} unmatched jobs for candidate {candidate.id}. Calculating matches on-the-fly.")
+        from app.workers.discovery_worker import match_pool_jobs_for_candidate
+        import asyncio
+        skills_list = [s.strip() for s in (candidate.skills or "").split(",") if s.strip()]
+        try:
+            new_loop = asyncio.new_event_loop()
+            new_loop.run_until_complete(match_pool_jobs_for_candidate(candidate, db, skills_list))
+        except Exception as match_err:
+            logger.error(f"On-the-fly job pool matching failed: {match_err}")
+        finally:
+            new_loop.close()
+            
     query = db.query(JobPoolMatch, JobPool).join(
         JobPool, JobPoolMatch.job_pool_id == JobPool.id
     ).filter(

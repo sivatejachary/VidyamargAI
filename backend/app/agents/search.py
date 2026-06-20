@@ -50,8 +50,8 @@ class SearchAgent:
                     log_fn(f"Failed to fetch from {name}: {e}", "warning")
                 return []
 
-        # Run concurrent searches with max_workers=2 to prevent triggering Yahoo bot protection
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        # Run concurrent searches in parallel
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
             futures = {
                 executor.submit(_run_connector, name, func): name 
                 for name, func in connectors.items()
