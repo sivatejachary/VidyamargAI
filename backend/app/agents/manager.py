@@ -188,12 +188,19 @@ async def run_agent_flow(run_id: int, candidate_id: int):
             "recommendations": recommendations
         }
         await job_cache.set(candidate_id, "agent_run_result", cache_payload, ttl=1800)
+        
+        # Also cache skill gaps specifically as per Priority 2
+        await job_cache.set_skill_gap(candidate_id, {"skill_gaps": skill_gaps})
 
         # Mark Run as Completed
         run = db.query(JobAgentRun).filter(JobAgentRun.id == run_id).first()
         run.status = "completed"
         run.completed_at = datetime.utcnow()
         db.commit()
+        
+        # Invalidate jobs pool cache
+        await job_cache.invalidate_jobs_pool(candidate_id)
+        
         log_step(db, run_id, "Completed", f"[Completed] Agent run successful. Top {len(ranked_jobs)} opportunities matched and ready.", "success")
 
     except Exception as e:

@@ -272,3 +272,11 @@ async def match_pool_jobs_for_candidate(candidate: Candidate, db: Session, candi
         
     db.commit()
     logger.info(f"Candidate {candidate.id} | Matching complete")
+    
+    # Invalidate cached jobs pool and skill gap for the candidate
+    try:
+        import app.services.job_cache as job_cache
+        await job_cache.invalidate_jobs_pool(candidate.id)
+        await job_cache.invalidate_skill_gap(candidate.id)
+    except Exception as e:
+        logger.warning(f"Failed to invalidate cache after matching: {e}")

@@ -705,8 +705,12 @@ Index("idx_mcp_chat_message_session", MCPChatMessage.session_id)
 Index("idx_mcp_chat_message_user", MCPChatMessage.user_id)
 
 
-
-
-
-
+class UserRefreshToken(Base):
+    __tablename__ = "user_refresh_tokens"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    token_hash = Column(String(64), unique=True, index=True, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
 

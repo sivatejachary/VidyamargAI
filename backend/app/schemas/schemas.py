@@ -8,6 +8,7 @@ class Token(BaseModel):
     role: str
     full_name: str
     email: str
+    refresh_token: Optional[str] = None
 
 class TokenData(BaseModel):
     email: Optional[str] = None
@@ -22,6 +23,10 @@ class UserCreate(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
 
 class UserPreferenceSchema(BaseModel):
     theme: str

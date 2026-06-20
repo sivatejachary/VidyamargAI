@@ -71,3 +71,14 @@ def get_current_admin(
             detail="The user does not have enough privileges",
         )
     return current_user
+
+
+def generate_refresh_token() -> str:
+    import secrets
+    return secrets.token_hex(32)
+
+
+def hash_token(token: str) -> str:
+    import hashlib
+    return hashlib.sha256(token.encode()).hexdigest()
+

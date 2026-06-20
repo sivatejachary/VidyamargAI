@@ -155,3 +155,113 @@ def get_redis_client():
     """Return the global Redis client."""
     return _REDIS_CLIENT
 
+
+async def _get_key_data(key: str) -> Optional[Any]:
+    if _REDIS_CLIENT is not None:
+        try:
+            loop = asyncio.get_running_loop()
+            data_str = await loop.run_in_executor(None, _REDIS_CLIENT.get, key)
+            if data_str:
+                return json.loads(data_str)
+            return None
+        except Exception as e:
+            logger.warning(f"Redis get failed for key {key}: {e}. Trying in-memory fallback.")
+            
+    async with _LOCK:
+        entry = _STORE.get(key)
+        if entry is None:
+            return None
+        data, expires_at = entry
+        if time.time() > expires_at:
+            del _STORE[key]
+            return None
+        return data
+
+async def _set_key_data(key: str, data: Any, ttl: int) -> None:
+    if _REDIS_CLIENT is not None:
+        try:
+            data_str = json.dumps(data)
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, lambda: _REDIS_CLIENT.setex(key, ttl, data_str))
+            return
+        except Exception as e:
+            logger.warning(f"Redis set failed for key {key}: {e}. Trying in-memory fallback.")
+            
+    expires_at = time.time() + ttl
+    async with _LOCK:
+        _STORE[key] = (data, expires_at)
+
+async def _delete_key(key: str) -> None:
+    if _REDIS_CLIENT is not None:
+        try:
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, _REDIS_CLIENT.delete, key)
+            return
+        except Exception as e:
+            logger.warning(f"Redis delete failed for key {key}: {e}. Trying in-memory fallback.")
+            
+    async with _LOCK:
+        if key in _STORE:
+            del _STORE[key]
+
+async def _delete_by_prefix(prefix: str) -> None:
+    if _REDIS_CLIENT is not None:
+        try:
+            loop = asyncio.get_running_loop()
+            def do_delete():
+                keys = _REDIS_CLIENT.keys(f"{prefix}*")
+                if keys:
+                    # Unpack keys for delete call
+                    _REDIS_CLIENT.delete(*keys)
+                return len(keys)
+            await loop.run_in_executor(None, do_delete)
+            return
+        except Exception as e:
+            logger.warning(f"Redis delete by prefix failed for {prefix}: {e}. Trying in-memory fallback.")
+            
+    async with _LOCK:
+        keys_to_delete = [k for k in _STORE if k.startswith(prefix)]
+        for k in keys_to_delete:
+            del _STORE[k]
+
+
+async def get_candidate_profile(candidate_id: int) -> Optional[Dict[str, Any]]:
+    return await _get_key_data(f"candidate_profile:{candidate_id}")
+
+async def set_candidate_profile(candidate_id: int, data: Dict[str, Any]) -> None:
+    await _set_key_data(f"candidate_profile:{candidate_id}", data, ttl=900)
+
+async def invalidate_candidate_profile(candidate_id: int) -> None:
+    await _delete_key(f"candidate_profile:{candidate_id}")
+
+
+async def get_jobs_pool(candidate_id: int, query_hash: str) -> Optional[List[Dict[str, Any]]]:
+    return await _get_key_data(f"jobs:pool:{candidate_id}:{query_hash}")
+
+async def set_jobs_pool(candidate_id: int, query_hash: str, data: List[Dict[str, Any]]) -> None:
+    await _set_key_data(f"jobs:pool:{candidate_id}:{query_hash}", data, ttl=300)
+
+async def invalidate_jobs_pool(candidate_id: int) -> None:
+    await _delete_by_prefix(f"jobs:pool:{candidate_id}:")
+
+
+async def get_skill_gap(candidate_id: int) -> Optional[Dict[str, Any]]:
+    return await _get_key_data(f"skill_gap:{candidate_id}")
+
+async def set_skill_gap(candidate_id: int, data: Dict[str, Any]) -> None:
+    await _set_key_data(f"skill_gap:{candidate_id}", data, ttl=1800)
+
+async def invalidate_skill_gap(candidate_id: int) -> None:
+    await _delete_key(f"skill_gap:{candidate_id}")
+
+
+async def get_study_plan(candidate_id: int) -> Optional[List[Dict[str, Any]]]:
+    return await _get_key_data(f"study_plan:{candidate_id}")
+
+async def set_study_plan(candidate_id: int, data: List[Dict[str, Any]]) -> None:
+    await _set_key_data(f"study_plan:{candidate_id}", data, ttl=3600)
+
+async def invalidate_study_plan(candidate_id: int) -> None:
+    await _delete_key(f"study_plan:{candidate_id}")
+
+

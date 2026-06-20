@@ -1179,6 +1179,15 @@ class AgentOrchestrator:
             db.commit()
             logger.info(f"Candidate profile rebuilt successfully for candidate {candidate.id}")
             
+            # Invalidate caches
+            try:
+                import app.services.job_cache as job_cache
+                await job_cache.invalidate_candidate_profile(candidate.id)
+                await job_cache.invalidate_jobs_pool(candidate.id)
+                await job_cache.invalidate_skill_gap(candidate.id)
+            except Exception as e:
+                logger.warning(f"Failed to invalidate cache after profile rebuild: {e}")
+            
             # Upsert to Qdrant Vector Store
             try:
                 from app.services.vector_store import vector_store

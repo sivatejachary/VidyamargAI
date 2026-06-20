@@ -84,4 +84,18 @@
 - [x] Cache Serializer: Add custom datetime serialization support to `set_cached_mentor_profile`
 - [x] Verification: Write and run verification tests
 
+## Phase 8 — Advanced Security, JWT Refresh, Redis Caching, Router Refactoring, CI/CD
+- [x] Security: Untrack sensitive files (`.env`, session files) from git history
+- [x] Security: Require `SECRET_KEY` env var check on server startup
+- [x] Security: Validate Railway environment variables
+- [x] JWT Refresh: Implement 15-minute access token + 7-day refresh token flow
+- [x] JWT Refresh: Store SHA-256 hashes of refresh tokens in database
+- [x] JWT Refresh: Implement token refresh and logout invalidation endpoints
+- [x] Redis Caching: Add caching for `jobs:pool`, `skill_gap`, `study_plan`, and `candidate_profile`
+- [x] Router Refactoring: Split monolithic `endpoints.py` into 14 micro-routers under `backend/app/api/routers/`
+- [x] Router Refactoring: Maintain backward compatibility for helper exports and testing mocks
+- [x] CI/CD: Add GitHub Actions verification pipeline with `detect-secrets` scan
+- [x] Verification: Fix all collection, import, and NameError issues and verify green across the entire test suite
+
+
 

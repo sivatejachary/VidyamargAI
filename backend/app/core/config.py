@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     # Security
     SECRET_KEY: str = os.getenv("SECRET_KEY", "")
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15  # 15 minutes
     
     # Database (Fallback to PostgreSQL local)
     DATABASE_URL: str = os.getenv(
@@ -85,7 +85,7 @@ except Exception:
         API_V1_STR = "/api/v1"
         SECRET_KEY = os.getenv("SECRET_KEY", "")
         ALGORITHM = "HS256"
-        ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
+        ACCESS_TOKEN_EXPIRE_MINUTES = 15
         DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/hireai")
         MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "localhost:9000")
         MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
