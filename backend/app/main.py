@@ -36,19 +36,12 @@ def init_db_safely():
         # If Base creation fails, skip subsequent database queries to avoid crashing
         return
 
-    # Auto-seed external jobs and telegram sources
+    # Auto-seed telegram sources and tool permissions (external jobs seeding is deferred to background task)
     try:
         from app.core.database import SessionLocal
-        from app.models.models import Job, TelegramSource
-        from app.api.endpoints import extract_and_seed_external_jobs
+        from app.models.models import TelegramSource
         db_session = SessionLocal()
         try:
-            active_jobs_count = db_session.query(Job).filter(Job.status == "active").count()
-            if active_jobs_count < 5:
-                print("Database has few jobs. Initializing external job extraction from Remotive API...")
-                added = extract_and_seed_external_jobs(db_session, limit=20)
-                print(f"External job extraction seeded {added} jobs successfully.")
-            
             # Auto-seed telegram source
             tg_sources_count = db_session.query(TelegramSource).count()
             if tg_sources_count == 0:
@@ -578,9 +571,34 @@ except ImportError:
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
+async def seed_external_jobs_bg():
+    """Background task to seed jobs from external Remotive API without blocking startup."""
+    try:
+        from app.core.database import SessionLocal
+        from app.models.models import Job
+        from app.api.endpoints import extract_and_seed_external_jobs
+        
+        def _seed():
+            db_session = SessionLocal()
+            try:
+                active_jobs_count = db_session.query(Job).filter(Job.status == "active").count()
+                if active_jobs_count < 5:
+                    logger.info("Database has few jobs. Initializing background external job extraction from Remotive API...")
+                    added = extract_and_seed_external_jobs(db_session, limit=20)
+                    logger.info(f"External job extraction seeded {added} jobs successfully in background.")
+            except Exception as e:
+                logger.error(f"Background auto-seed warning: {e}")
+            finally:
+                db_session.close()
+
+        await asyncio.to_thread(_seed)
+    except Exception as e:
+        logger.error(f"Background job seeding execution failed: {e}")
+
 @app.on_event("startup")
 async def startup_event():
     init_db_safely()
+    asyncio.create_task(seed_external_jobs_bg())
     
     # Initialize Event Bus
     try:

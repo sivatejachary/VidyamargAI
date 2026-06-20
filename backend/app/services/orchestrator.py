@@ -64,6 +64,7 @@ def call_nvidia(messages, json_mode: bool = False) -> str:
     Direct HTTPS call to NVIDIA Chat Completions API.
     Falls back to a secondary key if the primary key fails or is missing,
     and returns empty string on failure.
+    Uses dynamic model fallbacks to bypass timeouts or unsupported models.
     """
     api_key = settings.NVIDIA_API_KEY or settings.NVIDIA_API_KEY_FALLBACK
     if not api_key:
@@ -71,29 +72,49 @@ def call_nvidia(messages, json_mode: bool = False) -> str:
     if isinstance(messages, str):
         messages = [{"role": "user", "content": messages}]
         
+    # Build list of models to try, avoiding known broken ones at the start
+    model_env = os.getenv("NVIDIA_MODEL", "").strip()
+    broken_models = ["nvidia/llama-3.3-nemotron-super-49b-v1.5", "nvidia/llama-3.3-nemotron-70b-instruct"]
+    
+    models_to_try = []
+    if model_env and model_env not in broken_models:
+        models_to_try.append(model_env)
+        
+    # Add standard high-availability models
+    default_models = ["meta/llama-3.3-70b-instruct", "mistralai/mistral-medium-3.5-128b"]
+    for m in default_models:
+        if m not in models_to_try:
+            models_to_try.append(m)
+            
+    # Keep the user's broken model at the end as a last resort if explicitly requested
+    if model_env and model_env in broken_models:
+        models_to_try.append(model_env)
+
     def _try_call(key_to_use: str) -> str:
-        try:
-            url = "https://integrate.api.nvidia.com/v1/chat/completions"
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {key_to_use}"
-            }
-            import os
-            payload = {
-                "model": os.getenv("NVIDIA_MODEL", "nvidia/llama-3.3-nemotron-super-49b-v1.5"),
-                "messages": messages,
-                "temperature": 0.1,
-                "top_p": 1,
-                "max_tokens": 4096
-            }
-            res = requests.post(url, headers=headers, json=payload, timeout=12)
-            if res.status_code == 200:
-                data = res.json()
-                return data["choices"][0]["message"]["content"]
-            else:
-                logger.error(f"NVIDIA API returned status code {res.status_code}: {res.text}")
-        except Exception as e:
-            logger.error(f"Error calling NVIDIA API: {e}")
+        for model in models_to_try:
+            try:
+                url = "https://integrate.api.nvidia.com/v1/chat/completions"
+                headers = {
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {key_to_use}"
+                }
+                payload = {
+                    "model": model,
+                    "messages": messages,
+                    "temperature": 0.1,
+                    "top_p": 1,
+                    "max_tokens": 4096
+                }
+                res = requests.post(url, headers=headers, json=payload, timeout=12)
+                if res.status_code == 200:
+                    data = res.json()
+                    content = data["choices"][0]["message"]["content"]
+                    if content:
+                        return content
+                else:
+                    logger.error(f"NVIDIA API ({model}) returned status code {res.status_code}: {res.text}")
+            except Exception as e:
+                logger.error(f"Error calling NVIDIA API with model {model}: {e}")
         return ""
 
     # Try primary key first
