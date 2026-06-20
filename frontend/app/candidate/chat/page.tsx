@@ -952,11 +952,15 @@ export default function TushAIChat() {
               {/* Messages */}
               <div className="flex-1 overflow-y-auto py-5 space-y-4 scroll-smooth pr-1 print-full-width">
                 {messages.map((msg, idx) => (
-                  <div key={idx} className="flex flex-col gap-1 w-full print-full-width print-page-break py-3">
-                    <span className={`text-[11px] font-extrabold uppercase tracking-wider ${msg.sender === "user" ? "text-app-text-muted" : "text-blue-600 dark:text-blue-400"}`}>
-                      {msg.sender === "user" ? "You" : "Tush AI"}
-                    </span>
-                    <div className="flex flex-col gap-2 text-sm leading-relaxed text-app-text w-full">
+                  <div 
+                    key={idx} 
+                    className={`flex flex-col gap-1 w-full print-full-width print-page-break py-2 ${
+                      msg.sender === "user" ? "items-end text-right" : "items-start text-left"
+                    }`}
+                  >
+                    <div className={`flex flex-col gap-2 text-sm leading-relaxed text-app-text max-w-[85%] ${
+                      msg.sender === "user" ? "items-end" : "items-start"
+                    }`}>
                       <div className="whitespace-pre-wrap">{msg.text}</div>
                       {msg.actions && msg.actions.length > 0 && (
                         <div className="flex flex-wrap gap-2 pt-2 mt-1 border-t border-app-border no-print">
@@ -988,10 +992,7 @@ export default function TushAIChat() {
                   </div>
                 ))}
                 {loading && messages[messages.length - 1]?.sender === "user" && (
-                  <div className="flex flex-col gap-1 w-full no-print py-3">
-                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-blue-600 dark:text-blue-400">
-                      Tush AI
-                    </span>
+                  <div className="flex flex-col items-start gap-1 w-full no-print py-2">
                     <div className="flex items-center gap-2 text-sm text-app-text-muted font-medium py-1">
                       <Loader2 size={14} className="animate-spin text-blue-600 dark:text-blue-400" />
                       <span>Thinking...</span>
