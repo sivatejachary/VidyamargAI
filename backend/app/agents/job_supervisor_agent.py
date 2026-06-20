@@ -310,7 +310,7 @@ Return ONLY a JSON object in this format:
             
         return {"portal_jobs": portal_jobs}
 
-    def _discover_telegram(self, state: AgentState) -> Dict[str, Any]:
+    async def _discover_telegram(self, state: AgentState) -> Dict[str, Any]:
         self.db.rollback()  # Ensure database session has clean transaction state
         if self.log_cb:
             self.log_cb("Starting Telegram channel job discovery scan (LangGraph node: discover_telegram)...", "info")
@@ -319,7 +319,7 @@ Return ONLY a JSON object in this format:
         telegram_agent = TelegramCommunityAgent(self.db)
         
         try:
-            tg_jobs = telegram_agent.collect_jobs(
+            tg_jobs = await telegram_agent.async_collect_jobs(
                 lambda m, s="info": self.log_cb(f"[Telegram] {m}", s) if self.log_cb else None
             )
         except Exception as e:
@@ -587,7 +587,11 @@ Return ONLY a JSON object in this format:
                 continue
                 
             try:
-                db_job = JobsServer().store_job(user_id, arguments, self.db)
+                store_res = JobsServer().store_job(user_id, arguments, self.db)
+                if isinstance(store_res, dict) and "job_id" in store_res:
+                    db_job = self.db.query(JobModel).filter(JobModel.id == store_res["job_id"]).first()
+                else:
+                    db_job = store_res
                 publish_event_sync("job_discovered", {"user_id": user_id, "job": job})
             except Exception as e:
                 logger.error(f"Failed to persist discovered job: {e}")
