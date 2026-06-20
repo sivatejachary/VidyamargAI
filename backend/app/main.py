@@ -507,6 +507,40 @@ def init_db_safely():
                 except Exception as e:
                     print(f"GIN Index creation warning: {e}")
 
+            # Add domain, job_type, career_level, all_sources, reasons_json, and stats columns to respective tables
+            migration_configs = [
+                ("jobs_pool", [
+                    ("domain", "VARCHAR(100)"),
+                    ("job_type", "VARCHAR(50) DEFAULT 'Full-time'"),
+                    ("career_level", "VARCHAR(50) DEFAULT 'Mid-level'"),
+                    ("all_sources", "JSONB" if is_postgres else "TEXT")
+                ]),
+                ("jobs", [
+                    ("domain", "VARCHAR(100)"),
+                    ("job_type", "VARCHAR(50) DEFAULT 'Full-time'"),
+                    ("career_level", "VARCHAR(50) DEFAULT 'Mid-level'")
+                ]),
+                ("job_pool_matches", [
+                    ("reasons_json", "JSONB" if is_postgres else "TEXT")
+                ]),
+                ("job_matches", [
+                    ("reasons_json", "JSONB" if is_postgres else "TEXT")
+                ]),
+                ("job_agent_runs", [
+                    ("stats", "JSONB" if is_postgres else "TEXT")
+                ])
+            ]
+            for tbl, cols in migration_configs:
+                existing_cols = _get_columns(conn, tbl)
+                if existing_cols:
+                    for col_name, col_type in cols:
+                        if col_name not in existing_cols:
+                            try:
+                                conn.execute(text(f"ALTER TABLE {tbl} ADD COLUMN {col_name} {col_type}"))
+                                print(f"Migration: Added column {col_name} ({col_type}) to table {tbl}")
+                            except Exception as e:
+                                print(f"Failed to add column {col_name} to {tbl}: {e}")
+
             print("Migration: courses/modules/enrollments/certificates and curriculum tables ensured.")
     except Exception as e:
         print(f"Migration error: {e}")

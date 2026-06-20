@@ -14,6 +14,12 @@ class CandidateProfileData(BaseModel):
     projects: Optional[str] = ""
     certifications: List[str] = []
     summary: Optional[str] = ""
+    domain: Optional[str] = "Software Engineering"
+    confidence: Optional[int] = 85
+    subdomains: List[str] = []
+    preferred_roles: List[str] = []
+    career_level: Optional[str] = "Mid-level"
+    locations: List[str] = []
 
 
 class ResumeIntelligenceAgent:
@@ -37,19 +43,49 @@ class ResumeIntelligenceAgent:
                 summary=""
             )
 
-        # 1. Extract skills
+        # Try loading prebuilt profile from CandidateProfile table first
+        from app.models.models import CandidateProfile
+        profile_obj = self.db.query(CandidateProfile).filter(CandidateProfile.candidate_id == self.candidate_id).order_by(CandidateProfile.created_at.desc()).first()
+        if profile_obj and profile_obj.parsed_metadata:
+            try:
+                meta = json.loads(profile_obj.parsed_metadata)
+                if isinstance(meta, dict) and "skills" in meta:
+                    logger.info("ResumeIntelligenceAgent: Loaded prebuilt CandidateProfile from database.")
+                    return CandidateProfileData(
+                        skills=meta.get("skills", []),
+                        experience_years=meta.get("experience_years", 0.0),
+                        education=meta.get("education", ""),
+                        projects=meta.get("projects", "[]"),
+                        certifications=meta.get("certifications", []),
+                        summary=meta.get("summary", ""),
+                        domain=meta.get("domain", "Software Engineering"),
+                        confidence=meta.get("confidence", 85),
+                        subdomains=meta.get("subdomains", []),
+                        preferred_roles=meta.get("preferred_roles", []),
+                        career_level=meta.get("career_level", "Mid-level"),
+                        locations=meta.get("locations", [])
+                    )
+            except Exception as e:
+                logger.error(f"Error parsing cached candidate profile: {e}")
+
+        # Fallback if no prebuilt profile exists
         skills_list = []
         if candidate.skills:
             skills_list = [s.strip() for s in candidate.skills.split(",") if s.strip()]
 
-        # 2. Extract certifications
         certs_list = []
         if candidate.certifications:
             certs_list = [c.strip() for c in candidate.certifications.split(",") if c.strip()]
 
-        # 3. Calculate experience years using our smart calculation
         from app.api.endpoints import calculate_years_from_experience
         exp_years = calculate_years_from_experience(candidate.experience)
+
+        from app.services.orchestrator import classify_candidate_domain
+        domain_info = classify_candidate_domain(skills_list, candidate.summary or "")
+
+        locations = []
+        if candidate.address:
+            locations = [candidate.address]
 
         profile = CandidateProfileData(
             skills=skills_list if skills_list else ["Python", "JavaScript", "React", "SQL"],
@@ -57,7 +93,14 @@ class ResumeIntelligenceAgent:
             education=candidate.education or "",
             projects=candidate.projects or "[]",
             certifications=certs_list,
-            summary=candidate.summary or ""
+            summary=candidate.summary or "",
+            domain=domain_info["domain"],
+            confidence=domain_info["confidence"],
+            subdomains=domain_info["subdomains"],
+            preferred_roles=domain_info["preferred_roles"],
+            career_level=domain_info["career_level"],
+            locations=locations
         )
         logger.info(f"ResumeIntelligenceAgent: Extracted {len(profile.skills)} skills, {profile.experience_years} years of experience")
         return profile
+

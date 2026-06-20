@@ -1,6 +1,7 @@
 import json
 import logging
 import requests
+from typing import List, Optional, Tuple, Dict, Any
 import random
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -374,6 +375,12 @@ class AgentOrchestrator:
         
         profile.parsed_metadata = json.dumps(data)
         db.commit()
+        
+        # Rebuild structured Candidate Profile with domain, confidence, experience, preferred roles, etc.
+        try:
+            await self.rebuild_candidate_profile_data(db, candidate)
+        except Exception as e:
+            logger.error(f"Failed to auto-rebuild profile after resume parsing: {e}")
 
     # 3. RESUME SCREENING AGENT
     async def run_resume_screening_agent(self, db: Session, application_id: int):
@@ -1077,5 +1084,316 @@ class AgentOrchestrator:
         db.commit()
         
         await log_agent_action(db, application_id, "Onboarding Agent", "success", f"Onboarding completed! Welcome email dispatched. Assigned Employee ID: {employee_id}.")
+
+    # Helper to rebuild Candidate Profile Data
+    async def rebuild_candidate_profile_data(self, db: Session, candidate: Candidate):
+        """
+        Rebuilds structured Candidate Profile data.
+        Saves to CandidateProfile.parsed_metadata JSON.
+        """
+        try:
+            skills_list = []
+            if candidate.skills:
+                skills_list = [s.strip() for s in candidate.skills.split(",") if s.strip()]
+                
+            certs_list = []
+            if candidate.certifications:
+                certs_list = [c.strip() for c in candidate.certifications.split(",") if c.strip()]
+                
+            exp_metrics = calculate_experience_intervals(candidate.experience)
+            exp_years = exp_metrics["total_experience_years"]
+            
+            domain_info = classify_candidate_domain(skills_list, candidate.summary or "")
+            domain = domain_info["domain"]
+            confidence = domain_info["confidence"]
+            subdomains = domain_info["subdomains"]
+            preferred_roles = domain_info["preferred_roles"]
+            career_level = domain_info["career_level"]
+            
+            locations = []
+            if candidate.address:
+                locations = [candidate.address]
+                
+            profile_data = {
+                "skills": skills_list,
+                "experience_years": exp_years,
+                "experience_months": exp_metrics["total_experience_months"],
+                "structured_experience": exp_metrics["structured_experience"],
+                "education": candidate.education or "",
+                "projects": candidate.projects or "[]",
+                "certifications": certs_list,
+                "summary": candidate.summary or "",
+                "domain": domain,
+                "confidence": confidence,
+                "subdomains": subdomains,
+                "preferred_roles": preferred_roles,
+                "career_level": career_level,
+                "locations": locations
+            }
+            
+            profile = db.query(CandidateProfile).filter(CandidateProfile.candidate_id == candidate.id).order_by(CandidateProfile.created_at.desc()).first()
+            if not profile:
+                profile = CandidateProfile(candidate_id=candidate.id)
+                db.add(profile)
+            
+            profile.parsed_metadata = json.dumps(profile_data)
+            db.commit()
+            logger.info(f"Candidate profile rebuilt successfully for candidate {candidate.id}")
+        except Exception as e:
+            logger.error(f"Error rebuilding candidate profile: {e}")
+            db.rollback()
+
+
+def calculate_experience_intervals(exp_json) -> dict:
+    """
+    Calculates total unique experience months and years by merging overlapping periods.
+    """
+    import json
+    import re
+    from datetime import datetime, date
+
+    def parse_date(date_str: str) -> date:
+        if not date_str:
+            return None
+        ds = date_str.lower().strip()
+        if ds in ["present", "current", "till date", "now", "ongoing"]:
+            return date.today()
+            
+        ds = re.sub(r'(\d+)(st|nd|rd|th)', r'\1', ds)
+        formats = [
+            "%Y-%m-%d", "%Y-%m", "%m-%Y", "%m/%Y", "%Y/%m",
+            "%b %Y", "%B %Y", "%d %b %Y", "%d %B %Y", "%Y"
+        ]
+        for fmt in formats:
+            try:
+                dt = datetime.strptime(date_str.strip(), fmt)
+                return dt.date()
+            except ValueError:
+                pass
+                
+        months_map = {
+            "jan": 1, "january": 1, "feb": 2, "february": 2, "mar": 3, "march": 3,
+            "apr": 4, "april": 4, "may": 5, "jun": 6, "june": 6, "jul": 7, "july": 7,
+            "aug": 8, "august": 8, "sep": 9, "september": 9, "oct": 10, "october": 10,
+            "nov": 11, "november": 11, "dec": 12, "december": 12
+        }
+        year_match = re.search(r'\b(19\d\d|20\d\d)\b', ds)
+        if year_match:
+            year = int(year_match.group(1))
+            month = 1
+            for m_name, m_val in months_map.items():
+                if m_name in ds:
+                    month = m_val
+                    break
+            else:
+                month_match = re.search(r'\b(0?[1-9]|1[0-2])\b', ds)
+                if month_match:
+                    month = int(month_match.group(1))
+            return date(year, month, 1)
+        return None
+
+    if not exp_json:
+        return {"total_experience_months": 0, "total_experience_years": 0.0, "structured_experience": []}
+        
+    try:
+        roles = json.loads(exp_json) if isinstance(exp_json, str) else exp_json
+        if not isinstance(roles, list):
+            return {"total_experience_months": 0, "total_experience_years": 0.0, "structured_experience": []}
+            
+        intervals = []
+        structured_experience = []
+        non_date_months = 0.0
+        
+        for role in roles:
+            comp = role.get("company", "Unknown")
+            role_title = role.get("role", "Employee")
+            start_str = role.get("start_date") or role.get("startDate") or role.get("start")
+            end_str = role.get("end_date") or role.get("endDate") or role.get("end") or "Present"
+            
+            currently_working = False
+            if not role.get("end_date") and not role.get("endDate") and not role.get("end"):
+                currently_working = True
+            elif str(end_str).lower().strip() in ["present", "current", "till date", "now", "ongoing"]:
+                currently_working = True
+                
+            if not start_str:
+                duration_val = role.get("duration") or role.get("years")
+                if duration_val:
+                    if "-" in str(duration_val):
+                        parts = str(duration_val).split("-")
+                        start_str, end_str = parts[0], parts[1]
+                    else:
+                        y_match = re.search(r'(\d+(?:\.\d+)?)\s*(?:year|yr|y)', str(duration_val), re.IGNORECASE)
+                        m_match = re.search(r'(\d+(?:\.\d+)?)\s*(?:month|mon|m)', str(duration_val), re.IGNORECASE)
+                        role_months = 0.0
+                        if y_match:
+                            role_months += float(y_match.group(1)) * 12
+                        if m_match:
+                            role_months += float(m_match.group(1))
+                        if not y_match and not m_match:
+                            try:
+                                role_months += float(duration_val) * 12
+                            except ValueError:
+                                pass
+                        if role_months > 0:
+                            non_date_months += role_months
+                            structured_experience.append({
+                                "company": comp,
+                                "role": role_title,
+                                "start_date": None,
+                                "end_date": None,
+                                "currently_working": currently_working,
+                                "duration": str(duration_val)
+                            })
+                        continue
+                else:
+                    continue
+                    
+            start = parse_date(str(start_str))
+            end = parse_date(str(end_str))
+            
+            if start and end:
+                if start > end:
+                    start, end = end, start
+                intervals.append((start, end))
+                structured_experience.append({
+                    "company": comp,
+                    "role": role_title,
+                    "start_date": start.isoformat() if start else None,
+                    "end_date": end.isoformat() if end and not currently_working else None,
+                    "currently_working": currently_working
+                })
+                
+        total_days = 0
+        if intervals:
+            intervals.sort(key=lambda x: x[0])
+            merged = [intervals[0]]
+            for current in intervals[1:]:
+                prev_start, prev_end = merged[-1]
+                curr_start, curr_end = current
+                if curr_start <= prev_end:
+                    merged[-1] = (prev_start, max(prev_end, curr_end))
+                else:
+                    merged.append(current)
+                    
+            for start, end in merged:
+                total_days += (end - start).days
+            
+        total_months = int(round(total_days / 30.44)) + int(round(non_date_months))
+        total_years = round(total_months / 12.0, 1)
+        
+        return {
+            "total_experience_months": total_months,
+            "total_experience_years": total_years,
+            "structured_experience": structured_experience
+        }
+    except Exception as e:
+        logger.error(f"Error in calculate_experience_intervals: {e}")
+        return {"total_experience_months": 0, "total_experience_years": 0.0, "structured_experience": []}
+
+
+def classify_candidate_domain(skills: List[str], summary: str) -> dict:
+    """Classifies candidate profile into domain, confidence, subdomains, and preferred roles."""
+    import re
+    skills_lower = [s.lower().strip() for s in skills]
+    text = " ".join(skills_lower) + " " + (summary or "").lower()
+    
+    domain_keywords = {
+        "AI/ML": ["ai", "ml", "machine learning", "deep learning", "nlp", "computer vision", "tensorflow", "pytorch", "keras", "data science", "data scientist", "llm", "transformers"],
+        "Civil Engineering": ["civil", "site engineer", "quantity surveyor", "structural engineer", "autocad", "concrete", "structural design"],
+        "Mechanical Engineering": ["mechanical", "cad designer", "ansys", "solidworks", "catia", "cad/cam", "thermodynamics"],
+        "Electrical Engineering": ["electrical", "electronics", "embed", "vlsi", "microcontroller", "arduino", "circuits"],
+        "Chartered Accountant": ["ca", "chartered accountant", "auditor", "audit manager", "taxation", "gst audit"],
+        "Accounting": ["accountant", "accounts", "bookkeeper", "accounting", "tally", "gst", "bookkeeping"],
+        "Finance": ["finance", "financial", "investment", "analyst", "treasury", "portfolio manager", "corporate finance"],
+        "HR": ["hr", "human resource", "recruiter", "talent acquisition", "payroll", "employee relations"],
+        "Marketing": ["marketing", "seo", "branding", "social media", "digital marketing", "adwords", "copywriting"],
+        "Sales": ["sales", "business development", "bde", "account manager", "inside sales", "cold calling"],
+        "Healthcare": ["doctor", "nurse", "healthcare", "medical", "clinical", "mbbs", "pharma"],
+        "Legal": ["legal", "lawyer", "counsel", "compliance", "advocate", "litigation"],
+        "Operations": ["operations", "ops", "logistics", "supply chain", "inventory", "operations management"]
+    }
+    
+    scores = {}
+    for dom, keywords in domain_keywords.items():
+        score = 0
+        for kw in keywords:
+            # Use word boundaries for short keywords to prevent false positive substring matches
+            if len(kw) <= 3:
+                pattern = r'\b' + re.escape(kw) + r'\b'
+            else:
+                pattern = re.escape(kw)
+            matches = len(re.findall(pattern, text))
+            if matches > 0:
+                score += matches * 10
+        if score > 0:
+            scores[dom] = score
+            
+    if not scores:
+        domain = "Software Engineering"
+        confidence = 85
+        subdomains = ["Full Stack Development", "Backend Development", "Frontend Development", "DevOps"]
+        preferred_roles = ["Software Engineer", "Full Stack Developer", "Backend Developer"]
+        career_level = "Mid-level"
+    else:
+        sorted_domains = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        domain = sorted_domains[0][0]
+        
+        total_score = sum(scores.values())
+        highest_score = sorted_domains[0][1]
+        
+        confidence = int(min(98, max(60, (highest_score / total_score) * 100)))
+        career_level = "Mid-level"
+        
+        if domain == "AI/ML":
+            subdomains = ["Data Science", "Deep Learning", "NLP", "Computer Vision"]
+            preferred_roles = ["AI Engineer", "ML Engineer", "Data Scientist"]
+        elif domain == "Civil Engineering":
+            subdomains = ["Structural Engineering", "Construction Management", "Site Engineering"]
+            preferred_roles = ["Civil Engineer", "Site Engineer", "Quantity Surveyor"]
+        elif domain == "Mechanical Engineering":
+            subdomains = ["Product Design", "Thermal Engineering", "Manufacturing"]
+            preferred_roles = ["Mechanical Engineer", "Design Engineer", "Production Engineer"]
+        elif domain == "Electrical Engineering":
+            subdomains = ["Embedded Systems", "Power Systems", "VLSI Design"]
+            preferred_roles = ["Electrical Engineer", "Embedded Engineer", "VLSI Engineer"]
+        elif domain == "Chartered Accountant":
+            subdomains = ["Direct Tax", "Indirect Tax", "Statutory Audit", "Internal Audit"]
+            preferred_roles = ["Chartered Accountant", "Tax Consultant", "Auditor"]
+        elif domain == "Accounting":
+            subdomains = ["Financial Accounting", "Taxation", "Accounts Payable/Receivable"]
+            preferred_roles = ["Accountant", "Finance Executive", "Accounts Analyst"]
+        elif domain == "Finance":
+            subdomains = ["Investment Banking", "Corporate Finance", "Financial Analysis"]
+            preferred_roles = ["Finance Manager", "Financial Analyst", "Investment Analyst"]
+        elif domain == "HR":
+            subdomains = ["Recruitment", "HR Operations", "Employee Relations"]
+            preferred_roles = ["HR Generalist", "Recruiter", "Talent Acquisition Specialist"]
+        elif domain == "Marketing":
+            subdomains = ["Digital Marketing", "Brand Management", "SEO/SEM"]
+            preferred_roles = ["Marketing Manager", "SEO Specialist", "Digital Marketing Executive"]
+        elif domain == "Sales":
+            subdomains = ["Inside Sales", "Enterprise Sales", "Business Development"]
+            preferred_roles = ["Sales Manager", "Business Development Executive", "Account Executive"]
+        elif domain == "Healthcare":
+            subdomains = ["General Medicine", "Nursing", "Hospital Administration"]
+            preferred_roles = ["Medical Practitioner", "Staff Nurse", "Healthcare Administrator"]
+        elif domain == "Legal":
+            subdomains = ["Corporate Law", "Litigation", "Compliance"]
+            preferred_roles = ["Legal Counsel", "Corporate Lawyer", "Compliance Officer"]
+        elif domain == "Operations":
+            subdomains = ["Supply Chain Management", "Logistics", "Operations Management"]
+            preferred_roles = ["Operations Manager", "Logistics Coordinator", "Supply Chain Analyst"]
+        else:
+            subdomains = ["Full Stack Development", "Backend Development", "Frontend Development"]
+            preferred_roles = ["Software Engineer", "Full Stack Developer"]
+            
+    return {
+        "domain": domain,
+        "confidence": confidence,
+        "subdomains": subdomains,
+        "preferred_roles": preferred_roles,
+        "career_level": career_level
+    }
 
 orchestrator = AgentOrchestrator()

@@ -9,12 +9,15 @@ from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
 from app.models.models import Candidate
 from app.models.pool_models import JobPool, JobPoolMatch
-from app.services.job_connectors.query_builder import build_queries
 from app.services.job_connectors.tier1.greenhouse_api import fetch_greenhouse_jobs
 from app.services.job_connectors.tier1.lever_api import fetch_lever_jobs
 from app.services.job_connectors.tier1.rss_feeds import fetch_rss_jobs
 from app.services.job_connectors.tier2.google_discovery import search_google_jobs
 from app.core.config import settings
+from app.agents.resume_intelligence import ResumeIntelligenceAgent
+from app.services.job_connectors.candidate_query_generator import generate_queries
+from app.agents.verification import VerificationAgent
+from app.services.job_connectors.base import classify_job
 
 logger = logging.getLogger("app.workers.discovery")
 
@@ -27,8 +30,14 @@ async def run_discovery_all_candidates():
     try:
         candidates = db.query(Candidate).all()
         for candidate in candidates:
-            queries = build_queries(candidate)
+            # Load candidate profile
+            resume_agent = ResumeIntelligenceAgent(db, candidate.id)
+            profile = resume_agent.extract_profile()
+            
+            # Generate target India-focused queries
+            queries = generate_queries(profile.domain, profile.preferred_roles)
             skills = [s.strip() for s in (candidate.skills or "").split(",") if s.strip()]
+            
             candidates_info.append({
                 "id": candidate.id,
                 "queries": queries,
@@ -81,12 +90,11 @@ async def discover_jobs_network(candidate_id: int, queries: list, skills: list) 
         except Exception as e:
             logger.warning(f"Tier 2 Google discovery failed: {e}")
 
-    # Deduplicate based on stable_id
-    unique_jobs = {}
-    for j in all_discovered:
-        unique_jobs[j.stable_id] = j
+    # Enforce Verification Agent: filters freshness, location (India-only), groups duplicates by priority
+    verifier = VerificationAgent(all_discovered)
+    verified_jobs = verifier.verify_and_deduplicate()
 
-    return list(unique_jobs.values())
+    return verified_jobs
 
 
 async def save_and_match_discovered_jobs(candidate_id: int, candidate_skills: list, unique_jobs: list):
@@ -105,6 +113,7 @@ async def save_and_match_discovered_jobs(candidate_id: int, candidate_skills: li
             # Check if already in pool
             existing = db.query(JobPool).filter(JobPool.stable_id == job.stable_id).first()
             if not existing:
+                classification = classify_job(job.title, job.description or "", job.skills or [])
                 new_job = JobPool(
                     stable_id=job.stable_id,
                     title=job.title,
@@ -118,6 +127,10 @@ async def save_and_match_discovered_jobs(candidate_id: int, candidate_skills: li
                     description=job.description,
                     work_mode=job.work_mode,
                     company_logo=job.company_logo,
+                    domain=classification["domain"],
+                    job_type=classification["job_type"],
+                    career_level=classification["career_level"],
+                    all_sources=getattr(job, "all_sources", [job.source])
                 )
                 db.add(new_job)
                 saved_count += 1
@@ -150,39 +163,33 @@ async def match_pool_jobs_for_candidate(candidate: Candidate, db: Session, candi
         
     logger.info(f"Candidate {candidate.id} | Computing matches for {len(unmatched_jobs)} new jobs")
     
+    # Load candidate profile
+    resume_agent = ResumeIntelligenceAgent(db, candidate.id)
+    profile = resume_agent.extract_profile()
+    
+    from app.agents.matching_agent import calculate_match_score_and_reasons
+    
     for job in unmatched_jobs:
-        # Quick intersection match score calculation (fast, no LLM required for bulk pool)
-        job_skills = [s.strip().lower() for s in (job.skills or [])]
-        if not job_skills:
-            # try parsing description for skills
-            from app.services.job_connectors.tier1.greenhouse_api import _extract_skills_from_content
-            job_skills = [s.lower() for s in _extract_skills_from_content(job.description or "")]
-            
-        matched = set(candidate_skills).intersection(set(job_skills))
-        missing = set(job_skills) - set(candidate_skills)
+        res = calculate_match_score_and_reasons(
+            profile=profile,
+            job_title=job.title,
+            job_description=job.description,
+            job_skills_list=job.skills or [],
+            job_experience_str=job.experience
+        )
+        score = res["match_score"]
         
-        # Base Match Score
-        score = 50.0
-        if job_skills:
-            score = (len(matched) / len(job_skills)) * 100.0
-        else:
-            # Fallback semantic contains checks
-            score = 65.0 if any(r.lower() in job.title.lower() for r in ["engineer", "developer"]) else 50.0
-            
-        # Composite Opportunity Score calculation (Phase 10/11)
+        # Opportunity score is equal to match score for direct simplicity
         opp_score = score
-        # Freshness: +10 if created in last 24h
-        opp_score += 10.0
-        opp_score = min(100.0, max(0.0, opp_score))
         
         new_match = JobPoolMatch(
             candidate_id=candidate.id,
             job_pool_id=job.id,
             match_score=score,
             opportunity_score=opp_score,
-            skills_gap=",".join(missing),
-            opportunity_breakdown={"match": score, "freshness": 10.0},
-            should_apply=opp_score >= 70,
+            skills_gap=",".join(res["missing_skills"]),
+            reasons_json=res["reasons"],
+            should_apply=opp_score >= 70.0,
         )
         db.add(new_match)
         

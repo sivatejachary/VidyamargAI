@@ -41,9 +41,40 @@ class LiveJob:
 
 def google_search(query: str, num_results: int = 15) -> List[dict]:
     """
-    Execute a Google search using googlesearch-python.
+    Execute a Google search using Serper API (if available) or googlesearch-python as fallback.
     Returns a list of {title, url, snippet} dicts.
     """
+    import os
+    import requests
+    from app.core.config import settings
+
+    serper_key = os.getenv("SERPER_API_KEY") or getattr(settings, "SERPER_API_KEY", None)
+    if serper_key:
+        try:
+            url = "https://google.serper.dev/search"
+            headers = {
+                "X-API-KEY": serper_key,
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "q": query,
+                "num": num_results
+            }
+            resp = requests.post(url, json=payload, headers=headers, timeout=10)
+            if resp.status_code == 200:
+                data = resp.json()
+                results = []
+                for item in data.get("organic", []):
+                    results.append({
+                        "title": item.get("title", ""),
+                        "url": item.get("link", ""),
+                        "snippet": item.get("snippet", "")
+                    })
+                logger.info(f"Google Serper search returned {len(results)} results for: {query[:60]}")
+                return results
+        except Exception as e:
+            logger.warning(f"Google Serper search failed for query '{query[:60]}': {e}. Falling back to googlesearch-python.")
+
     results = []
     try:
         from googlesearch import search as _gsearch
@@ -209,3 +240,194 @@ COMMON_HEADERS = {
     "Accept-Language": "en-US,en;q=0.9",
     "Connection": "keep-alive",
 }
+
+
+def infer_source_from_url(url: str, default: str = "Google Search") -> str:
+    """Detect source platform from URL."""
+    if not url:
+        return default
+    u = url.lower()
+    if "linkedin.com/jobs" in u or "linkedin.com/view" in u:
+        return "LinkedIn"
+    if "linkedin.com/posts" in u or "linkedin.com/feed" in u:
+        return "LinkedIn Post"
+    if "t.me/" in u or "telegram.org" in u or "telegram.me" in u:
+        return "Telegram"
+    if "naukri.com" in u:
+        return "Naukri"
+    if "indeed.com" in u:
+        return "Indeed"
+    if "wellfound.com" in u or "angel.co" in u:
+        return "Wellfound"
+    if "instahyre.com" in u:
+        return "Instahyre"
+    if "internshala.com" in u:
+        return "Internshala"
+    if "cutshort.io" in u:
+        return "CutShort"
+    if "hirist.com" in u or "hirist.tech" in u:
+        return "Hirist"
+    if "foundit.in" in u or "monsterindia.com" in u:
+        return "Foundit"
+    if "greenhouse.io" in u:
+        return "Greenhouse"
+    if "lever.co" in u:
+        return "Lever"
+    return default
+
+
+def is_indian_job(location: str, description: str = "") -> bool:
+    """Returns True if the job is located in India or remote India."""
+    loc = (location or "").lower()
+    desc = (description or "").lower()
+    
+    # List of Indian cities, states and keywords
+    indian_keywords = [
+        "india", "bangalore", "bengaluru", "hyderabad", "pune", "mumbai", 
+        "chennai", "delhi", "noida", "gurgaon", "gurugram", "kolkata", 
+        "ahmedabad", "bengal", "karnataka", "telangana", "maharashtra", 
+        "tamil nadu", "haryana", "uttar pradesh"
+    ]
+    
+    # List of international countries or locations that are definitely not India
+    international_keywords = [
+        "usa", "united states", "uk", "united kingdom", "london", "germany", 
+        "berlin", "canada", "toronto", "vancouver", "australia", "sydney", 
+        "melbourne", "singapore", "dubai", "uae", "europe", "france", "paris",
+        "redmond", "seattle", "san francisco", "california", "new york", "austin"
+    ]
+    
+    # Check if foreign keywords are explicitly in the location
+    if any(f in loc for f in international_keywords):
+        return False
+        
+    if "remote" in loc:
+        # Check if it mentions foreign locations in location/description
+        if any(f in desc for f in international_keywords):
+            return False
+        # If it specifically mentions India or Indian keywords
+        if any(ind in desc or ind in loc for ind in indian_keywords):
+            return True
+        # Remote default is allowed if no foreign keywords exist
+        return True
+        
+    # Check if location contains any Indian keywords
+    if any(ind in loc for ind in indian_keywords):
+        return True
+        
+    # If location is empty or generic like "Worldwide", check description
+    if not loc or loc in ["worldwide", "global"]:
+        if any(ind in desc for ind in indian_keywords):
+            return True
+        return False # default worldwide is rejected if no explicit India keyword
+            
+    return False
+
+
+def is_fresh_job(posted_date: str) -> bool:
+    """Returns True if the job was posted within 30 days."""
+    if not posted_date:
+        return True
+    pd = posted_date.lower().strip()
+    if "today" in pd or "yesterday" in pd or "hour" in pd or "minute" in pd:
+        return True
+    
+    # E.g. "3 days ago"
+    match = re.search(r'(\d+)\s*day', pd)
+    if match:
+        days = int(match.group(1))
+        return days <= 30
+        
+    # E.g. "1 month ago" or "year"
+    if "month" in pd or "year" in pd:
+        return False
+        
+    # Try parsing as ISO/standard date
+    try:
+        from dateutil import parser
+        from datetime import datetime
+        dt = parser.parse(posted_date)
+        diff = datetime.utcnow() - dt.replace(tzinfo=None)
+        return diff.days <= 30
+    except Exception:
+        pass
+        
+    return True
+
+
+def classify_job(title: str, description: str, skills: List[str]) -> dict:
+    """Classifies a job into domain, job_type, and career_level."""
+    t = (title or "").lower()
+    d = (description or "").lower()
+    
+    # 1. Domain classification
+    domain = "Other"
+    
+    # AI/ML
+    if any(k in t for k in ["ai", "ml", "machine learning", "deep learning", "nlp", "computer vision", "data scientist", "data science"]):
+        domain = "AI/ML"
+    # Software Engineering
+    elif any(k in t for k in ["software", "developer", "engineer", "frontend", "backend", "full stack", "fullstack", "devops", "qa", "quality assurance"]):
+        domain = "Software Engineering"
+    # Civil Engineering
+    elif any(k in t for k in ["civil", "site engineer", "quantity surveyor", "structural engineer"]):
+        domain = "Civil Engineering"
+    # Mechanical Engineering
+    elif any(k in t for k in ["mechanical", "cad designer", "ansys", "solidworks"]):
+        domain = "Mechanical Engineering"
+    # Electrical Engineering
+    elif any(k in t for k in ["electrical", "electronics", "embed", "vlsi"]):
+        domain = "Electrical Engineering"
+    # CA / Chartered Accountant
+    elif any(k in t for k in ["ca", "chartered accountant", "auditor", "audit manager"]):
+        domain = "Chartered Accountant"
+    # Accounting
+    elif any(k in t for k in ["accountant", "accounts", "bookkeeper", "accounting"]):
+        domain = "Accounting"
+    # Finance
+    elif any(k in t for k in ["finance", "financial", "investment", "analyst", "treasury"]):
+        domain = "Finance"
+    # HR
+    elif any(k in t for k in ["hr", "human resource", "recruiter", "talent acquisition"]):
+        domain = "HR"
+    # Marketing
+    elif any(k in t for k in ["marketing", "seo", "branding", "social media"]):
+        domain = "Marketing"
+    # Sales
+    elif any(k in t for k in ["sales", "business development", "bde", "account manager"]):
+        domain = "Sales"
+    # Healthcare
+    elif any(k in t for k in ["doctor", "nurse", "healthcare", "medical", "clinical"]):
+        domain = "Healthcare"
+    # Legal
+    elif any(k in t for k in ["legal", "lawyer", "counsel", "compliance"]):
+        domain = "Legal"
+    # Operations
+    elif any(k in t for k in ["operations", "ops", "logistics", "supply chain"]):
+        domain = "Operations"
+        
+    # 2. Job Type
+    job_type = "Full-time"
+    if "intern" in t or "internship" in t:
+        job_type = "Internship"
+    elif "contract" in t or "contractor" in t or "freelance" in t:
+        job_type = "Contract"
+    elif "part time" in t or "part-time" in t:
+        job_type = "Part-time"
+        
+    # 3. Career Level
+    career_level = "Mid-level"
+    if "intern" in t or "trainee" in t:
+        career_level = "Intern"
+    elif "junior" in t or "entry" in t or "fresh" in t or "fresher" in t:
+        career_level = "Entry-level"
+    elif "senior" in t or "sr." in t or "sr " in t or "lead" in t:
+        career_level = "Senior"
+    elif "principal" in t or "architect" in t or "manager" in t or "director" in t or "head" in t or "vp" in t:
+        career_level = "Lead/Management"
+        
+    return {
+        "domain": domain,
+        "job_type": job_type,
+        "career_level": career_level
+    }

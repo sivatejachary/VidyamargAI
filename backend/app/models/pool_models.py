@@ -29,6 +29,10 @@ class JobPool(Base):
     description = Column(Text, nullable=True)
     work_mode = Column(String(50), default="On-site") # On-site, Remote, Hybrid
     company_logo = Column(String(500), nullable=True)
+    domain = Column(String(100), nullable=True)
+    job_type = Column(String(50), default="Full-time")
+    career_level = Column(String(50), default="Mid-level")
+    all_sources = Column(JSON, default=list)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     __table_args__ = (
@@ -52,6 +56,7 @@ class JobPoolMatch(Base):
     skills_gap = Column(Text, nullable=True) # Comma-separated missing skills
     opportunity_breakdown = Column(JSON, default=dict)
     should_apply = Column(Boolean, default=False)
+    reasons_json = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     __table_args__ = (

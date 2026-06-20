@@ -118,6 +118,10 @@ class Job(Base):
     matches = relationship("JobMatch", back_populates="job")
     saved_by = relationship("SavedJob", back_populates="job")
 
+    domain = Column(String, nullable=True)
+    job_type = Column(String, default="Full-time")
+    career_level = Column(String, default="Mid-level")
+
     @property
     def company_logo(self):
         return self.company.logo_url if self.company else None
@@ -394,6 +398,7 @@ class JobMatch(Base):
     location_match = Column(Float, default=0.0)
     match_score = Column(Float, default=0.0)
     skills_gap = Column(Text, nullable=True) # comma separated skills missing
+    reasons_json = Column(JSON, nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     job = relationship("Job", back_populates="matches")
@@ -431,6 +436,7 @@ class JobAgentRun(Base):
     status = Column(String, default="running")  # running, completed, failed
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
     completed_at = Column(DateTime, nullable=True)
+    stats = Column(JSON, nullable=True)
     
     candidate = relationship("Candidate")
     logs = relationship("JobAgentLog", back_populates="run", cascade="all, delete-orphan")

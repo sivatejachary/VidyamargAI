@@ -7,7 +7,7 @@ import logging
 import urllib.parse
 from typing import List
 from app.core.config import settings
-from app.services.job_connectors.base import LiveJob, google_search
+from app.services.job_connectors.base import LiveJob, google_search, infer_source_from_url
 
 logger = logging.getLogger("app.job_connectors.google")
 
@@ -67,7 +67,7 @@ def _search_local_google(queries: List[str]) -> List[LiveJob]:
                 skills=[],
                 apply_url=url,
                 posted_date="",
-                source="Google",
+                source=infer_source_from_url(url, "Google"),
                 description=r.get("snippet", ""),
                 work_mode="On-site",
                 company_logo=None,
@@ -89,7 +89,7 @@ def _parse_organic_item(item: dict) -> LiveJob:
         skills=[],
         apply_url=url,
         posted_date="",
-        source="Google Search",
+        source=infer_source_from_url(url, "Google Search"),
         description=snippet,
         work_mode="On-site",
         company_logo=None,

@@ -74,11 +74,10 @@ class JobSupervisorAgent:
         # Candidate skill list for intersection computation
         candidate_skills = [s.strip() for s in profile.skills if s.strip()]
 
-        # 2. Plan Queries
-        from app.agents.planning import PlanningAgent
-        planning_agent = PlanningAgent(profile)
-        queries = planning_agent.generate_strategy()
-        log_cb(f"Generated {len(queries)} job query variations based on target goals.", "success")
+        # 2. Generate Queries via Candidate Query Generator Service
+        from app.services.job_connectors.candidate_query_generator import generate_queries
+        queries = generate_queries(profile.domain, profile.preferred_roles)
+        log_cb(f"Generated {len(queries)} job query variations based on domain '{profile.domain}' and roles.", "success")
 
         # 3. Discovery Agent (tiered: Tier1 APIs → Google → Playwright)
         discovery_agent = DiscoveryAgent()
@@ -99,13 +98,23 @@ class JobSupervisorAgent:
         all_missing_skills: List[str] = []
 
         from app.models.models import Job as JobModel
+        from app.services.job_connectors.base import is_indian_job
         for job in discovered_jobs:
             db_job = self.db.query(JobModel).filter(
                 JobModel.title == job["title"],
                 JobModel.department == job["company"]
             ).first()
             if db_job:
+                # Reject non-India locations
+                if not is_indian_job(db_job.location or job.get("location", ""), db_job.description or job.get("description", "")):
+                    logger.info(f"Supervisor Agent: Skipping non-India job: {db_job.title} at {db_job.location}")
+                    continue
+
                 score = matching_agent.score_job(self.candidate_id, db_job.id, self.db)
+                # Reject matches below 60%
+                if score < 60.0:
+                    logger.info(f"Supervisor Agent: Skipping job with score {score} < 60%: {db_job.title}")
+                    continue
 
                 # ── FIX: Compute real matched/missing skills ──────────────────
                 job_skills = [s.strip() for s in (db_job.required_skills or "").split(",") if s.strip()]
@@ -132,6 +141,8 @@ class JobSupervisorAgent:
                     "source": job.get("source", "Portal")
                 })
 
+        # Sort ranked jobs by match score descending
+        ranked_jobs.sort(key=lambda j: j["match_score"], reverse=True)
         log_cb(f"Completed match scoring for {len(ranked_jobs)} positions.", "success")
 
         # 5. Aggregate real skill gaps across all discovered jobs
