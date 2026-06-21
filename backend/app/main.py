@@ -503,6 +503,11 @@ def init_db_safely():
                     conn.execute(text("CREATE INDEX IF NOT EXISTS idx_job_title_trgm ON jobs_pool USING gin(title gin_trgm_ops)"))
                     conn.execute(text("CREATE INDEX IF NOT EXISTS idx_job_description_trgm ON jobs_pool USING gin(description gin_trgm_ops)"))
                     conn.execute(text("CREATE INDEX IF NOT EXISTS idx_jobs_created_at ON jobs_pool(created_at DESC)"))
+                    
+                    # Create explicit indexes requested
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_jobpool_domain ON jobs_pool(domain)"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_match_candidate ON job_pool_matches(candidate_id)"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_match_candidate_job ON job_pool_matches(candidate_id, job_pool_id)"))
                 except Exception as e:
                     print(f"GIN/Trigram Index creation warning: {e}")
 

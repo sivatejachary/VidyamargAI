@@ -294,3 +294,34 @@ async def set_text_embedding(text: str, embedding: List[float]) -> None:
     await _set_key_data(f"embedding:{text_hash}", embedding, ttl=86400) # Cache for 24 hours
 
 
+async def get_search_results(source: str, query: str) -> Optional[List[Dict[str, Any]]]:
+    """Retrieve cached search results from Redis for a given source and query (TTL: 1 hour)."""
+    text_hash = hashlib.md5(query.lower().strip().encode("utf-8")).hexdigest()
+    return await _get_key_data(f"job_search:{source}:{text_hash}")
+
+async def set_search_results(source: str, query: str, data: List[Dict[str, Any]]) -> None:
+    """Cache search results in Redis for 1 hour."""
+    text_hash = hashlib.md5(query.lower().strip().encode("utf-8")).hexdigest()
+    await _set_key_data(f"job_search:{source}:{text_hash}", data, ttl=3600)  # 1 hour
+
+async def get_job_detail(url: str) -> Optional[Dict[str, Any]]:
+    """Retrieve job details from Redis by URL (TTL: 24 hours)."""
+    url_hash = hashlib.md5(url.lower().strip().encode("utf-8")).hexdigest()
+    return await _get_key_data(f"job_detail:{url_hash}")
+
+async def set_job_detail(url: str, data: Dict[str, Any]) -> None:
+    """Cache job details in Redis for 24 hours."""
+    url_hash = hashlib.md5(url.lower().strip().encode("utf-8")).hexdigest()
+    await _set_key_data(f"job_detail:{url_hash}", data, ttl=86400)  # 24 hours
+
+async def get_company(company_name: str) -> Optional[Dict[str, Any]]:
+    """Retrieve company details from Redis by name (TTL: 7 days)."""
+    co_hash = hashlib.md5(company_name.lower().strip().encode("utf-8")).hexdigest()
+    return await _get_key_data(f"company:{co_hash}")
+
+async def set_company(company_name: str, data: Dict[str, Any]) -> None:
+    """Cache company details in Redis for 7 days."""
+    co_hash = hashlib.md5(company_name.lower().strip().encode("utf-8")).hexdigest()
+    await _set_key_data(f"company:{co_hash}", data, ttl=604800)  # 7 days
+
+

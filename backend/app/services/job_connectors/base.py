@@ -130,26 +130,10 @@ class _GoogleSoupShim:
 
 def yahoo_search(query: str, headers: dict = None, timeout: int = 10):
     """
-    Execute a Yahoo search query and return a BeautifulSoup object.
-    If it fails, falls back to Google search.
+    Bypass Yahoo Search completely and route directly to Google Search.
     """
-    import requests
-    from bs4 import BeautifulSoup
-    
-    translated_query = clean_query_for_yahoo(query)
-    url = f"https://search.yahoo.com/search?p={urllib.parse.quote(translated_query)}&n=15"
-    req_headers = headers or COMMON_HEADERS
-    
-    try:
-        resp = requests.get(url, headers=req_headers, timeout=timeout)
-        if resp.status_code == 200:
-            logger.info(f"Yahoo search returned status 200 for: {translated_query[:60]}")
-            return BeautifulSoup(resp.text, "html.parser")
-        else:
-            logger.warning(f"Yahoo search returned status {resp.status_code} for query: {translated_query[:60]}. Falling back to Google.")
-    except Exception as e:
-        logger.warning(f"Yahoo search failed for query '{translated_query[:60]}': {e}. Falling back to Google.")
-        
+    logger.info(f"Routing search directly to Google (Bypassing Yahoo): {query[:60]}")
+    # Return _GoogleSoupShim so legacy extract_yahoo_results parsing works
     return _GoogleSoupShim(google_search(query, num_results=15))
 
 
