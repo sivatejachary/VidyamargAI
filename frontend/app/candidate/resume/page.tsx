@@ -527,12 +527,19 @@ export default function ResumeBuilder() {
   let educationCount = 0;
   try { educationCount = profile?.education ? JSON.parse(profile.education).length : 0; } catch { educationCount = 0; }
 
+  let experienceCount = 0;
+  try { experienceCount = profile?.experience ? JSON.parse(profile.experience).length : 0; } catch { experienceCount = 0; }
+
   let experienceYears = 0;
-  try {
-    const expArr = profile?.experience ? JSON.parse(profile.experience) : [];
-    experienceYears = expArr.reduce((sum: number, exp: any) => sum + (Number(exp.years) || 0), 0);
-  } catch {
-    experienceYears = 0;
+  if (profile?.experience_years !== undefined && profile?.experience_years !== null) {
+    experienceYears = profile.experience_years;
+  } else {
+    try {
+      const expArr = profile?.experience ? JSON.parse(profile.experience) : [];
+      experienceYears = expArr.reduce((sum: number, exp: any) => sum + (Number(exp.years) || 0), 0);
+    } catch {
+      experienceYears = 0;
+    }
   }
 
   const getFirstRole = () => {
@@ -587,7 +594,7 @@ export default function ResumeBuilder() {
       name: "Experience", 
       desc: "Your work experience details", 
       icon: Briefcase, 
-      completed: experienceYears > 0 
+      completed: experienceCount > 0 
     },
     { 
       id: "education", 

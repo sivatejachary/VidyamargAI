@@ -500,7 +500,17 @@ async def match_pool_jobs_for_candidate(candidate: Candidate, db: Session, candi
         )
         
     # Construct query string representing candidate's profile
-    resume_text = f"Roles: {', '.join(profile.preferred_roles or [])}\nDomain: {profile.domain or ''}\nSkills: {', '.join(profile.skills or [])}\nExperience: {profile.experience_years or 0} years"
+    roles = profile.preferred_roles or []
+    if isinstance(roles, str):
+        roles = [r.strip() for r in roles.split(",") if r.strip()]
+    roles_text = ", ".join(roles)
+
+    skills = profile.skills or []
+    if isinstance(skills, str):
+        skills = [s.strip() for s in skills.split(",") if s.strip()]
+    skills_text = ", ".join(skills)
+
+    resume_text = f"Roles: {roles_text}\nDomain: {profile.domain or ''}\nSkills: {skills_text}\nExperience: {profile.experience_years or 0} years"
     
     # Attempt Qdrant semantic search
     from app.services.vector_store import vector_store
@@ -548,25 +558,23 @@ async def match_pool_jobs_for_candidate(candidate: Candidate, db: Session, candi
             job_experience_str=job.experience
         )
         score = res["match_score"]
-        
-        # Opportunity score is equal to match score for direct simplicity
         opp_score = score
         
-        new_match = JobPoolMatch(
-            candidate_id=candidate.id,
-            job_pool_id=job.id,
-            match_score=score,
-            opportunity_score=opp_score,
-            skills_gap=",".join(res["missing_skills"]),
-            reasons_json=res["reasons"],
-            should_apply=opp_score >= 70.0,
-        )
-        matches.append(new_match)
+        matches.append({
+            "candidate_id": candidate.id,
+            "job_pool_id": job.id,
+            "match_score": score,
+            "opportunity_score": opp_score,
+            "skills_gap": ",".join(res["missing_skills"]),
+            "reasons_json": res["reasons"],
+            "should_apply": opp_score >= 70.0,
+            "created_at": datetime.utcnow()
+        })
         
     if matches:
-        db.bulk_save_objects(matches)
+        db.bulk_insert_mappings(JobPoolMatch, matches)
         db.commit()
-    logger.info(f"Candidate {candidate.id} | Matching complete. Bulk saved {len(matches)} matches.")
+    logger.info(f"Candidate {candidate.id} | Matching complete. Bulk inserted {len(matches)} matches.")
     
     # Invalidate cached jobs pool and skill gap for the candidate
     try:
@@ -575,3 +583,76 @@ async def match_pool_jobs_for_candidate(candidate: Candidate, db: Session, candi
         await job_cache.invalidate_skill_gap(candidate.id)
     except Exception as e:
         logger.warning(f"Failed to invalidate cache after matching: {e}")
+
+
+async def run_discovery_for_candidate(candidate_id: int):
+    """
+    Runs a targeted job discovery search and matching cycle specifically for a candidate's profile.
+    Can be run synchronously or inside background tasks right after resume parsing.
+    """
+    db = SessionLocal()
+    try:
+        from app.models.models import Candidate, CandidateProfile
+        candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+        if not candidate:
+            logger.error(f"Candidate {candidate_id} not found for targeted discovery")
+            return
+            
+        profile = db.query(CandidateProfile).filter(
+            CandidateProfile.candidate_id == candidate_id
+        ).order_by(CandidateProfile.created_at.desc()).first()
+        
+        # 1. Gather queries and skills for this candidate
+        queries = set()
+        skills = set()
+        
+        if profile:
+            roles = []
+            if profile.generated_roles:
+                try:
+                    roles = safe_loads(profile.generated_roles, [])
+                except Exception:
+                    pass
+            if roles:
+                queries.update(roles)
+            elif profile.current_role:
+                queries.add(profile.current_role)
+                
+            cand_skills = []
+            if profile.skills_graph:
+                try:
+                    graph = safe_loads(profile.skills_graph)
+                    cand_skills = graph.get("primary_skills", []) + graph.get("secondary_skills", [])
+                except Exception:
+                    pass
+            if not cand_skills and profile.parsed_metadata:
+                try:
+                    meta = safe_loads(profile.parsed_metadata)
+                    cand_skills = meta.get("skills", [])
+                except Exception:
+                    pass
+            if cand_skills:
+                skills.update(cand_skills)
+            elif candidate.skills:
+                skills.update([s.strip() for s in candidate.skills.split(",") if s.strip()])
+        else:
+            if candidate.skills:
+                skills.update([s.strip() for s in candidate.skills.split(",") if s.strip()])
+                
+        # Generate targeted queries
+        generated_queries = generate_crawling_queries(list(queries), list(skills))
+        
+        # 2. Run targeted crawlers
+        discovered_jobs = []
+        if generated_queries:
+            discovered_jobs = await discover_jobs_network_independent(db, generated_queries, list(skills)[:30])
+            
+        # 3. Save discovered jobs & run match scores for candidate
+        candidate_skills_list = list(skills)
+        await save_and_match_discovered_jobs(candidate_id, candidate_skills_list, discovered_jobs)
+        
+    except Exception as e:
+        logger.error(f"Targeted discovery failed for candidate {candidate_id}: {e}")
+    finally:
+        db.close()
+

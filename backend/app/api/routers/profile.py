@@ -29,10 +29,14 @@ def get_candidate_profile(current_user: User = Depends(get_current_user), db: Se
     candidate = db.query(Candidate).options(joinedload(Candidate.user)).filter(Candidate.user_id == current_user.id).first()
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate profile not found")
+    
+    # Attach experience_years from CandidateProfile
+    profile = db.query(CandidateProfile).filter(CandidateProfile.candidate_id == candidate.id).order_by(CandidateProfile.created_at.desc()).first()
+    candidate.experience_years = profile.experience_years if profile else 0.0
     return candidate
 
 @router.put("/candidates/profile", response_model=schemas.CandidateResponse)
-def update_candidate_profile(profile_in: schemas.CandidateProfileUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def update_candidate_profile(profile_in: schemas.CandidateProfileUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     candidate = db.query(Candidate).options(joinedload(Candidate.user)).filter(Candidate.user_id == current_user.id).first()
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
@@ -43,8 +47,20 @@ def update_candidate_profile(profile_in: schemas.CandidateProfileUpdate, current
     candidate.status = "Profile Completed"
     candidate.current_step = "Resume"
     db.commit()
+    
+    # Rebuild candidate profile to update experience_years, domain, etc.
+    try:
+        from app.services.orchestrator import orchestrator
+        await orchestrator.rebuild_candidate_profile_data(db, candidate)
+    except Exception as e:
+        logger.error(f"Failed to rebuild profile after update: {e}")
+        
     from app.services.resume_cache import invalidate_resume_analysis
     invalidate_resume_analysis(candidate.id)
     db.refresh(candidate)
+    
+    # Attach experience_years from CandidateProfile
+    profile = db.query(CandidateProfile).filter(CandidateProfile.candidate_id == candidate.id).order_by(CandidateProfile.created_at.desc()).first()
+    candidate.experience_years = profile.experience_years if profile else 0.0
     return candidate
 

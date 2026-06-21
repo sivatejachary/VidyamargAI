@@ -53,8 +53,11 @@ def after_cursor_execute(conn, cursor, statement, parameters, context, executema
         if not is_prod and not is_testing:
             try:
                 with engine.connect() as explain_conn:
-                    explain_res = explain_conn.execute(text(f"EXPLAIN ANALYZE {statement}"), parameters).fetchall()
-                    logger.warning("EXPLAIN ANALYZE:\n" + "\n".join([line[0] for line in explain_res]))
+                    dbapi_conn = explain_conn.connection
+                    with dbapi_conn.cursor() as explain_cursor:
+                        explain_cursor.execute(f"EXPLAIN ANALYZE {statement}", parameters)
+                        explain_res = explain_cursor.fetchall()
+                        logger.warning("EXPLAIN ANALYZE:\n" + "\n".join([line[0] for line in explain_res]))
             except Exception as explain_err:
                 logger.warning(f"Could not run EXPLAIN: {explain_err}")
 

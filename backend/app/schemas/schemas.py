@@ -89,6 +89,7 @@ class CandidateResponse(BaseModel):
     hackathon_members: Optional[str] = None
     parsed_name: Optional[str] = None
     parsed_email: Optional[str] = None
+    experience_years: Optional[float] = 0.0
     user: UserResponse
 
     class Config:

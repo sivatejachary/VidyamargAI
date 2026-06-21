@@ -54,7 +54,7 @@ def call_nvidia(messages, json_mode: bool = False) -> str:
     Uses dynamic model fallbacks to bypass timeouts or unsupported models.
     """
     api_key = settings.NVIDIA_API_KEY or settings.NVIDIA_API_KEY_FALLBACK
-    if not api_key:
+    if not api_key or str(api_key).strip().lower() in ["", "none", "null", "undefined"]:
         return ""
     if isinstance(messages, str):
         messages = [{"role": "user", "content": messages}]
@@ -451,6 +451,10 @@ class AgentOrchestrator:
                 from app.agents.resume_intelligence_agent import ResumeIntelligenceAgent as RIA
                 ria = RIA(db_session, cand_id)
                 await ria.execute_pipeline()
+                
+                # Automatically run job crawling and matching for the candidate
+                from app.workers.discovery_worker import run_discovery_for_candidate
+                await run_discovery_for_candidate(cand_id)
             except Exception as bg_err:
                 logger.error(f"Background ResumeIntelligenceAgent failed: {bg_err}")
             finally:
@@ -463,6 +467,10 @@ class AgentOrchestrator:
                 from app.agents.resume_intelligence_agent import ResumeIntelligenceAgent as RIA
                 ria = RIA(db, candidate_id)
                 await ria.execute_pipeline()
+                
+                # Automatically run job crawling and matching for the candidate
+                from app.workers.discovery_worker import run_discovery_for_candidate
+                await run_discovery_for_candidate(candidate_id)
             except Exception as e:
                 logger.error(f"Failed to trigger ResumeIntelligenceAgent pipeline: {e}")
 
@@ -1322,9 +1330,20 @@ def calculate_experience_intervals(exp_json) -> dict:
             if not start_str:
                 duration_val = role.get("duration") or role.get("years")
                 if duration_val:
-                    if "-" in str(duration_val):
-                        parts = str(duration_val).split("-")
+                    # Normalize separators like en-dash, em-dash, "to", etc. to standard hyphen
+                    normalized_duration = str(duration_val)
+                    for sep in ["\u2013", "\u2014", "\u2212", " to ", " till ", " until "]:
+                        if sep in normalized_duration:
+                            normalized_duration = normalized_duration.replace(sep, "-")
+                    
+                    if "-" in normalized_duration:
+                        parts = normalized_duration.split("-")
                         start_str, end_str = parts[0], parts[1]
+                        # Re-evaluate currently_working based on the new end_str
+                        if str(end_str).lower().strip() in ["present", "current", "till date", "now", "ongoing"]:
+                            currently_working = True
+                        else:
+                            currently_working = False
                     else:
                         y_match = re.search(r'(\d+(?:\.\d+)?)\s*(?:year|yr|y)', str(duration_val), re.IGNORECASE)
                         m_match = re.search(r'(\d+(?:\.\d+)?)\s*(?:month|mon|m)', str(duration_val), re.IGNORECASE)

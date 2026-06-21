@@ -65,7 +65,7 @@ class EmbeddingService:
             return [0.0] * 768
 
         api_key = settings.NVIDIA_API_KEY or settings.NVIDIA_API_KEY_FALLBACK
-        if not api_key:
+        if not api_key or str(api_key).strip().lower() in ["", "none", "null", "undefined"]:
             logger.debug("NVIDIA API key missing. Trying Gemini embedding fallback.")
             return await self.get_embedding(text)
 

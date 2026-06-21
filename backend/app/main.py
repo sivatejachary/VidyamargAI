@@ -497,8 +497,14 @@ def init_db_safely():
                     conn.execute(text("CREATE INDEX IF NOT EXISTS idx_ai_mentor_messages_search ON ai_mentor_messages USING GIN (to_tsvector('english', message)) WHERE is_archived = FALSE"))
                     conn.execute(text("CREATE INDEX IF NOT EXISTS idx_ai_mentor_studyplans_search ON ai_mentor_study_plans USING GIN (to_tsvector('english', content))"))
                     conn.execute(text("CREATE INDEX IF NOT EXISTS idx_ai_mentor_artifacts_search ON ai_mentor_artifacts USING GIN (to_tsvector('english', content)) WHERE is_archived = FALSE"))
+                    
+                    # pg_trgm and search optimizations for jobs_pool
+                    conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_job_title_trgm ON jobs_pool USING gin(title gin_trgm_ops)"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_job_description_trgm ON jobs_pool USING gin(description gin_trgm_ops)"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_jobs_created_at ON jobs_pool(created_at DESC)"))
                 except Exception as e:
-                    print(f"GIN Index creation warning: {e}")
+                    print(f"GIN/Trigram Index creation warning: {e}")
 
             # Add domain, job_type, career_level, all_sources, reasons_json, and stats columns to respective tables
             migration_configs = [

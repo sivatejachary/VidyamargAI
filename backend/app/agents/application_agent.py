@@ -61,9 +61,14 @@ class ApplicationAgent:
 
     def generate_cover_letter(self, profile, job: dict) -> str:
         """Generates a customized, professional cover letter."""
+        skills = profile.skills or []
+        if isinstance(skills, str):
+            skills = [s.strip() for s in skills.split(",") if s.strip()]
+        skills_text = ", ".join(skills)
+
         prompt = f"""
         Write a professional 200-word cover letter for this candidate:
-        Skills: {', '.join(profile.skills)}
+        Skills: {skills_text}
         Experience: {profile.experience_years} years
         
         For this job:
