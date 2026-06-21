@@ -807,6 +807,72 @@ export default function ResumeBuilder() {
               </Button>
             }
           />
+
+          {/* Upload Stepper Modal */}
+          {uploading && (
+            <Modal
+              isOpen={uploading}
+              onClose={() => {}}
+              title="Processing Resume"
+              className="max-w-md"
+            >
+              <div className="flex flex-col gap-6 py-2">
+                <div className="space-y-1.5 text-center">
+                  <span className="text-11 font-bold text-muted-foreground uppercase tracking-wider">
+                    Ingestion Pipeline
+                  </span>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Tush AI is analyzing your CV and extracting structural data.
+                  </p>
+                </div>
+
+                {/* Stepper Steps */}
+                <div className="space-y-4 my-2">
+                  {[
+                    { step: 1, label: "Uploading Document" },
+                    { step: 2, label: "Extracting Bio & Location" },
+                    { step: 3, label: "Parsing Skills & Experience" },
+                    { step: 4, label: "Analyzing Quality Metrics" },
+                    { step: 5, label: "Syncing Profile Data" }
+                  ].map((s) => {
+                    const isCompleted = uploadStep > s.step;
+                    const isActive = uploadStep === s.step;
+                    return (
+                      <div key={s.step} className="flex items-center gap-3.5">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 border transition-all ${
+                          isCompleted 
+                            ? "bg-success border-success text-success-foreground"
+                            : isActive
+                              ? "bg-primary border-primary text-primary-foreground animate-pulse"
+                              : "border-border text-muted-foreground"
+                        }`}>
+                          {isCompleted ? <Check size={12} strokeWidth={3} /> : s.step}
+                        </div>
+                        <span className={`text-xs font-semibold ${
+                          isActive 
+                            ? "text-foreground font-bold" 
+                            : isCompleted 
+                              ? "text-muted-foreground line-through opacity-75"
+                              : "text-muted-foreground"
+                        }`}>
+                          {s.label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Progress Bar */}
+                <div className="space-y-2 mt-2">
+                  <div className="flex justify-between items-center text-xs font-semibold">
+                    <span className="text-muted-foreground">Overall progress</span>
+                    <span className="text-foreground">{uploadProgress}%</span>
+                  </div>
+                  <ProgressBar value={uploadProgress} />
+                </div>
+              </div>
+            </Modal>
+          )}
         </div>
       </div>
     );
