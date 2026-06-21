@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { apiService } from "@/services/api";
 import { useAuthStore } from "@/store/authStore";
-import { User, Globe, UploadCloud, CheckCircle, Phone, MapPin, Link2, Code2, Briefcase, GraduationCap, Award, Edit3, Loader2 } from "lucide-react";
+import { User, Globe, CheckCircle, Phone, MapPin, Link2, Code2, Briefcase, GraduationCap, Award, Edit3 } from "lucide-react";
 
 export default function CandidateProfile() {
   const { fullName, email } = useAuthStore();
@@ -23,12 +23,8 @@ export default function CandidateProfile() {
   
   // UI States
   const [isEditMode, setIsEditMode] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState("");
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadProfile = async () => {
     try {
@@ -104,27 +100,6 @@ export default function CandidateProfile() {
     }
   };
 
-  const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-    const selectedFile = e.target.files[0];
-    if (selectedFile.type !== "application/pdf") {
-      setError("Please upload a PDF file only.");
-      return;
-    }
-    setFile(selectedFile);
-    setUploading(true);
-    setError("");
-    try {
-      await apiService.uploadResume(selectedFile);
-      setSaveSuccess(true);
-      await loadProfile(); // Reload newly parsed details from backend
-      setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (err: any) {
-      setError(err.message || "Resume upload / AI parsing failed.");
-    } finally {
-      setUploading(false);
-    }
-  };
 
   // Safe JSON Parsing helper for rendering view
   const parseJsonArray = (jsonStr: string) => {
@@ -156,14 +131,6 @@ export default function CandidateProfile() {
         
         <div className="flex items-center gap-3">
           <button
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1.5 px-4 py-2 border border-gray-200 dark:border-gray-800 rounded-xl bg-white dark:bg-card hover:bg-gray-50 dark:hover:bg-gray-900 text-xs font-bold transition-all text-gray-600 dark:text-gray-300 cursor-pointer"
-          >
-            {uploading ? <Loader2 size={13} className="animate-spin text-indigo-500" /> : <UploadCloud size={13} className="text-indigo-500" />}
-            <span>Upload Resume</span>
-          </button>
-          
-          <button
             onClick={() => setIsEditMode(!isEditMode)}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
               isEditMode 
@@ -176,14 +143,6 @@ export default function CandidateProfile() {
           </button>
         </div>
       </div>
-
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleResumeUpload}
-        accept="application/pdf"
-        className="hidden"
-      />
 
       {saveSuccess && (
         <div className="p-3 mb-6 rounded-xl bg-emerald-950/20 border border-emerald-800/40 text-emerald-400 text-xs font-semibold flex items-center gap-2">
@@ -274,7 +233,7 @@ export default function CandidateProfile() {
                 Core Competencies
               </h3>
               {skillsList.length === 0 ? (
-                <p className="text-xs text-gray-500 italic">No skills listed. Please upload your resume PDF to extract them automatically.</p>
+                <p className="text-xs text-gray-500 italic">No skills listed. Please upload your resume PDF on the Resume Builder page to extract them automatically.</p>
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {skillsList.map((sk) => (
@@ -302,7 +261,7 @@ export default function CandidateProfile() {
               </h3>
 
               {expList.length === 0 ? (
-                <p className="text-xs text-gray-500 italic">No experience history found. Upload a resume to automatically parse details.</p>
+                <p className="text-xs text-gray-500 italic">No experience history found. Please upload a resume on the Resume Builder page to parse details automatically, or edit your profile manually.</p>
               ) : (
                 <div className="relative border-l border-gray-200 dark:border-gray-800 ml-3.5 pl-6 space-y-6 py-1">
                   {expList.map((exp: any, idx: number) => (
@@ -335,7 +294,7 @@ export default function CandidateProfile() {
               </h3>
 
               {eduList.length === 0 ? (
-                <p className="text-xs text-gray-500 italic">No education history found. Upload a resume to automatically parse details.</p>
+                <p className="text-xs text-gray-500 italic">No education history found. Please upload a resume on the Resume Builder page to parse details automatically, or edit your profile manually.</p>
               ) : (
                 <div className="relative border-l border-gray-200 dark:border-gray-800 ml-3.5 pl-6 space-y-6 py-1">
                   {eduList.map((edu: any, idx: number) => (
