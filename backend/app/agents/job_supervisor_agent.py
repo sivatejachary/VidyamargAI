@@ -375,10 +375,25 @@ class JobSupervisorAgent:
         
         # Load recommendation memory for behavioral boost
         rec_mem = self.db.query(RecommendationMemory).filter(RecommendationMemory.candidate_id == self.candidate_id).first()
-        pref_roles = [r.lower().strip() for r in json.loads(rec_mem.preferred_roles)] if rec_mem and rec_mem.preferred_roles else []
-        pref_locs = [l.lower().strip() for l in json.loads(rec_mem.preferred_locations)] if rec_mem and rec_mem.preferred_locations else []
-        pref_companies = [c.lower().strip() for c in json.loads(rec_mem.preferred_companies)] if rec_mem and rec_mem.preferred_companies else []
-        ignored_roles = [r.lower().strip() for r in json.loads(rec_mem.ignored_roles)] if rec_mem and rec_mem.ignored_roles else []
+        
+        def safe_parse_list(val) -> list:
+            if not val:
+                return []
+            if isinstance(val, list):
+                return val
+            if isinstance(val, str):
+                try:
+                    res = json.loads(val)
+                    if isinstance(res, list):
+                        return res
+                except Exception:
+                    pass
+            return []
+
+        pref_roles = [r.lower().strip() for r in safe_parse_list(rec_mem.preferred_roles)] if rec_mem else []
+        pref_locs = [l.lower().strip() for l in safe_parse_list(rec_mem.preferred_locations)] if rec_mem else []
+        pref_companies = [c.lower().strip() for c in safe_parse_list(rec_mem.preferred_companies)] if rec_mem else []
+        ignored_roles = [r.lower().strip() for r in safe_parse_list(rec_mem.ignored_roles)] if rec_mem else []
         
         matched_jobs = []
         
