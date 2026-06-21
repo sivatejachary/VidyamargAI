@@ -540,6 +540,17 @@ def init_db_safely():
                 ]),
                 ("job_agent_runs", [
                     ("stats", "JSONB" if is_postgres else "TEXT")
+                ]),
+                ("user_preferences", [
+                    ("auto_apply_enabled", "BOOLEAN DEFAULT false"),
+                    ("auto_apply_approval_mode", "VARCHAR(20) DEFAULT 'always'"),
+                    ("auto_apply_min_score", "REAL DEFAULT 80.0"),
+                    ("auto_apply_min_skill_match", "REAL DEFAULT 70.0"),
+                    ("auto_apply_daily_cap", "INTEGER DEFAULT 50"),
+                    ("auto_apply_remote_only", "BOOLEAN DEFAULT false"),
+                    ("auto_apply_max_job_age_days", "INTEGER DEFAULT 2"),
+                    ("auto_apply_locations", "TEXT DEFAULT '[]'"),
+                    ("auto_apply_domains", "TEXT DEFAULT '[]'")
                 ])
             ]
             for tbl, cols in migration_configs:
