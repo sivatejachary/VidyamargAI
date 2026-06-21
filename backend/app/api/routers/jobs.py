@@ -646,6 +646,11 @@ def get_candidate_jobs_dashboard(
     
     now = datetime.utcnow()
     
+    # Bulk fetch existing job matches to avoid N+1 query overhead
+    existing_matches = db.query(JobMatch).filter(JobMatch.candidate_id == candidate.id).all()
+    matches_map = {m.job_id: m for m in existing_matches}
+    new_matches = []
+    
     for job in db_jobs:
         if job.created_at and (now - job.created_at).days == 0:
             new_jobs_today += 1
@@ -667,13 +672,20 @@ def get_candidate_jobs_dashboard(
         if job.company_id is not None:
             company_career_jobs += 1
             
-        match_rec = db.query(JobMatch).filter(JobMatch.candidate_id == candidate.id, JobMatch.job_id == job.id).first()
+        match_rec = matches_map.get(job.id)
         if not match_rec:
-            match_rec = calculate_and_save_job_match(
-                db, candidate.id, job, cand_skills_list, cand_exp_val, cand_loc_val, cand_edu_val, cand_certs_val
+            match_rec = calculate_job_match_object(
+                candidate.id, job, cand_skills_list, cand_exp_val, cand_loc_val, cand_edu_val, cand_certs_val
             )
+            new_matches.append(match_rec)
+            matches_map[job.id] = match_rec
+            
         if match_rec and match_rec.match_score >= 80.0:
             high_match_jobs += 1
+            
+    if new_matches:
+        db.bulk_save_objects(new_matches)
+        db.commit()
             
     if total_active_jobs < 10:
         total_active_jobs += 7

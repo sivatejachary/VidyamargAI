@@ -31,8 +31,21 @@ def update_source_status(db: Session, source_name: str, success: bool, latency: 
         from app.models.models import JobSourceTracking
         tracking = db.query(JobSourceTracking).filter(JobSourceTracking.source_name == source_name).first()
         if not tracking:
-            tracking = JobSourceTracking(source_name=source_name)
+            tracking = JobSourceTracking(
+                source_name=source_name,
+                success_count=0,
+                failure_count=0,
+                avg_response_time=0.0,
+                status="offline"
+            )
             db.add(tracking)
+            
+        if tracking.success_count is None:
+            tracking.success_count = 0
+        if tracking.failure_count is None:
+            tracking.failure_count = 0
+        if tracking.avg_response_time is None:
+            tracking.avg_response_time = 0.0
             
         tracking.last_crawl = datetime.utcnow()
         if success:
@@ -54,54 +67,86 @@ def update_source_status(db: Session, source_name: str, success: bool, latency: 
         logger.error(f"Failed to update JobSourceTracking for {source_name}: {e}")
         db.rollback()
 
+def generate_crawling_queries(roles: List[str], skills: List[str]) -> List[str]:
+    queries = set()
+    for r in roles[:15]:
+        queries.add(f'"{r}" India')
+        queries.add(f'"{r}" Remote India')
+    if len(queries) < 10:
+        for s in skills[:10]:
+            queries.add(f'"{s} Developer" India')
+            queries.add(f'"{s} Engineer" India')
+    return list(queries)[:30]
+
 def get_crawler_queries_and_skills(db: Session) -> Tuple[List[str], List[str]]:
     from app.models.models import CandidateProfile, Candidate
-    profiles = db.query(CandidateProfile).all()
+    candidates = db.query(Candidate).all()
     queries = set()
     skills = set()
+    experience_map = set()
     
-    for p in profiles:
-        if p.search_strategy:
-            try:
-                strat = json.loads(p.search_strategy)
-                if isinstance(strat, dict):
-                    primary = strat.get("primary_roles", [])
-                    secondary = strat.get("secondary_roles", [])
-                    kws = strat.get("keywords", [])
-                    queries.update(primary)
-                    queries.update(secondary)
-                    skills.update(kws)
-            except Exception:
-                pass
-        if p.generated_roles:
-            try:
-                roles = json.loads(p.generated_roles)
-                if isinstance(roles, list):
-                    queries.update(roles)
-            except Exception:
-                pass
+    for candidate in candidates:
+        profile = db.query(CandidateProfile).filter(
+            CandidateProfile.candidate_id == candidate.id
+        ).order_by(CandidateProfile.created_at.desc()).first()
+        
+        if profile:
+            # 1. Load preferred/generated roles
+            roles = []
+            if profile.generated_roles:
+                try:
+                    roles = json.loads(profile.generated_roles)
+                except Exception:
+                    pass
+            if roles:
+                queries.update(roles)
+            elif profile.current_role:
+                queries.add(profile.current_role)
                 
-    # Also fetch skills from candidates table
-    candidates = db.query(Candidate).all()
-    for c in candidates:
-        if c.skills:
-            cand_skills = [s.strip() for s in c.skills.split(",") if s.strip()]
-            skills.update(cand_skills)
-            
-    # Fallback to default tech and non-tech queries to guarantee it works for all professions
-    if not queries:
-        queries = {
+            # 2. Load skills from skills_graph or parsed_metadata
+            cand_skills = []
+            if profile.skills_graph:
+                try:
+                    graph = json.loads(profile.skills_graph)
+                    cand_skills = graph.get("primary_skills", []) + graph.get("secondary_skills", [])
+                except Exception:
+                    pass
+            if not cand_skills and profile.parsed_metadata:
+                try:
+                    meta = json.loads(profile.parsed_metadata)
+                    cand_skills = meta.get("skills", [])
+                except Exception:
+                    pass
+            if cand_skills:
+                skills.update(cand_skills)
+            elif candidate.skills:
+                skills.update([s.strip() for s in candidate.skills.split(",") if s.strip()])
+                
+            # 3. Load experience
+            if profile.experience_years:
+                experience_map.add(profile.experience_years)
+        else:
+            # Fallback to Candidate table fields
+            if candidate.skills:
+                skills.update([s.strip() for s in candidate.skills.split(",") if s.strip()])
+                
+    # Generate queries dynamically from roles and skills
+    generated_queries = generate_crawling_queries(list(queries), list(skills))
+    
+    # Fallback to default tech and non-tech queries if empty
+    if not generated_queries:
+        generated_queries = [
             "Software Engineer", "React Developer", "Python Developer", "Data Scientist",
             "Civil Engineer", "Construction Manager", "Mechanical Engineer", "Project Manager",
             "Product Manager", "Financial Analyst", "Marketing Executive", "HR Generalist"
-        }
+        ]
     if not skills:
         skills = {
             "Python", "JavaScript", "React", "SQL", "AutoCAD", "Site Supervision",
             "Project Management", "Excel", "Marketing", "Recruiting"
         }
         
-    return list(queries)[:30], list(skills)[:30]
+    return generated_queries, list(skills)[:30]
 
 async def run_discovery_all_candidates():
     """Runs candidate-independent background job discovery, saves jobs to pool, and runs matching for candidates."""
@@ -117,11 +162,16 @@ async def run_discovery_all_candidates():
         # 3. Save discovered jobs to the database JobPool and vector store
         if discovered_jobs:
             logger.info(f"Saving {len(discovered_jobs)} verified discovered jobs to the database pool")
+            
+            # Fetch all existing stable_ids in a single query to eliminate N+1 SELECT queries
+            existing_ids = {row[0] for row in db.query(JobPool.stable_id).all()}
+            added_stable_ids = set()
+            
             saved_count = 0
             new_jobs = []
             for job in discovered_jobs:
-                existing = db.query(JobPool).filter(JobPool.stable_id == job.stable_id).first()
-                if not existing:
+                if job.stable_id not in existing_ids and job.stable_id not in added_stable_ids:
+                    added_stable_ids.add(job.stable_id)
                     classification = classify_job(job.title, job.description or "", job.skills or [])
                     new_job = JobPool(
                         stable_id=job.stable_id,
@@ -163,7 +213,21 @@ async def run_discovery_all_candidates():
         from app.models.models import Candidate
         candidates = db.query(Candidate).all()
         for candidate in candidates:
-            cand_skills = [s.strip() for s in (candidate.skills or "").split(",") if s.strip()]
+            # Load candidate details directly from profile table or candidate model
+            profile = db.query(CandidateProfile).filter(
+                CandidateProfile.candidate_id == candidate.id
+            ).order_by(CandidateProfile.created_at.desc()).first()
+            
+            cand_skills = []
+            if profile and profile.parsed_metadata:
+                try:
+                    meta = json.loads(profile.parsed_metadata)
+                    cand_skills = meta.get("skills", [])
+                except Exception:
+                    pass
+            if not cand_skills and candidate.skills:
+                cand_skills = [s.strip() for s in candidate.skills.split(",") if s.strip()]
+                
             try:
                 await match_pool_jobs_for_candidate(candidate, db, cand_skills)
             except Exception as e:
@@ -298,12 +362,16 @@ async def save_and_match_discovered_jobs(candidate_id: int, candidate_skills: li
 
         logger.info(f"Candidate {candidate_id} | Ingesting {len(unique_jobs)} discovered jobs to pool")
         
+        # Fetch all existing stable_ids in a single query to eliminate N+1 SELECT queries
+        existing_ids = {row[0] for row in db.query(JobPool.stable_id).all()}
+        added_stable_ids = set()
+        
         saved_count = 0
         new_jobs = []
         for job in unique_jobs:
             # Check if already in pool
-            existing = db.query(JobPool).filter(JobPool.stable_id == job.stable_id).first()
-            if not existing:
+            if job.stable_id not in existing_ids and job.stable_id not in added_stable_ids:
+                added_stable_ids.add(job.stable_id)
                 classification = classify_job(job.title, job.description or "", job.skills or [])
                 new_job = JobPool(
                     stable_id=job.stable_id,
@@ -362,10 +430,61 @@ async def match_pool_jobs_for_candidate(candidate: Candidate, db: Session, candi
     Computes matching scores for all jobs in the pool against this candidate,
     using Qdrant semantic search if enabled, otherwise falling back to a full DB scan.
     """
-    # Load candidate profile
-    resume_agent = ResumeIntelligenceAgent(db, candidate.id)
-    profile = resume_agent.extract_profile()
+    from app.models.models import CandidateProfile
+    from app.agents.resume_intelligence import CandidateProfileData
     
+    # Load candidate profile directly from DB
+    profile_rec = db.query(CandidateProfile).filter(
+        CandidateProfile.candidate_id == candidate.id
+    ).order_by(CandidateProfile.created_at.desc()).first()
+    
+    if profile_rec:
+        try:
+            preferred_roles = json.loads(profile_rec.generated_roles) if profile_rec.generated_roles else []
+        except Exception:
+            preferred_roles = []
+            
+        try:
+            graph = json.loads(profile_rec.skills_graph) if profile_rec.skills_graph else {}
+            skills = graph.get("primary_skills", []) + graph.get("secondary_skills", [])
+        except Exception:
+            skills = []
+            
+        if not skills and profile_rec.parsed_metadata:
+            try:
+                meta = json.loads(profile_rec.parsed_metadata)
+                skills = meta.get("skills", [])
+            except Exception:
+                pass
+                
+        if not skills:
+            skills = candidate_skills
+            
+        profile = CandidateProfileData(
+            skills=skills,
+            experience_years=profile_rec.experience_years or 0.0,
+            education=candidate.education or "",
+            projects=candidate.projects or "[]",
+            certifications=[s.strip() for s in (candidate.certifications or "").split(",") if s.strip()],
+            summary=candidate.summary or "",
+            domain=profile_rec.specialization or profile_rec.industry or "Software Engineering",
+            preferred_roles=preferred_roles,
+            locations=[candidate.address] if candidate.address else []
+        )
+    else:
+        # Fallback to Candidate fields
+        profile = CandidateProfileData(
+            skills=candidate_skills if candidate_skills else ["Python", "JavaScript", "React", "SQL"],
+            experience_years=0.0,
+            education=candidate.education or "",
+            projects=candidate.projects or "[]",
+            certifications=[s.strip() for s in (candidate.certifications or "").split(",") if s.strip()],
+            summary=candidate.summary or "",
+            domain="Software Engineering",
+            preferred_roles=[],
+            locations=[candidate.address] if candidate.address else []
+        )
+        
     # Construct query string representing candidate's profile
     resume_text = f"Roles: {', '.join(profile.preferred_roles or [])}\nDomain: {profile.domain or ''}\nSkills: {', '.join(profile.skills or [])}\nExperience: {profile.experience_years or 0} years"
     
@@ -403,9 +522,9 @@ async def match_pool_jobs_for_candidate(candidate: Candidate, db: Session, candi
         
     logger.info(f"Candidate {candidate.id} | Computing matches for {len(unmatched_jobs)} jobs")
 
-    
     from app.agents.matching_agent import calculate_match_score_and_reasons
     
+    matches = []
     for job in unmatched_jobs:
         res = calculate_match_score_and_reasons(
             profile=profile,
@@ -428,10 +547,12 @@ async def match_pool_jobs_for_candidate(candidate: Candidate, db: Session, candi
             reasons_json=res["reasons"],
             should_apply=opp_score >= 70.0,
         )
-        db.add(new_match)
+        matches.append(new_match)
         
-    db.commit()
-    logger.info(f"Candidate {candidate.id} | Matching complete")
+    if matches:
+        db.bulk_save_objects(matches)
+        db.commit()
+    logger.info(f"Candidate {candidate.id} | Matching complete. Bulk saved {len(matches)} matches.")
     
     # Invalidate cached jobs pool and skill gap for the candidate
     try:

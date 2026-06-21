@@ -69,7 +69,7 @@ class EmbeddingService:
             logger.debug("NVIDIA API key missing. Trying Gemini embedding fallback.")
             return await self.get_embedding(text)
 
-        model = "nvidia/llama-3.2-nv-embedqa-1b-v2"
+        model = "nvidia/nv-embedqa-e5-v5"
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 url = "https://integrate.api.nvidia.com/v1/embeddings"

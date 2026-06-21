@@ -296,7 +296,7 @@ ADMIN_METRICS_JOB_AGENT = {
     "duplicate_jobs_removed": 0
 }
 
-def calculate_and_save_job_match(db: Session, candidate_id: int, job: Job, candidate_skills_list: List[str], cand_exp_level: str, candidate_location: str, cand_education: str, cand_certifications: str) -> JobMatch:
+def calculate_job_match_object(candidate_id: int, job: Job, candidate_skills_list: List[str], cand_exp_level: str, candidate_location: str, cand_education: str, cand_certifications: str) -> JobMatch:
     # 1. Skill Match
     job_skills_list = [s.strip().lower() for s in (job.required_skills or "").split(",") if s.strip()]
     if not job_skills_list:
@@ -360,7 +360,7 @@ def calculate_and_save_job_match(db: Session, candidate_id: int, job: Job, candi
         (cert_match * 0.05)
     )
     
-    match_record = JobMatch(
+    return JobMatch(
         candidate_id=candidate_id,
         job_id=job.id,
         skill_match=skill_match,
@@ -372,7 +372,11 @@ def calculate_and_save_job_match(db: Session, candidate_id: int, job: Job, candi
         match_score=match_score,
         skills_gap=", ".join(missing_skills)
     )
-    
+
+def calculate_and_save_job_match(db: Session, candidate_id: int, job: Job, candidate_skills_list: List[str], cand_exp_level: str, candidate_location: str, cand_education: str, cand_certifications: str) -> JobMatch:
+    match_record = calculate_job_match_object(
+        candidate_id, job, candidate_skills_list, cand_exp_level, candidate_location, cand_education, cand_certifications
+    )
     db.add(match_record)
     db.commit()
     db.refresh(match_record)

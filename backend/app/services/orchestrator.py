@@ -314,9 +314,23 @@ class AgentOrchestrator:
         db.commit()
         
         # Trigger parsing agent asynchronously or synchronously
-        await self.run_resume_parsing_agent(db, candidate_id, background_tasks)
+        if background_tasks:
+            async def run_parsing_bg(cand_id: int):
+                from app.core.database import SessionLocal
+                db_session = SessionLocal()
+                try:
+                    await self.run_resume_parsing_agent(db_session, cand_id, None)
+                except Exception as bg_err:
+                    logger.error(f"Background resume parsing failed: {bg_err}")
+                finally:
+                    db_session.close()
+            
+            background_tasks.add_task(run_parsing_bg, candidate_id)
+        else:
+            await self.run_resume_parsing_agent(db, candidate_id, None)
         
         return resume
+
 
     # 2. RESUME PARSING AGENT
     async def run_resume_parsing_agent(self, db: Session, candidate_id: int, background_tasks: Optional[BackgroundTasks] = None):

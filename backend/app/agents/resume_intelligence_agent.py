@@ -357,7 +357,7 @@ Candidate Profile:
             emb_obj = CandidateEmbedding(candidate_id=candidate_id, resume_id=resume_id)
             self.db.add(emb_obj)
             
-        emb_obj.embedding_model = "nvidia/llama-3.2-nv-embedqa-1b-v2"
+        emb_obj.embedding_model = "nvidia/nv-embedqa-e5-v5"
         emb_obj.embedding_vector = json.dumps(embedding)
         self.db.commit()
         

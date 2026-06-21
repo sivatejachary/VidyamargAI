@@ -1,18 +1,47 @@
 import { useAuthStore } from "@/store/authStore";
 
+// Simple in-memory cache for GET requests to achieve instant page loads (<10ms)
+const getCache = new Map<string, { response: Response; timestamp: number }>();
+const CACHE_TTL = 30000; // 30 seconds TTL
+
 const customFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  const url = typeof input === "string" ? input : (input as URL).toString();
+  const method = init?.method || "GET";
+
+  // Only cache GET requests
+  if (method.toUpperCase() === "GET") {
+    const cached = getCache.get(url);
+    const now = Date.now();
+    if (cached && now - cached.timestamp < CACHE_TTL) {
+      return cached.response.clone();
+    }
+  } else {
+    // For non-GET requests (POST, PUT, DELETE, etc.), clear cache to prevent stale data
+    getCache.clear();
+  }
+
   const res = await fetch(input, init);
   if (res.status === 401) {
     const urlString = typeof input === "string" ? input : input.toString();
     const isAuthRoute = urlString.includes("/auth/");
     
     if (!isAuthRoute && typeof window !== "undefined") {
+      getCache.clear(); // Clear cache on logout/auth expiry
       useAuthStore.getState().logout();
       if (window.location.pathname !== "/") {
         window.location.href = "/";
       }
     }
   }
+
+  // Cache successful GET responses
+  if (method.toUpperCase() === "GET" && res.ok) {
+    getCache.set(url, {
+      response: res.clone(),
+      timestamp: Date.now(),
+    });
+  }
+
   return res;
 };
 

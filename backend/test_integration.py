@@ -15,13 +15,9 @@ from app.services.orchestrator import orchestrator
 class TestHireAIEngine(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         # Create Postgres connection for tests
-        DATABASE_URL = os.getenv("DATABASE_URL")
-        if DATABASE_URL:
-            self.test_db_url = DATABASE_URL.rsplit('/', 1)[0] + '/vidyamargai_test'
-        else:
-            self.test_db_url = "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@thomas.proxy.rlwy.net:20637/vidyamargai_test"
-            
-        self.engine = create_engine(self.test_db_url)
+        from sqlalchemy.pool import StaticPool
+        self.test_db_url = "sqlite:///:memory:"
+        self.engine = create_engine(self.test_db_url, connect_args={"check_same_thread": False}, poolclass=StaticPool)
         TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
         Base.metadata.create_all(bind=self.engine)
         self.db = TestingSessionLocal()
@@ -118,8 +114,60 @@ class TestHireAIEngine(unittest.IsolatedAsyncioTestCase):
         self.patcher = patch("app.services.orchestrator.call_gemini", side_effect=mock_call_gemini)
         self.patcher.start()
 
+        # Mock call_nvidia
+        def mock_call_nvidia(messages, json_mode=False):
+            if isinstance(messages, list):
+                content = messages[0]["content"] if messages else ""
+            else:
+                content = str(messages)
+            content_lower = content.lower()
+            if "extract" in content_lower or "intelligence" in content_lower:
+                return json.dumps({
+                    "name": "Alex River",
+                    "email": "test@candidate.com",
+                    "location": "San Francisco, CA",
+                    "current_role": "Backend Developer",
+                    "previous_roles": ["Software Engineer"],
+                    "experience_years": 5.0,
+                    "relevant_experience": 5.0,
+                    "industry": "Software",
+                    "domain": "Software Engineering",
+                    "specialization": "Backend Development",
+                    "skills": ["Python", "FastAPI", "SQLite", "React", "PostgreSQL"],
+                    "technologies": ["Python", "FastAPI", "SQLite", "React", "PostgreSQL"],
+                    "tools": ["Git"],
+                    "certifications": [],
+                    "education": ["Master's in Computer Science"],
+                    "projects": [],
+                    "achievements": [],
+                    "remote_eligibility": True,
+                    "seniority": "Mid"
+                })
+            elif "role" in content_lower:
+                return json.dumps(["Backend Engineer", "Python Developer", "Software Engineer"])
+            return "{}"
+
+        self.nvidia_patcher = patch("app.services.orchestrator.call_nvidia", side_effect=mock_call_nvidia)
+        self.nvidia_patcher.start()
+
+        # Mock embeddings
+        async def mock_get_nvidia_embedding(text):
+            return [0.1] * 768
+
+        async def mock_get_embedding(text):
+            return [0.1] * 768
+
+        self.nvidia_emb_patcher = patch("app.services.embedding_service.EmbeddingService.get_nvidia_embedding", side_effect=mock_get_nvidia_embedding)
+        self.nvidia_emb_patcher.start()
+
+        self.gemini_emb_patcher = patch("app.services.embedding_service.EmbeddingService.get_embedding", side_effect=mock_get_embedding)
+        self.gemini_emb_patcher.start()
+
     def tearDown(self):
         self.patcher.stop()
+        self.nvidia_patcher.stop()
+        self.nvidia_emb_patcher.stop()
+        self.gemini_emb_patcher.stop()
         self.db.close()
         Base.metadata.drop_all(bind=self.engine)
         self.engine.dispose()

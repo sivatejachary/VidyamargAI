@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Response, BackgroundTasks, WebSocket, WebSocketDisconnect, Request
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional, Dict, Any, Union, Tuple
 from datetime import datetime, timedelta
 import json
@@ -26,14 +26,14 @@ router = APIRouter()
 
 @router.get("/candidates/profile", response_model=schemas.CandidateResponse)
 def get_candidate_profile(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    candidate = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
+    candidate = db.query(Candidate).options(joinedload(Candidate.user)).filter(Candidate.user_id == current_user.id).first()
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate profile not found")
     return candidate
 
 @router.put("/candidates/profile", response_model=schemas.CandidateResponse)
 def update_candidate_profile(profile_in: schemas.CandidateProfileUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    candidate = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
+    candidate = db.query(Candidate).options(joinedload(Candidate.user)).filter(Candidate.user_id == current_user.id).first()
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
         

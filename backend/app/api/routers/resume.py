@@ -73,7 +73,7 @@ async def upload_resume(
     resume = await orchestrator.run_resume_collection_agent(db, candidate.id, content, file.filename, background_tasks)
     from app.services.resume_cache import invalidate_resume_analysis
     invalidate_resume_analysis(candidate.id)
-    return {"message": "Resume uploaded and parsing completed", "url": resume.resume_url}
+    return {"message": "Resume uploaded successfully. Profile analysis is running in the background.", "url": resume.resume_url}
 
 @router.get("/candidates/resume")
 def get_candidate_resume(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):

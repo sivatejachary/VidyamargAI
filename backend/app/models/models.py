@@ -30,7 +30,7 @@ class Candidate(Base):
     __tablename__ = "candidates"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     phone = Column(String, nullable=True)
     address = Column(String, nullable=True)
     
@@ -74,7 +74,7 @@ class CandidateProfile(Base):
     __tablename__ = "candidate_profiles"
     
     id = Column(Integer, primary_key=True, index=True)
-    candidate_id = Column(Integer, ForeignKey("candidates.id"), nullable=False)
+    candidate_id = Column(Integer, ForeignKey("candidates.id"), nullable=False, index=True)
     resume_id = Column(Integer, ForeignKey("candidate_resumes.id", ondelete="CASCADE"), nullable=True)
     resume_hash = Column(String(64), nullable=True)
     role_version = Column(String(10), default="v1")
@@ -95,7 +95,7 @@ class CandidateResume(Base):
     __tablename__ = "candidate_resumes"
     
     id = Column(Integer, primary_key=True, index=True)
-    candidate_id = Column(Integer, ForeignKey("candidates.id"), nullable=False)
+    candidate_id = Column(Integer, ForeignKey("candidates.id"), nullable=False, index=True)
     resume_url = Column(String, nullable=False)
     uploaded_at = Column(DateTime, default=datetime.utcnow)
     resume_type = Column(String(20), default="general")  # general | swe | ai | ds | ml
@@ -736,7 +736,7 @@ class UserRefreshToken(Base):
     __tablename__ = "user_refresh_tokens"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     token_hash = Column(String(64), unique=True, index=True, nullable=False)
     expires_at = Column(DateTime, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
