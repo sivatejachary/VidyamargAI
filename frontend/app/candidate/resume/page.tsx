@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { apiService, getBackendBaseUrl } from "@/services/api";
 import { useAuthStore } from "@/store/authStore";
 import { useWebSockets } from "@/hooks/useWebSockets";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { 
   Download, Trash2, Edit, Eye, RotateCcw, Upload, Plus, 
@@ -57,15 +58,48 @@ export default function ResumeBuilder() {
     }
   };
 
-  const clearCache = () => {
+  const queryClient = useQueryClient();
+  const { fullName, email, updateUser } = useAuthStore();
+
+  const clearCache = (newProfile?: any) => {
     if (typeof window !== "undefined") {
+      // Clear Resume cache
       sessionStorage.removeItem("resume_profile");
       sessionStorage.removeItem("resume_versions");
       sessionStorage.removeItem("resume_analysis");
-    }
-  };
+      
+      // Clear Jobs cache
+      sessionStorage.removeItem("jobs_list");
+      sessionStorage.removeItem("jobs_skill_gaps");
+      sessionStorage.removeItem("jobs_recommendations");
+      sessionStorage.removeItem("jobs_run_id");
 
-  const { fullName, email } = useAuthStore();
+      // Clear Skill Lab cache
+      sessionStorage.removeItem("skill_lab_profile");
+      sessionStorage.removeItem("skill_lab_streak");
+      sessionStorage.removeItem("skill_lab_hoursLearned");
+      sessionStorage.removeItem("skill_lab_completedCoursesCount");
+      sessionStorage.removeItem("skill_lab_earnedCertsCount");
+      sessionStorage.removeItem("skill_lab_readinessScore");
+      sessionStorage.removeItem("skill_lab_xp");
+      sessionStorage.removeItem("skill_lab_level");
+
+      // Clear LMS Explorer cache
+      sessionStorage.removeItem("lms_courses");
+      sessionStorage.removeItem("lms_enrollments");
+    }
+
+    if (newProfile) {
+      const newName = newProfile.parsed_name || newProfile.user?.full_name;
+      const newEmail = newProfile.parsed_email || newProfile.user?.email;
+      if (newName && (newName !== fullName || newEmail !== email)) {
+        updateUser(newName, newEmail);
+      }
+    }
+
+    // Invalidate React Query caches
+    queryClient.invalidateQueries();
+  };
   const [profile, setProfile] = useState<any>(() => getCachedValue("resume_profile", null));
   const [resumeVersions, setResumeVersions] = useState<ResumeVersion[]>(() => getCachedValue("resume_versions", []));
   const [analysisData, setAnalysisData] = useState<any>(() => getCachedValue("resume_analysis", null));
@@ -124,6 +158,15 @@ export default function ResumeBuilder() {
       const prof = await apiService.getProfile();
       setProfile(prof);
       setCachedValue("resume_profile", prof);
+      if (forceRefresh) {
+        clearCache(prof);
+      } else {
+        const newName = prof.parsed_name || prof.user?.full_name;
+        const newEmail = prof.parsed_email || prof.user?.email;
+        if (newName && (newName !== fullName || newEmail !== email)) {
+          updateUser(newName, newEmail);
+        }
+      }
 
       // Initialize Edit Form values
       let parsedEdu = [];

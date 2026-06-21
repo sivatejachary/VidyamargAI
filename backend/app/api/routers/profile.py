@@ -44,6 +44,9 @@ async def update_candidate_profile(profile_in: schemas.CandidateProfileUpdate, c
     for k, v in profile_in.dict(exclude_unset=True).items():
         setattr(candidate, k, v)
         
+    if profile_in.parsed_name is not None and candidate.user:
+        candidate.user.full_name = profile_in.parsed_name
+        
     candidate.status = "Profile Completed"
     candidate.current_step = "Resume"
     db.commit()

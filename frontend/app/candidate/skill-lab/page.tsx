@@ -186,7 +186,7 @@ export default function SkillLab() {
 
   // Auth Store details
   const [profile, setProfile] = useState<any>(null);
-  const { email, fullName } = useAuthStore();
+  const { email, fullName, updateUser } = useAuthStore();
 
   // React Query cached fetches
   const queryClient = useQueryClient();
@@ -340,6 +340,12 @@ export default function SkillLab() {
         .then((prof) => {
           setProfile(prof);
           setCachedValue("skill_lab_profile", prof);
+          
+          const newName = prof.parsed_name || prof.user?.full_name;
+          const newEmail = prof.parsed_email || prof.user?.email;
+          if (newName && (newName !== fullName || newEmail !== email)) {
+            updateUser(newName, newEmail);
+          }
         })
         .catch((err) => console.error("Failed to load profile", err));
 

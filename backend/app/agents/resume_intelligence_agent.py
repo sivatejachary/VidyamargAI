@@ -339,6 +339,8 @@ Candidate Profile:
             candidate.phone = profile_data.get("phone", candidate.phone)
             candidate.parsed_name = profile_data.get("name", candidate.parsed_name)
             candidate.parsed_email = profile_data.get("email", candidate.parsed_email)
+            if candidate.parsed_name and candidate.user:
+                candidate.user.full_name = candidate.parsed_name
             self.db.commit()
             
         # 2. Update CandidateProfile

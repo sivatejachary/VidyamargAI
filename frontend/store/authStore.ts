@@ -9,6 +9,7 @@ interface AuthState {
   login: (token: string, role: string, fullName: string, email: string) => void;
   logout: () => void;
   initialize: () => void;
+  updateUser: (fullName: string, email?: string) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -40,6 +41,19 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (token && role && fullName && email) {
         set({ token, role, fullName, email, isAuthenticated: true });
       }
+    }
+  },
+  updateUser: (fullName, email) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('fullName', fullName);
+      if (email) {
+        localStorage.setItem('email', email);
+      }
+    }
+    if (email) {
+      set({ fullName, email });
+    } else {
+      set({ fullName });
     }
   }
 }));

@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { apiService } from "@/services/api";
 import { useAuthStore } from "@/store/authStore";
+import { useQueryClient } from "@tanstack/react-query";
 import { User, Globe, CheckCircle, Phone, MapPin, Link2, Code2, Briefcase, GraduationCap, Award, Edit3 } from "lucide-react";
 
 export default function CandidateProfile() {
-  const { fullName, email } = useAuthStore();
+  const queryClient = useQueryClient();
+  const { fullName, email, updateUser } = useAuthStore();
   
   // Profile fields state
   const [phone, setPhone] = useState("");
@@ -31,6 +33,13 @@ export default function CandidateProfile() {
   const loadProfile = async () => {
     try {
       const data = await apiService.getProfile();
+      
+      const newName = data.parsed_name || data.user?.full_name;
+      const newEmail = data.parsed_email || data.user?.email;
+      if (newName && (newName !== fullName || newEmail !== email)) {
+        updateUser(newName, newEmail);
+      }
+
       setPhone(data.phone || "");
       setAddress(data.address || "");
       setSkills(data.skills || "");
@@ -99,7 +108,7 @@ export default function CandidateProfile() {
     setSaveSuccess(false);
     setError("");
     try {
-      await apiService.updateProfile({
+      const data = await apiService.updateProfile({
         phone,
         address,
         education,
@@ -114,6 +123,41 @@ export default function CandidateProfile() {
       });
       setSaveSuccess(true);
       setIsEditMode(false);
+
+      // Sync name in store
+      const newName = data.parsed_name || data.user?.full_name;
+      const newEmail = data.parsed_email || data.user?.email;
+      if (newName) {
+        updateUser(newName, newEmail);
+      }
+
+      // Clear all related sessionStorage caches of other pages
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("resume_profile");
+        sessionStorage.removeItem("resume_versions");
+        sessionStorage.removeItem("resume_analysis");
+        
+        sessionStorage.removeItem("jobs_list");
+        sessionStorage.removeItem("jobs_skill_gaps");
+        sessionStorage.removeItem("jobs_recommendations");
+        sessionStorage.removeItem("jobs_run_id");
+
+        sessionStorage.removeItem("skill_lab_profile");
+        sessionStorage.removeItem("skill_lab_streak");
+        sessionStorage.removeItem("skill_lab_hoursLearned");
+        sessionStorage.removeItem("skill_lab_completedCoursesCount");
+        sessionStorage.removeItem("skill_lab_earnedCertsCount");
+        sessionStorage.removeItem("skill_lab_readinessScore");
+        sessionStorage.removeItem("skill_lab_xp");
+        sessionStorage.removeItem("skill_lab_level");
+
+        sessionStorage.removeItem("lms_courses");
+        sessionStorage.removeItem("lms_enrollments");
+      }
+
+      // Invalidate all React Query caches
+      queryClient.invalidateQueries();
+
       await loadProfile();
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err: any) {
