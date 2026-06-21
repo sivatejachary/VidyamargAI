@@ -22,6 +22,21 @@ from langgraph.graph import StateGraph, END
 logger = logging.getLogger("app.agents.resume_intelligence_agent")
 
 
+def safe_loads(val, default=None):
+    if not val:
+        return default if default is not None else {}
+    if isinstance(val, (list, dict)):
+        return val
+    if isinstance(val, str):
+        try:
+            res = json.loads(val)
+            if isinstance(res, (list, dict)):
+                return res
+        except Exception:
+            pass
+    return default if default is not None else {}
+
+
 class ResumeState(TypedDict):
     candidate_id: int
     resume_id: int
@@ -116,10 +131,10 @@ class ResumeIntelligenceAgent:
             return {
                 "resume_hash": resume_hash,
                 "skip_processing": True,
-                "profile_data": json.loads(profile_obj.parsed_metadata) if profile_obj.parsed_metadata else {},
-                "generated_roles": json.loads(profile_obj.generated_roles) if profile_obj.generated_roles else [],
-                "search_strategy": json.loads(profile_obj.search_strategy) if profile_obj.search_strategy else {},
-                "skills_graph": json.loads(profile_obj.skills_graph) if profile_obj.skills_graph else {}
+                "profile_data": safe_loads(profile_obj.parsed_metadata) if profile_obj.parsed_metadata else {},
+                "generated_roles": safe_loads(profile_obj.generated_roles, []) if profile_obj.generated_roles else [],
+                "search_strategy": safe_loads(profile_obj.search_strategy) if profile_obj.search_strategy else {},
+                "skills_graph": safe_loads(profile_obj.skills_graph) if profile_obj.skills_graph else {}
             }
             
         return {"resume_hash": resume_hash, "skip_processing": False}
@@ -282,7 +297,7 @@ Candidate Profile:
                 CandidateEmbedding.resume_id == state["resume_id"]
             ).first()
             if db_emb:
-                return {"embedding": json.loads(db_emb.embedding_vector)}
+                return {"embedding": safe_loads(db_emb.embedding_vector, [])}
             return {"embedding": [0.0] * 768}
             
         profile = state["profile_data"]

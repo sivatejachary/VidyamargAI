@@ -7,6 +7,20 @@ from app.models.models import Candidate
 
 logger = logging.getLogger(__name__)
 
+def safe_loads(val, default=None):
+    if not val:
+        return default if default is not None else {}
+    if isinstance(val, (list, dict)):
+        return val
+    if isinstance(val, str):
+        try:
+            res = json.loads(val)
+            if isinstance(res, (list, dict)):
+                return res
+        except Exception:
+            pass
+    return default if default is not None else {}
+
 class CandidateProfileData(BaseModel):
     skills: List[str]
     experience_years: float
@@ -58,7 +72,7 @@ class ResumeIntelligenceAgent:
         profile_obj = self.db.query(CandidateProfile).filter(CandidateProfile.candidate_id == self.candidate_id).order_by(CandidateProfile.created_at.desc()).first()
         if profile_obj and profile_obj.parsed_metadata:
             try:
-                meta = json.loads(profile_obj.parsed_metadata)
+                meta = safe_loads(profile_obj.parsed_metadata)
                 if isinstance(meta, dict) and "skills" in meta:
                     logger.info("ResumeIntelligenceAgent: Loaded prebuilt CandidateProfile from database.")
                     skills_list = meta.get("skills", [])

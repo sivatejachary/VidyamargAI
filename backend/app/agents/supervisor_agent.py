@@ -13,6 +13,9 @@ from app.schemas.mcp_schemas import ActionCard, HAQCard, MCPChatMessage
 
 logger = logging.getLogger("app.agents.supervisor")
 
+from app.models.models import Candidate, Job, JobMatch
+from app.api.helpers import parse_candidate_experience_level, calculate_job_match_object
+
 INTENT_LABELS = [
     "job_search", "skill_gap", "resume_improve", "course_recommend",
     "interview_prep", "career_advice", "learning_progress", "general"
@@ -74,6 +77,114 @@ class SupervisorAgent:
             if not cost_controller.check_budget(user_id, db):
                 result.response = "You have reached your daily AI usage budget limit. Please try again tomorrow."
                 return result
+
+            # Job Search Direct Intercept (Job Agent UI/DB matching)
+            if mode == "job-agent" or intent == "job_search":
+                filters = self._extract_job_search_filters(message)
+                if filters and filters.get("search_mode") in ["profile", "criteria"]:
+                    candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+                    if candidate:
+                        cand_skills_list = [s.strip().lower() for s in (candidate.skills or "").split(",") if s.strip()]
+                        cand_exp_val = parse_candidate_experience_level(candidate)
+                        cand_loc_val = candidate.address or candidate.phone or "India"
+                        cand_edu_val = candidate.education or ""
+                        cand_certs_val = candidate.certifications or ""
+
+                        # Build DB query
+                        results_query = db.query(Job, JobMatch).outerjoin(
+                            JobMatch, (JobMatch.job_id == Job.id) & (JobMatch.candidate_id == candidate_id)
+                        ).filter(Job.status == "active")
+
+                        if filters.get("search_mode") == "criteria":
+                            role = filters.get("role")
+                            location = filters.get("location")
+                            skills = filters.get("skills")
+
+                            if role:
+                                results_query = results_query.filter(Job.title.ilike(f"%{role}%") | Job.description.ilike(f"%{role}%"))
+                            if location:
+                                if "remote" in location.lower():
+                                    results_query = results_query.filter(Job.location.ilike("%remote%") | Job.title.ilike("%remote%") | Job.description.ilike("%remote%"))
+                                else:
+                                    results_query = results_query.filter(Job.location.ilike(f"%{location}%"))
+                            if not role and skills:
+                                for skill in skills:
+                                    results_query = results_query.filter(Job.required_skills.ilike(f"%{skill}%") | Job.description.ilike(f"%{skill}%"))
+
+                        db_results = results_query.all()
+                        jobs_with_scores = []
+                        for job, match_rec in db_results:
+                            if match_rec:
+                                score = match_rec.match_score
+                            else:
+                                match_rec_obj = calculate_job_match_object(
+                                    candidate_id, job, cand_skills_list, cand_exp_val, cand_loc_val, cand_edu_val, cand_certs_val
+                                )
+                                score = match_rec_obj.match_score
+                            jobs_with_scores.append((job, score))
+
+                        jobs_with_scores.sort(key=lambda x: x[1], reverse=True)
+                        top_jobs = jobs_with_scores[:10]
+
+                        from app.services import agent_memory as mem_svc
+                        if not top_jobs:
+                            if filters.get("search_mode") == "profile":
+                                response_text = "I couldn't find any active jobs matching your profile in our database right now. Please upload a resume or update your skills to get matched."
+                            else:
+                                response_text = f"I couldn't find any active jobs matching criteria: {filters.get('role') or ''} in {filters.get('location') or ''} right now."
+                            action_cards = []
+                        else:
+                            header = "### Top 10 jobs matching your profile\n\n" if filters.get("search_mode") == "profile" else f"### Top 10 Jobs matching your query\n\n"
+                            lines = []
+                            action_cards = []
+                            for i, (job, score) in enumerate(top_jobs, 1):
+                                score_str = f"Match Score: {round(score)}%"
+                                salary_str = f"Salary: {job.salary_range}" if job.salary_range else "Salary: Competitive"
+                                location_str = f"Location: {job.location}"
+                                company_str = f"Company: {job.department or 'Company'}"
+                                apply_link = f"[Apply Now](/candidate/jobs?job={job.id})"
+                                
+                                lines.append(f"{i}. **{job.title}**")
+                                lines.append(f"   * {company_str}")
+                                lines.append(f"   * {location_str}")
+                                lines.append(f"   * {salary_str}")
+                                lines.append(f"   * {score_str}")
+                                lines.append(f"   * {apply_link}\n")
+
+                                action_cards.append(ActionCard(
+                                    type="job",
+                                    id=job.id,
+                                    title=job.title,
+                                    subtitle=f"{job.department or 'Company'} · {job.salary_range or 'Competitive'}",
+                                    action_label="Apply Now",
+                                    action_href=f"/candidate/jobs?job={job.id}",
+                                    meta={"match_score": score}
+                                ))
+                            response_text = header + "\n".join(lines)
+
+                        result.response = response_text
+                        result.action_cards = [c.dict() for c in action_cards]
+                        
+                        try:
+                            from app.services.agent_activity_feed import log as feed_log
+                            feed_log(
+                                user_id=user_id,
+                                agent_name="Job Agent AI",
+                                action="job_search_results",
+                                card_count=len(result.action_cards),
+                                meta={"mode": mode, "intent": intent, "filters": filters},
+                                db=db
+                            )
+                        except Exception:
+                            pass
+                            
+                        try:
+                            mem_svc.update(user_id, message, response_text, db)
+                            result.memory_updated = True
+                        except Exception:
+                            pass
+                            
+                        return result
 
             # 2. Get agent memory
             from app.services import agent_memory as mem_svc
@@ -193,6 +304,46 @@ class SupervisorAgent:
         if any(w in msg_lower for w in ["progress", "complete", "finished", "enrolled"]):
             return "learning_progress"
         return "general"
+
+    def _extract_job_search_filters(self, message: str) -> Optional[dict]:
+        prompt = f"""
+Analyze the user message: "{message}"
+Determine if the user is asking to search for jobs, find openings, list vacancies, match their profile, or find remote/local roles.
+If yes, return a JSON object with the following keys. If no (e.g. it's just a general question or greeting), return null.
+
+Keys:
+- search_mode: "profile" (if user wants matches based on their own profile/resume, e.g. "find jobs for me", "match my profile", "suggest jobs", "what jobs fit me?") or "criteria" (if they specify a specific role/skills/location/experience)
+- role: string (target job title or role name, e.g. "Python Developer", "Data Scientist", "Project Manager", null if none)
+- skills: array of strings (target skills, null if none)
+- experience: integer (target experience level in years, null if none)
+- location: string (target location, e.g. "Bangalore", "Remote", null if none)
+- job_type: string (e.g., "Full-time", "Part-time", "Internship", "Contract", null if none)
+
+Return ONLY valid JSON (or null). Do not wrap in markdown block or write explanations.
+"""
+        res = call_gemini(prompt, json_mode=True)
+        if not res:
+            res = call_nvidia(prompt)
+        if not res:
+            return None
+            
+        try:
+            cleaned = res.strip()
+            if cleaned.startswith("```"):
+                cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned[3:]
+            if cleaned.endswith("```"):
+                cleaned = cleaned[:-3]
+            cleaned = cleaned.strip()
+            if cleaned.startswith("json"):
+                cleaned = cleaned[4:].strip()
+            data = json.loads(cleaned)
+            if isinstance(data, dict):
+                if "search_mode" not in data:
+                    data["search_mode"] = "criteria"
+                return data
+        except Exception:
+            pass
+        return None
 
     def _gather_tool_context(self, intent: str, mode: str, candidate_id: int, db: Session) -> str:
         """Calls appropriate services/queries based on intent and mode."""

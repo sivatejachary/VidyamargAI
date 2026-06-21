@@ -26,6 +26,20 @@ import time
 import json
 from typing import List, Tuple
 
+def safe_loads(val, default=None):
+    if not val:
+        return default if default is not None else {}
+    if isinstance(val, (list, dict)):
+        return val
+    if isinstance(val, str):
+        try:
+            res = json.loads(val)
+            if isinstance(res, (list, dict)):
+                return res
+        except Exception:
+            pass
+    return default if default is not None else {}
+
 def update_source_status(db: Session, source_name: str, success: bool, latency: float):
     try:
         from app.models.models import JobSourceTracking
@@ -95,7 +109,7 @@ def get_crawler_queries_and_skills(db: Session) -> Tuple[List[str], List[str]]:
             roles = []
             if profile.generated_roles:
                 try:
-                    roles = json.loads(profile.generated_roles)
+                    roles = safe_loads(profile.generated_roles, [])
                 except Exception:
                     pass
             if roles:
@@ -107,13 +121,13 @@ def get_crawler_queries_and_skills(db: Session) -> Tuple[List[str], List[str]]:
             cand_skills = []
             if profile.skills_graph:
                 try:
-                    graph = json.loads(profile.skills_graph)
+                    graph = safe_loads(profile.skills_graph)
                     cand_skills = graph.get("primary_skills", []) + graph.get("secondary_skills", [])
                 except Exception:
                     pass
             if not cand_skills and profile.parsed_metadata:
                 try:
-                    meta = json.loads(profile.parsed_metadata)
+                    meta = safe_loads(profile.parsed_metadata)
                     cand_skills = meta.get("skills", [])
                 except Exception:
                     pass
@@ -210,7 +224,7 @@ async def run_discovery_all_candidates():
                 logger.info(f"Upserted {len(new_jobs)} jobs to Qdrant vector store")
                 
         # 4. Trigger candidate-specific matching for all candidates
-        from app.models.models import Candidate
+        from app.models.models import Candidate, CandidateProfile
         candidates = db.query(Candidate).all()
         for candidate in candidates:
             # Load candidate details directly from profile table or candidate model
@@ -221,7 +235,7 @@ async def run_discovery_all_candidates():
             cand_skills = []
             if profile and profile.parsed_metadata:
                 try:
-                    meta = json.loads(profile.parsed_metadata)
+                    meta = safe_loads(profile.parsed_metadata)
                     cand_skills = meta.get("skills", [])
                 except Exception:
                     pass
@@ -440,19 +454,19 @@ async def match_pool_jobs_for_candidate(candidate: Candidate, db: Session, candi
     
     if profile_rec:
         try:
-            preferred_roles = json.loads(profile_rec.generated_roles) if profile_rec.generated_roles else []
+            preferred_roles = safe_loads(profile_rec.generated_roles, []) if profile_rec.generated_roles else []
         except Exception:
             preferred_roles = []
             
         try:
-            graph = json.loads(profile_rec.skills_graph) if profile_rec.skills_graph else {}
+            graph = safe_loads(profile_rec.skills_graph) if profile_rec.skills_graph else {}
             skills = graph.get("primary_skills", []) + graph.get("secondary_skills", [])
         except Exception:
             skills = []
             
         if not skills and profile_rec.parsed_metadata:
             try:
-                meta = json.loads(profile_rec.parsed_metadata)
+                meta = safe_loads(profile_rec.parsed_metadata)
                 skills = meta.get("skills", [])
             except Exception:
                 pass

@@ -20,7 +20,20 @@ from app.api.helpers import _check_resume_upload_rate_limit, _LIVE_JOB_STORE, _R
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+def safe_loads(val, default=None):
+    if not val:
+        return default if default is not None else {}
+    if isinstance(val, (list, dict)):
+        return val
+    if isinstance(val, str):
+        try:
+            res = json.loads(val)
+            if isinstance(res, (list, dict)):
+                return res
+        except Exception:
+            pass
+    return default if default is not None else {}
+
 
 @router.post("/candidates/resume")
 async def upload_resume(
@@ -113,19 +126,17 @@ def delete_candidate_resume(resume_id: int, current_user: User = Depends(get_cur
         # Nullify applications referencing this resume
         db.query(Application).filter(Application.resume_id == resume_id).update({Application.resume_id: None})
         
-        # Find corresponding profile record
-        profiles = db.query(CandidateProfile).filter(
-            CandidateProfile.candidate_id == candidate.id
-        ).order_by(CandidateProfile.created_at.desc()).all()
-        
-        delete_index = None
-        if resumes:
-            try:
-                delete_index = [r.id for r in resumes].index(resume_id)
-                if delete_index < len(profiles):
-                    db.delete(profiles[delete_index])
-            except Exception:
-                pass
+        # Delete profile record(s) matching this resume_id
+        db.query(CandidateProfile).filter(
+            CandidateProfile.candidate_id == candidate.id,
+            CandidateProfile.resume_id == resume_id
+        ).delete(synchronize_session=False)
+
+        # Delete embedding record(s) matching this resume_id
+        db.query(CandidateEmbedding).filter(
+            CandidateEmbedding.candidate_id == candidate.id,
+            CandidateEmbedding.resume_id == resume_id
+        ).delete(synchronize_session=False)
         
         # Physically delete the file from storage
         if resume_to_delete.resume_url:
@@ -183,16 +194,16 @@ def delete_candidate_resume(resume_id: int, current_user: User = Depends(get_cur
             candidate.current_step = "Profile"
         else:
             # Re-fetch remaining profiles
-            remaining_profiles = [p for i, p in enumerate(profiles) if i != delete_index] if delete_index is not None and delete_index < len(profiles) else profiles
+            remaining_profiles = db.query(CandidateProfile).filter(
+                CandidateProfile.candidate_id == candidate.id,
+                CandidateProfile.resume_id != resume_id
+            ).order_by(CandidateProfile.created_at.desc()).all()
             
             if is_deleting_latest:
                 if remaining_profiles:
                     # Revert to next latest profile data
                     new_latest_profile = remaining_profiles[0]
-                    try:
-                        metadata = json.loads(new_latest_profile.parsed_metadata or "{}")
-                    except Exception:
-                        metadata = {}
+                    metadata = safe_loads(new_latest_profile.parsed_metadata)
                         
                     if not metadata and new_latest_profile.resume_text:
                         from app.services.orchestrator import fallback_parse_resume_text
@@ -307,7 +318,7 @@ async def analyze_resume(force: bool = False, current_user: User = Depends(get_c
         if not has_content(val):
             return 0
         try:
-            parsed = json.loads(val)
+            parsed = safe_loads(val, [])
             if isinstance(parsed, list):
                 return len(parsed)
             return 1
@@ -522,7 +533,7 @@ async def analyze_resume_ats(
         if any(js in exp_text for js in job_skills[:5]):
             exp_match = 75
         try:
-            exp_items = json.loads(candidate.experience or "[]")
+            exp_items = safe_loads(candidate.experience or "[]", [])
             if isinstance(exp_items, list) and len(exp_items) >= 2:
                 exp_match = min(exp_match + 15, 100)
         except Exception:
@@ -534,7 +545,7 @@ async def analyze_resume_ats(
     if edu_text and edu_text not in ("", "[]"):
         edu_match = 60
         try:
-            edu_items = json.loads(candidate.education or "[]")
+            edu_items = safe_loads(candidate.education or "[]", [])
             if isinstance(edu_items, list) and len(edu_items) >= 1:
                 edu_match = 75
             if isinstance(edu_items, list) and len(edu_items) >= 2:
