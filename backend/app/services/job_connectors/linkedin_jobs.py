@@ -66,7 +66,7 @@ def fetch(queries: List[str]) -> List[LiveJob]:
     seen_urls: set = set()
 
     for query in queries[:6]:  # Limit concurrent Yahoo requests
-        search_query = f'({query}) site:in.linkedin.com/jobs/view/ "India"'
+        search_query = f'{query} site:in.linkedin.com/jobs/view/ "India"'
         soup = yahoo_search(search_query, COMMON_HEADERS, timeout=8)
         results = extract_yahoo_results(soup)
 

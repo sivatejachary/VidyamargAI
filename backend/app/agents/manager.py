@@ -106,6 +106,26 @@ async def run_agent_flow(run_id: int, candidate_id: int):
         log_step(db, run_id, "Database Sync", "Persisting discovered jobs to the database...", "info")
         candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
         
+        # Fetch active resume hash
+        from app.models.models import CandidateResume, CandidateProfile
+        active_resume = db.query(CandidateResume).filter(
+            CandidateResume.candidate_id == candidate_id,
+            CandidateResume.is_active == True
+        ).first()
+        if not active_resume:
+            active_resume = db.query(CandidateResume).filter(
+                CandidateResume.candidate_id == candidate_id
+            ).order_by(CandidateResume.uploaded_at.desc()).first()
+            
+        resume_version = "v1"
+        if active_resume:
+            profile_obj = db.query(CandidateProfile).filter(
+                CandidateProfile.candidate_id == candidate_id,
+                CandidateProfile.resume_id == active_resume.id
+            ).first()
+            if profile_obj and profile_obj.resume_hash:
+                resume_version = profile_obj.resume_hash
+
         for rj in ranked_jobs:
             # Check if this job already exists in DB (same title and company/department)
             db_job = db.query(Job).filter(
@@ -163,16 +183,20 @@ async def run_agent_flow(run_id: int, candidate_id: int):
                 match_rec = JobMatch(
                     candidate_id=candidate.id,
                     job_id=db_job.id,
-                    skill_match=rj["match_score"],
-                    experience_match=rj["match_score"],
-                    location_match=rj["match_score"],
+                    skill_match=rj.get("skills_score", rj["match_score"]),
+                    experience_match=rj.get("exp_score", rj["match_score"]),
+                    location_match=rj.get("loc_score", rj["match_score"]),
                     match_score=rj["match_score"],
-                    skills_gap=", ".join(rj.get("missing_skills", []))
+                    skills_gap=", ".join(rj.get("missing_skills", [])),
+                    apply_status="NEW",
+                    resume_version=resume_version,
+                    interaction_status="VIEWED"
                 )
                 db.add(match_rec)
             else:
                 match_rec.match_score = rj["match_score"]
                 match_rec.skills_gap = ", ".join(rj.get("missing_skills", []))
+                match_rec.resume_version = resume_version
             db.commit()
 
         log_step(db, run_id, "Database Sync", f"Successfully synced and updated {len(ranked_jobs)} jobs in database.", "success")

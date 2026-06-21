@@ -39,10 +39,10 @@ def fetch(skills: List[str]) -> List[LiveJob]:
     jobs: List[LiveJob] = []
     seen_urls: set = set()
 
-    skills_term = " OR ".join([f'"{s}"' for s in skills[:3]])
-
-    for kw in HIRING_KEYWORDS[:2]:  # Limit to 2 keyword sets
-        query = f'({skills_term}) ({kw}) site:linkedin.com/posts/ "India"'
+    skills_term = skills[0] if skills else "hiring"
+    
+    for kw in ["hiring", "job opening"]:
+        query = f'"{skills_term}" "{kw}" site:linkedin.com/posts/ "India"'
         soup = yahoo_search(query, COMMON_HEADERS, timeout=8)
         results = extract_yahoo_results(soup)
 

@@ -33,7 +33,7 @@ def fetch(queries: List[str]) -> List[LiveJob]:
     fresher_queries.append('"software developer" internship India site:internshala.com')
 
     for query in fresher_queries[:4]:
-        search_query = f'({query}) site:internshala.com/jobs/'
+        search_query = f'{query} site:internshala.com/jobs/'
         soup = yahoo_search(search_query, COMMON_HEADERS, timeout=8)
         results = extract_yahoo_results(soup)
 

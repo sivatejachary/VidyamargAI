@@ -58,7 +58,7 @@ def google_search(query: str, num_results: int = 15) -> List[dict]:
             }
             payload = {
                 "q": query,
-                "num": num_results
+                "num": min(num_results, 10)
             }
             resp = requests.post(url, json=payload, headers=headers, timeout=10)
             if resp.status_code == 200:
@@ -72,6 +72,8 @@ def google_search(query: str, num_results: int = 15) -> List[dict]:
                     })
                 logger.info(f"Google Serper search returned {len(results)} results for: {query[:60]}")
                 return results
+            else:
+                logger.warning(f"Google Serper search returned status {resp.status_code} for query '{query[:60]}': {resp.text[:200]}. Falling back to googlesearch-python.")
         except Exception as e:
             logger.warning(f"Google Serper search failed for query '{query[:60]}': {e}. Falling back to googlesearch-python.")
 

@@ -46,7 +46,7 @@ from app.services.job_connectors import (
     linkedin_jobs, naukri, foundit, internshala, wellfound, hiring_posts
 )
 from app.services.job_connectors.query_generator import generate_queries
-from app.services.job_connectors.base import LiveJob
+from app.services.job_connectors.base import LiveJob, google_search
 from app.services.match_engine import calculate_match
 import app.services.job_cache as job_cache
 
@@ -79,134 +79,112 @@ def _check_resume_upload_rate_limit(user_id: int) -> None:
 
 
 def fetch_live_indian_jobs_yahoo(skills: List[str]) -> List[dict]:
-    import requests
-    from bs4 import BeautifulSoup
     import urllib.parse
     import re
 
     jobs = []
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/114.0'
-    }
     
     if not skills:
         return []
         
     skills_term = " OR ".join([f'"{s}"' for s in skills[:4]])
-    query = f'({skills_term}) (site:in.linkedin.com/jobs/view/ OR site:naukri.com/job-listings-) "India"'
-    url = f"https://search.yahoo.com/search?p={urllib.parse.quote(query)}"
+    query = f'{skills_term} site:linkedin.com/jobs/view OR site:naukri.com/job-listings- "India"'
     
-    logger.info(f"Querying Yahoo for Indian Jobs: {url}")
+    logger.info(f"Querying Google for Indian Jobs: {query}")
     try:
-        res = requests.get(url, headers=headers, timeout=10)
-        if res.status_code == 200:
-            soup = BeautifulSoup(res.content, 'html.parser')
-            results = soup.find_all('div', class_='algo')
+        results = google_search(query, num_results=15)
+        for r in results:
+            title_text = r.get("title", "")
+            real_link = r.get("url", "")
+            snippet = r.get("snippet", "")
             
-            for r in results:
-                a_tag = r.find('a')
-                if not a_tag:
-                    continue
-                
-                h3 = r.find('h3')
-                title_text = h3.text.strip() if h3 else a_tag.text.strip()
-                yahoo_link = a_tag.get('href', '')
-                
-                snippet_elem = r.find('div', class_='compText') or r.find('p') or r.find('span', class_='fc-lh')
-                snippet = snippet_elem.text.strip() if snippet_elem else ""
-                
-                if not title_text or not yahoo_link:
-                    continue
-                
-                real_link = yahoo_link
-                match = re.search(r'/RU=([^/]+)', yahoo_link)
-                if match:
-                    real_link = urllib.parse.unquote(match.group(1))
-                
-                if not ("linkedin.com" in real_link or "naukri.com" in real_link):
-                    continue
-                
-                source = "LinkedIn" if "linkedin.com" in real_link else "Naukri"
-                
-                # Title cleaning
-                job_title = title_text
-                job_title = re.sub(r'\s*\|\s*LinkedIn.*', '', job_title, flags=re.IGNORECASE)
-                job_title = re.sub(r'\s*-\s*Naukri\.com.*', '', job_title, flags=re.IGNORECASE)
-                job_title = re.sub(r'\s*-\s*in\.linkedin\.com.*', '', job_title, flags=re.IGNORECASE)
-                job_title = re.sub(r'\bLinkedIn\b.*', '', job_title, flags=re.IGNORECASE).strip()
-                
-                # Company extraction
-                company = "Tech Company"
-                if "linkedin.com" in real_link:
-                    path_segment = real_link.split("/view/")[-1].split("?")[0].strip("/")
-                    path_segment = re.sub(r'-\d+$', '', path_segment)
-                    if "-at-" in path_segment:
-                        company_slug = path_segment.split("-at-")[-1]
-                        company = company_slug.replace("-", " ").title()
-                    elif "-hiring-" in path_segment:
-                        company_slug = path_segment.split("-hiring-")[-1]
-                        company = company_slug.replace("-", " ").title()
-                elif "naukri.com" in real_link:
-                    path_segment = real_link.split("/job-listings/")[-1].split("?")[0].strip("/")
-                    path_segment = re.sub(r'-\d+$', '', path_segment)
-                    parts = path_segment.split("-")
-                    if len(parts) > 2:
-                        company = " ".join(parts[-2:]).title()
-                
-                if company == "Tech Company" or len(company) < 3:
-                    if " at " in job_title:
-                        parts = job_title.split(" at ", 1)
-                        job_title = parts[0].strip()
-                        company = parts[1].strip()
-                    elif " - " in job_title:
-                        parts = job_title.split(" - ", 1)
-                        job_title = parts[0].strip()
-                        company = parts[1].strip()
-                        if " - " in company:
-                            c_parts = company.split(" - ", 1)
-                            company = c_parts[0].strip()
-                
-                company = re.sub(r'\s+jobs.*', '', company, flags=re.IGNORECASE)
-                company = re.sub(r'\s+hiring.*', '', company, flags=re.IGNORECASE)
-                company = company.strip(' -|')
-                job_title = job_title.strip(' -|')
-                
-                # Location deduction
-                location = "India"
-                text_to_search = (title_text + " " + snippet).lower()
-                if "bangalore" in text_to_search or "bengaluru" in text_to_search:
-                    location = "Bangalore, India"
-                elif "mumbai" in text_to_search:
-                    location = "Mumbai, India"
-                elif "pune" in text_to_search:
-                    location = "Pune, India"
-                elif "hyderabad" in text_to_search:
-                    location = "Hyderabad, India"
-                elif "chennai" in text_to_search:
-                    location = "Chennai, India"
-                elif "delhi" in text_to_search or "noida" in text_to_search or "gurgaon" in text_to_search:
-                    location = "Delhi NCR, India"
-                elif "remote" in text_to_search:
-                    location = "Remote, India"
-                
-                # Match skill
-                matched_skills = []
-                for s in skills:
-                    if s.lower() in text_to_search:
-                        matched_skills.append(s.title())
-                if not matched_skills:
-                    matched_skills = ["Software Development"]
-                
-                jobs.append({
-                    "title": job_title,
-                    "company": company,
-                    "description": f"Original listing found on {source}.\n\nDescription Snippet:\n{snippet}\n\nTo view the full details and apply, please visit the official posting at: {real_link}",
-                    "location": location,
-                    "tags": matched_skills + [source, "India"],
-                    "url": real_link
-                })
+            if not title_text or not real_link:
+                continue
+            
+            if not ("linkedin.com" in real_link or "naukri.com" in real_link):
+                continue
+            
+            source = "LinkedIn" if "linkedin.com" in real_link else "Naukri"
+            
+            # Title cleaning
+            job_title = title_text
+            job_title = re.sub(r'\s*\|\s*LinkedIn.*', '', job_title, flags=re.IGNORECASE)
+            job_title = re.sub(r'\s*-\s*Naukri\.com.*', '', job_title, flags=re.IGNORECASE)
+            job_title = re.sub(r'\s*-\s*in\.linkedin\.com.*', '', job_title, flags=re.IGNORECASE)
+            job_title = re.sub(r'\bLinkedIn\b.*', '', job_title, flags=re.IGNORECASE).strip()
+            
+            # Company extraction
+            company = "Tech Company"
+            if "linkedin.com" in real_link:
+                path_segment = real_link.split("/view/")[-1].split("?")[0].strip("/")
+                path_segment = re.sub(r'-\d+$', '', path_segment)
+                if "-at-" in path_segment:
+                    company_slug = path_segment.split("-at-")[-1]
+                    company = company_slug.replace("-", " ").title()
+                elif "-hiring-" in path_segment:
+                    company_slug = path_segment.split("-hiring-")[-1]
+                    company = company_slug.replace("-", " ").title()
+            elif "naukri.com" in real_link:
+                path_segment = real_link.split("/job-listings/")[-1].split("?")[0].strip("/")
+                path_segment = re.sub(r'-\d+$', '', path_segment)
+                parts = path_segment.split("-")
+                if len(parts) > 2:
+                    company = " ".join(parts[-2:]).title()
+            
+            if company == "Tech Company" or len(company) < 3:
+                if " at " in job_title:
+                    parts = job_title.split(" at ", 1)
+                    job_title = parts[0].strip()
+                    company = parts[1].strip()
+                elif " - " in job_title:
+                    parts = job_title.split(" - ", 1)
+                    job_title = parts[0].strip()
+                    company = parts[1].strip()
+                    if " - " in company:
+                        c_parts = company.split(" - ", 1)
+                        company = c_parts[0].strip()
+            
+            company = re.sub(r'\s+jobs.*', '', company, flags=re.IGNORECASE)
+            company = re.sub(r'\s+hiring.*', '', company, flags=re.IGNORECASE)
+            company = company.strip(' -|')
+            job_title = job_title.strip(' -|')
+            
+            # Location deduction
+            location = "India"
+            text_to_search = (title_text + " " + snippet).lower()
+            if "bangalore" in text_to_search or "bengaluru" in text_to_search:
+                location = "Bangalore, India"
+            elif "mumbai" in text_to_search:
+                location = "Mumbai, India"
+            elif "pune" in text_to_search:
+                location = "Pune, India"
+            elif "hyderabad" in text_to_search:
+                location = "Hyderabad, India"
+            elif "chennai" in text_to_search:
+                location = "Chennai, India"
+            elif "delhi" in text_to_search or "noida" in text_to_search or "gurgaon" in text_to_search:
+                location = "Delhi NCR, India"
+            elif "remote" in text_to_search:
+                location = "Remote, India"
+            
+            # Match skill
+            matched_skills = []
+            for s in skills:
+                if s.lower() in text_to_search:
+                    matched_skills.append(s.title())
+            if not matched_skills:
+                matched_skills = ["Software Development"]
+            
+            jobs.append({
+                "title": job_title,
+                "company": company,
+                "description": f"Original listing found on {source}.\n\nDescription Snippet:\n{snippet}\n\nTo view the full details and apply, please visit the official posting at: {real_link}",
+                "location": location,
+                "tags": matched_skills + [source, "India"],
+                "url": real_link
+            })
     except Exception as e:
-        logger.error(f"Error scraping Yahoo: {e}")
+        logger.error(f"Error scraping jobs: {e}")
         
     return jobs
 
@@ -467,58 +445,36 @@ JSON Format:
     }
 
 def fetch_linkedin_hiring_posts(skills: List[str]) -> List[dict]:
-    import requests
-    from bs4 import BeautifulSoup
     import urllib.parse
     import re
 
     posts = []
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/114.0'
-    }
     
     if not skills:
         return []
         
     skills_term = " OR ".join([f'"{s}"' for s in skills[:3]])
-    query = f'({skills_term}) ("hiring" OR "looking for" OR "job vacancy") site:linkedin.com/posts/ "India"'
-    url = f"https://search.yahoo.com/search?p={urllib.parse.quote(query)}"
+    query = f'{skills_term} "hiring" OR "looking for" OR "job vacancy" site:linkedin.com/posts/ "India"'
     
-    logger.info(f"Querying Yahoo for LinkedIn Hiring Posts: {url}")
+    logger.info(f"Querying Google for LinkedIn Hiring Posts: {query}")
     try:
-        res = requests.get(url, headers=headers, timeout=10)
-        if res.status_code == 200:
-            soup = BeautifulSoup(res.content, 'html.parser')
-            results = soup.find_all('div', class_='algo')
+        results = google_search(query, num_results=15)
+        for r in results:
+            title_text = r.get("title", "")
+            real_link = r.get("url", "")
+            snippet = r.get("snippet", "")
             
-            for r in results:
-                a_tag = r.find('a')
-                if not a_tag:
-                    continue
-                
-                h3 = r.find('h3')
-                title_text = h3.text.strip() if h3 else a_tag.text.strip()
-                yahoo_link = a_tag.get('href', '')
-                
-                snippet_elem = r.find('div', class_='compText') or r.find('p') or r.find('span', class_='fc-lh')
-                snippet = snippet_elem.text.strip() if snippet_elem else ""
-                
-                if not title_text or not yahoo_link:
-                    continue
-                
-                real_link = yahoo_link
-                match = re.search(r'/RU=([^/]+)', yahoo_link)
-                if match:
-                    real_link = urllib.parse.unquote(match.group(1))
-                
-                if "linkedin.com/posts/" not in real_link:
-                    continue
-                
-                raw_text = f"{title_text}\n{snippet}"
-                posts.append({
-                    "url": real_link,
-                    "raw_text": raw_text
-                })
+            if not title_text or not real_link:
+                continue
+            
+            if "linkedin.com/posts/" not in real_link:
+                continue
+            
+            raw_text = f"{title_text}\n{snippet}"
+            posts.append({
+                "url": real_link,
+                "raw_text": raw_text
+            })
     except Exception as e:
         logger.error(f"Error fetching LinkedIn posts: {e}")
         

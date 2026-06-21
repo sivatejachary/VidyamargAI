@@ -14,7 +14,7 @@ def fetch(queries: List[str]) -> List[LiveJob]:
     seen_urls = set()
 
     for query in queries[:3]:
-        search_query = f'({query}) site:indeed.com/viewjob OR site:in.indeed.com/rc/clk "India"'
+        search_query = f'{query} site:indeed.com/viewjob OR site:in.indeed.com/rc/clk "India"'
         soup = yahoo_search(search_query, COMMON_HEADERS, timeout=8)
         results = extract_yahoo_results(soup)
 

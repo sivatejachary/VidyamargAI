@@ -75,6 +75,16 @@ class CandidateProfile(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     candidate_id = Column(Integer, ForeignKey("candidates.id"), nullable=False)
+    resume_id = Column(Integer, ForeignKey("candidate_resumes.id", ondelete="CASCADE"), nullable=True)
+    resume_hash = Column(String(64), nullable=True)
+    role_version = Column(String(10), default="v1")
+    industry = Column(String(100), nullable=True)
+    specialization = Column(String(100), nullable=True)
+    experience_years = Column(Float, nullable=True)
+    current_role = Column(String(100), nullable=True)
+    generated_roles = Column(Text, nullable=True)  # JSON string
+    search_strategy = Column(Text, nullable=True)  # JSON string
+    skills_graph = Column(Text, nullable=True)  # JSON string
     resume_text = Column(Text, nullable=True)
     parsed_metadata = Column(Text, nullable=True) # JSON details
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -89,6 +99,7 @@ class CandidateResume(Base):
     resume_url = Column(String, nullable=False)
     uploaded_at = Column(DateTime, default=datetime.utcnow)
     resume_type = Column(String(20), default="general")  # general | swe | ai | ds | ml
+    is_active = Column(Boolean, default=False)
     
     candidate = relationship("Candidate", back_populates="resumes")
     applications = relationship("Application", back_populates="resume")
@@ -400,6 +411,9 @@ class JobMatch(Base):
     match_score = Column(Float, default=0.0)
     skills_gap = Column(Text, nullable=True) # comma separated skills missing
     reasons_json = Column(JSON, nullable=True)
+    apply_status = Column(String(50), default="NEW") # NEW, SAVED, APPLIED, INTERVIEW, REJECTED, OFFER
+    resume_version = Column(String(100), nullable=True)
+    interaction_status = Column(String(50), default="VIEWED") # VIEWED, CLICKED, SAVED, APPLIED, INTERVIEW, REJECTED, OFFER
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     job = relationship("Job", back_populates="matches")
@@ -726,4 +740,48 @@ class UserRefreshToken(Base):
     token_hash = Column(String(64), unique=True, index=True, nullable=False)
     expires_at = Column(DateTime, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class CandidateEmbedding(Base):
+    __tablename__ = "candidate_embeddings"
+    
+    candidate_id = Column(Integer, ForeignKey("candidates.id", ondelete="CASCADE"), primary_key=True)
+    resume_id = Column(Integer, ForeignKey("candidate_resumes.id", ondelete="CASCADE"), nullable=True)
+    embedding_model = Column(String(100), nullable=False)
+    embedding_vector = Column(Text, nullable=False)  # JSON-serialized floats
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class CompanyProfile(Base):
+    __tablename__ = "company_profiles"
+    
+    company_name = Column(String(255), primary_key=True, index=True)
+    industry = Column(String(255), nullable=True)
+    size = Column(String(50), nullable=True)
+    career_page = Column(String(500), nullable=True)
+    hiring_score = Column(Float, default=0.0)
+    response_rate = Column(Float, default=0.0)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class JobSourceTracking(Base):
+    __tablename__ = "job_source_tracking"
+    
+    source_name = Column(String(100), primary_key=True)
+    last_crawl = Column(DateTime, default=datetime.utcnow)
+    success_count = Column(Integer, default=0)
+    failure_count = Column(Integer, default=0)
+    avg_response_time = Column(Float, default=0.0)
+    status = Column(String(50), default="healthy")
+
+
+class RecommendationMemory(Base):
+    __tablename__ = "recommendation_memories"
+    
+    candidate_id = Column(Integer, ForeignKey("candidates.id", ondelete="CASCADE"), primary_key=True)
+    preferred_roles = Column(Text, nullable=True)  # JSON string array
+    preferred_locations = Column(Text, nullable=True)  # JSON string array
+    preferred_companies = Column(Text, nullable=True)  # JSON string array
+    ignored_roles = Column(Text, nullable=True)  # JSON string array
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

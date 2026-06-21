@@ -61,17 +61,46 @@ class ResumeIntelligenceAgent:
                 meta = json.loads(profile_obj.parsed_metadata)
                 if isinstance(meta, dict) and "skills" in meta:
                     logger.info("ResumeIntelligenceAgent: Loaded prebuilt CandidateProfile from database.")
+                    skills_list = meta.get("skills", [])
+                    if isinstance(skills_list, str):
+                        skills_list = [s.strip() for s in skills_list.split(",") if s.strip()]
+                    elif skills_list is None:
+                        skills_list = []
+                        
+                    # Calculate experience years if not present or 0
+                    exp_years = meta.get("experience_years")
+                    if exp_years is None or exp_years == 0.0:
+                        from app.api.endpoints import calculate_years_from_experience
+                        exp_years = calculate_years_from_experience(meta.get("experience") or candidate.experience)
+                        
+                    domain = meta.get("domain")
+                    preferred_roles = meta.get("preferred_roles")
+                    subdomains = meta.get("subdomains", [])
+                    confidence = meta.get("confidence", 85)
+                    
+                    # Software engineering keywords to check if candidate is actually a developer
+                    software_kws = ["python", "javascript", "typescript", "react", "c++", "java", "node", "html", "css", "c#", "developer", "programmer", "software", "backend", "frontend", "fullstack", "devops", "cloud", "aws", "docker", "kubernetes", "sql", "git"]
+                    has_software_skills = any(any(kw in s.lower() for kw in software_kws) for s in skills_list)
+                    
+                    if not domain or (domain == "Software Engineering" and not has_software_skills):
+                        from app.services.orchestrator import classify_candidate_domain
+                        domain_info = classify_candidate_domain(skills_list, meta.get("summary") or candidate.summary or "")
+                        domain = domain_info["domain"]
+                        preferred_roles = domain_info["preferred_roles"]
+                        subdomains = domain_info["subdomains"]
+                        confidence = domain_info["confidence"]
+                        
                     return CandidateProfileData(
-                        skills=meta.get("skills", []),
-                        experience_years=meta.get("experience_years", 0.0),
+                        skills=skills_list,
+                        experience_years=exp_years,
                         education=meta.get("education", ""),
                         projects=meta.get("projects", "[]"),
                         certifications=meta.get("certifications", []),
                         summary=meta.get("summary", ""),
-                        domain=meta.get("domain", "Software Engineering"),
-                        confidence=meta.get("confidence", 85),
-                        subdomains=meta.get("subdomains", []),
-                        preferred_roles=meta.get("preferred_roles", []),
+                        domain=domain or "Software Engineering",
+                        confidence=confidence,
+                        subdomains=subdomains,
+                        preferred_roles=preferred_roles or [],
                         career_level=meta.get("career_level", "Mid-level"),
                         locations=meta.get("locations", [])
                     )

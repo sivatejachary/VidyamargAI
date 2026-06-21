@@ -46,11 +46,14 @@ class QdrantVectorStore:
             self.enabled = False
 
     def init_collections(self):
-        """Initializes collections for: jobs, resumes, skills, courses, companies."""
+        """Initializes collections for: jobs, resumes, skills, courses, companies, candidate_embeddings, job_embeddings, company_embeddings."""
         if not self.enabled or not self.client:
             return
             
-        collections = ["jobs", "resumes", "skills", "courses", "companies"]
+        collections = [
+            "jobs", "resumes", "skills", "courses", "companies",
+            "candidate_embeddings", "job_embeddings", "company_embeddings"
+        ]
         for col in collections:
             try:
                 # Check if collection exists
@@ -65,18 +68,35 @@ class QdrantVectorStore:
                 logger.error(f"Error checking/creating Qdrant collection '{col}': {e}")
 
     async def upsert_job(self, job_id: int, title: str, company: str, description: str, skills: List[str]) -> bool:
-        """Embeds and indexes a job in the 'jobs' collection."""
+        """Embeds and indexes a job in the 'job_embeddings' and 'jobs' collections using NVIDIA Embeddings."""
         if not self.enabled or not self.client:
             return False
             
         try:
             text = f"Title: {title}\nCompany: {company}\nDescription: {description or ''}\nSkills: {', '.join(skills or [])}"
-            vector = await embedding_service.get_embedding(text)
+            vector = await embedding_service.get_nvidia_embedding(text)
             
             import asyncio
             loop = asyncio.get_running_loop()
             
             def _upsert():
+                # Upsert to job_embeddings
+                self.client.upsert(
+                    collection_name="job_embeddings",
+                    points=[
+                        PointStruct(
+                            id=job_id,
+                            vector=vector,
+                            payload={
+                                "job_id": job_id,
+                                "title": title,
+                                "company": company,
+                                "skills": skills
+                            }
+                        )
+                    ]
+                )
+                # Legacy compatibility
                 self.client.upsert(
                     collection_name="jobs",
                     points=[
@@ -100,19 +120,29 @@ class QdrantVectorStore:
             return False
 
     async def search_jobs(self, resume_text: str, limit: int = 50) -> List[int]:
-        """Searches 'jobs' collection using resume embedding and returns matching job IDs."""
+        """Searches 'job_embeddings' collection using resume embedding and returns matching job IDs."""
         if not self.enabled or not self.client:
             return []
             
         try:
-            vector = await embedding_service.get_embedding(resume_text)
+            vector = await embedding_service.get_nvidia_embedding(resume_text)
+            return await self.search_jobs_by_vector(vector, limit)
+        except Exception as e:
+            logger.error(f"Failed to search jobs in Qdrant: {e}")
+            return []
+
+    async def search_jobs_by_vector(self, vector: List[float], limit: int = 50) -> List[int]:
+        """Searches 'job_embeddings' collection directly using a pre-computed candidate embedding vector."""
+        if not self.enabled or not self.client:
+            return []
             
+        try:
             import asyncio
             loop = asyncio.get_running_loop()
             
             def _search():
                 return self.client.search(
-                    collection_name="jobs",
+                    collection_name="job_embeddings",
                     query_vector=vector,
                     limit=limit
                 )
@@ -121,22 +151,46 @@ class QdrantVectorStore:
             job_ids = [r.payload["job_id"] for r in results if r.payload and "job_id" in r.payload]
             return job_ids
         except Exception as e:
-            logger.error(f"Failed to search jobs in Qdrant: {e}")
+            logger.error(f"Failed to search jobs by vector in Qdrant: {e}")
             return []
 
     async def upsert_resume(self, candidate_id: int, resume_text: str, skills: List[str]) -> bool:
-        """Embeds and indexes a candidate's resume/profile in the 'resumes' collection."""
+        """Embeds and indexes a candidate's resume/profile in the 'candidate_embeddings' collection using NVIDIA Embeddings."""
         if not self.enabled or not self.client:
             return False
             
         try:
             text = f"Skills: {', '.join(skills or [])}\nProfile: {resume_text}"
-            vector = await embedding_service.get_embedding(text)
+            vector = await embedding_service.get_nvidia_embedding(text)
+            return await self.upsert_candidate_vector(candidate_id, vector, skills)
+        except Exception as e:
+            logger.error(f"Failed to upsert resume for candidate {candidate_id} to Qdrant: {e}")
+            return False
+
+    async def upsert_candidate_vector(self, candidate_id: int, vector: List[float], skills: List[str]) -> bool:
+        """Directly indexes a precomputed candidate embedding vector in Qdrant."""
+        if not self.enabled or not self.client:
+            return False
             
+        try:
             import asyncio
             loop = asyncio.get_running_loop()
             
             def _upsert():
+                self.client.upsert(
+                    collection_name="candidate_embeddings",
+                    points=[
+                        PointStruct(
+                            id=candidate_id,
+                            vector=vector,
+                            payload={
+                                "candidate_id": candidate_id,
+                                "skills": skills
+                            }
+                        )
+                    ]
+                )
+                # Legacy resumes collection compatibility
                 self.client.upsert(
                     collection_name="resumes",
                     points=[
@@ -154,7 +208,7 @@ class QdrantVectorStore:
             await loop.run_in_executor(None, _upsert)
             return True
         except Exception as e:
-            logger.error(f"Failed to upsert resume for candidate {candidate_id} to Qdrant: {e}")
+            logger.error(f"Failed to upsert candidate vector for candidate {candidate_id}: {e}")
             return False
 
     async def upsert_course(self, course_id: int, title: str, description: str, skills: List[str]) -> bool:

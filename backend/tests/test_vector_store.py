@@ -43,7 +43,7 @@ class TestVectorStore(unittest.IsolatedAsyncioTestCase):
             # Mock collection exists check
             mock_client.collection_exists.return_value = True
             store.init_collections()
-            self.assertEqual(mock_client.collection_exists.call_count, 5)
+            self.assertEqual(mock_client.collection_exists.call_count, 8)
             
             # Test upsert
             mock_embedding = [0.1] * 768
@@ -56,7 +56,7 @@ class TestVectorStore(unittest.IsolatedAsyncioTestCase):
                     skills=["Python"]
                 )
                 self.assertTrue(upsert_res)
-                mock_client.upsert.assert_called_once()
+                self.assertEqual(mock_client.upsert.call_count, 2)
                 
             # Test search
             mock_search_result = MagicMock()

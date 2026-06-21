@@ -22,102 +22,262 @@ from app.services.job_connectors.base import classify_job
 logger = logging.getLogger("app.workers.discovery")
 
 
-async def run_discovery_all_candidates():
-    """Runs job discovery for all active candidates in the system."""
-    logger.info("Starting background job discovery for all candidates")
-    db = SessionLocal()
-    candidates_info = []
+import time
+import json
+from typing import List, Tuple
+
+def update_source_status(db: Session, source_name: str, success: bool, latency: float):
     try:
+        from app.models.models import JobSourceTracking
+        tracking = db.query(JobSourceTracking).filter(JobSourceTracking.source_name == source_name).first()
+        if not tracking:
+            tracking = JobSourceTracking(source_name=source_name)
+            db.add(tracking)
+            
+        tracking.last_crawl = datetime.utcnow()
+        if success:
+            tracking.success_count += 1
+            tracking.status = "healthy"
+        else:
+            tracking.failure_count += 1
+            tracking.status = "degraded" if tracking.success_count > 0 else "offline"
+            
+        # Update running average response time
+        total_runs = tracking.success_count + tracking.failure_count
+        if total_runs > 1:
+            tracking.avg_response_time = (tracking.avg_response_time * (total_runs - 1) + latency) / total_runs
+        else:
+            tracking.avg_response_time = latency
+            
+        db.commit()
+    except Exception as e:
+        logger.error(f"Failed to update JobSourceTracking for {source_name}: {e}")
+        db.rollback()
+
+def get_crawler_queries_and_skills(db: Session) -> Tuple[List[str], List[str]]:
+    from app.models.models import CandidateProfile, Candidate
+    profiles = db.query(CandidateProfile).all()
+    queries = set()
+    skills = set()
+    
+    for p in profiles:
+        if p.search_strategy:
+            try:
+                strat = json.loads(p.search_strategy)
+                if isinstance(strat, dict):
+                    primary = strat.get("primary_roles", [])
+                    secondary = strat.get("secondary_roles", [])
+                    kws = strat.get("keywords", [])
+                    queries.update(primary)
+                    queries.update(secondary)
+                    skills.update(kws)
+            except Exception:
+                pass
+        if p.generated_roles:
+            try:
+                roles = json.loads(p.generated_roles)
+                if isinstance(roles, list):
+                    queries.update(roles)
+            except Exception:
+                pass
+                
+    # Also fetch skills from candidates table
+    candidates = db.query(Candidate).all()
+    for c in candidates:
+        if c.skills:
+            cand_skills = [s.strip() for s in c.skills.split(",") if s.strip()]
+            skills.update(cand_skills)
+            
+    # Fallback to default tech and non-tech queries to guarantee it works for all professions
+    if not queries:
+        queries = {
+            "Software Engineer", "React Developer", "Python Developer", "Data Scientist",
+            "Civil Engineer", "Construction Manager", "Mechanical Engineer", "Project Manager",
+            "Product Manager", "Financial Analyst", "Marketing Executive", "HR Generalist"
+        }
+    if not skills:
+        skills = {
+            "Python", "JavaScript", "React", "SQL", "AutoCAD", "Site Supervision",
+            "Project Management", "Excel", "Marketing", "Recruiting"
+        }
+        
+    return list(queries)[:30], list(skills)[:30]
+
+async def run_discovery_all_candidates():
+    """Runs candidate-independent background job discovery, saves jobs to pool, and runs matching for candidates."""
+    logger.info("Starting candidate-independent background job discovery cycle")
+    db = SessionLocal()
+    try:
+        # 1. Gather queries and skills from all active profiles/resumes
+        queries, skills = get_crawler_queries_and_skills(db)
+        
+        # 2. Run crawl of all sources offline
+        discovered_jobs = await discover_jobs_network_independent(db, queries, skills)
+        
+        # 3. Save discovered jobs to the database JobPool and vector store
+        if discovered_jobs:
+            logger.info(f"Saving {len(discovered_jobs)} verified discovered jobs to the database pool")
+            saved_count = 0
+            new_jobs = []
+            for job in discovered_jobs:
+                existing = db.query(JobPool).filter(JobPool.stable_id == job.stable_id).first()
+                if not existing:
+                    classification = classify_job(job.title, job.description or "", job.skills or [])
+                    new_job = JobPool(
+                        stable_id=job.stable_id,
+                        title=job.title,
+                        company=job.company,
+                        location=job.location,
+                        experience=job.experience,
+                        skills=job.skills,
+                        apply_url=job.apply_url,
+                        posted_date=job.posted_date,
+                        source=job.source,
+                        description=job.description,
+                        work_mode=job.work_mode,
+                        company_logo=job.company_logo,
+                        domain=classification["domain"],
+                        job_type=classification["job_type"],
+                        career_level=classification["career_level"],
+                        all_sources=getattr(job, "all_sources", [job.source])
+                    )
+                    db.add(new_job)
+                    new_jobs.append(new_job)
+                    saved_count += 1
+            if saved_count > 0:
+                db.commit()
+                logger.info(f"Saved {saved_count} new unique jobs to JobPool")
+                # Upsert to Qdrant
+                from app.services.vector_store import vector_store
+                for j in new_jobs:
+                    await vector_store.upsert_job(
+                        job_id=j.id,
+                        title=j.title,
+                        company=j.company,
+                        description=j.description,
+                        skills=j.skills
+                    )
+                logger.info(f"Upserted {len(new_jobs)} jobs to Qdrant vector store")
+                
+        # 4. Trigger candidate-specific matching for all candidates
+        from app.models.models import Candidate
         candidates = db.query(Candidate).all()
         for candidate in candidates:
-            # Load candidate profile
-            resume_agent = ResumeIntelligenceAgent(db, candidate.id)
-            profile = resume_agent.extract_profile()
-            
-            # Generate target India-focused queries
-            queries = generate_queries(profile.domain, profile.preferred_roles)
-            skills = [s.strip() for s in (candidate.skills or "").split(",") if s.strip()]
-            
-            candidates_info.append({
-                "id": candidate.id,
-                "queries": queries,
-                "skills": skills,
-            })
+            cand_skills = [s.strip() for s in (candidate.skills or "").split(",") if s.strip()]
+            try:
+                await match_pool_jobs_for_candidate(candidate, db, cand_skills)
+            except Exception as e:
+                logger.error(f"Matching failed for candidate {candidate.id}: {e}")
+                
     except Exception as e:
-        logger.error(f"Error querying candidates: {e}")
+        logger.error(f"Error in run_discovery_all_candidates background worker: {e}")
     finally:
         db.close()
-
-    for info in candidates_info:
-        try:
-            # Execute external crawls offline, without holding any DB connection active
-            discovered_jobs = await discover_jobs_network(info["id"], info["queries"], info["skills"])
-            
-            # Ingest and match results in a fresh, quick DB session
-            if discovered_jobs:
-                await save_and_match_discovered_jobs(info["id"], info["skills"], discovered_jobs)
-        except Exception as e:
-            logger.error(f"Discovery failed for candidate {info['id']}: {e}")
-            
     logger.info("Background job discovery cycle completed")
 
-
-async def discover_jobs_network(candidate_id: int, queries: list, skills: list) -> list:
-    """Performs Tier 1 and Tier 2 searches over the network without DB dependencies."""
+async def discover_jobs_network_independent(db: Session, queries: list, skills: list) -> list:
+    """Performs candidate-independent searches across multiple platforms and records metrics in JobSourceTracking."""
     all_discovered = []
 
-    # TIER 1: Direct APIs (always try first — free, reliable, no rate limits)
-    logger.info(f"Candidate {candidate_id} | Tier 1 Discovery started")
-    t1_tasks = [
-        fetch_greenhouse_jobs(queries),
-        fetch_lever_jobs(queries),
-        fetch_rss_jobs(queries, skills),
-    ]
-    t1_results = await asyncio.gather(*t1_tasks, return_exceptions=True)
-    for r in t1_results:
-        if isinstance(r, list):
-            all_discovered.extend(r)
-            
-    logger.info(f"Candidate {candidate_id} | Tier 1 found {len(all_discovered)} jobs")
+    # 1. Greenhouse
+    start_time = time.time()
+    try:
+        greenhouse_jobs = await fetch_greenhouse_jobs(queries)
+        latency = time.time() - start_time
+        update_source_status(db, "Greenhouse", success=True, latency=latency)
+        all_discovered.extend(greenhouse_jobs)
+    except Exception as e:
+        latency = time.time() - start_time
+        update_source_status(db, "Greenhouse", success=False, latency=latency)
+        logger.error(f"Greenhouse crawler failed: {e}")
 
-    # TIER 1.5: Site-Specific Search Connectors (Naukri, Foundit, Wellfound, etc. in parallel thread pool)
-    logger.info(f"Candidate {candidate_id} | Site-Specific Search Connectors started")
-    from app.services.job_connectors import (
-        naukri, foundit, wellfound, indeed, cutshort, hirist, internshala, instahyre, linkedin_jobs, hiring_posts
-    )
-    
-    sync_connectors = [
-        ("Naukri", naukri.fetch, (queries,)),
-        ("Foundit", foundit.fetch, (queries,)),
-        ("Wellfound", wellfound.fetch, (queries,)),
-        ("Indeed", indeed.fetch, (queries,)),
-        ("Cutshort", cutshort.fetch, (queries,)),
-        ("Hirist", hirist.fetch, (queries,)),
-        ("Internshala", internshala.fetch, (queries,)),
-        ("Instahyre", instahyre.fetch, (queries,)),
-        ("LinkedIn Jobs", linkedin_jobs.fetch, (queries,)),
-        ("LinkedIn Hiring Posts", hiring_posts.fetch, (skills,)),
-    ]
-    
-    tasks = [asyncio.to_thread(fn, *args) for name, fn, args in sync_connectors]
-    connector_results = await asyncio.gather(*tasks, return_exceptions=True)
-    
-    for (name, _, _), r in zip(sync_connectors, connector_results):
-        if isinstance(r, Exception):
-            logger.error(f"Connector {name} failed: {r}")
-        elif isinstance(r, list):
-            logger.info(f"Connector {name} found {len(r)} jobs")
-            all_discovered.extend(r)
+    # 2. Lever
+    start_time = time.time()
+    try:
+        lever_jobs = await fetch_lever_jobs(queries)
+        latency = time.time() - start_time
+        update_source_status(db, "Lever", success=True, latency=latency)
+        all_discovered.extend(lever_jobs)
+    except Exception as e:
+        latency = time.time() - start_time
+        update_source_status(db, "Lever", success=False, latency=latency)
+        logger.error(f"Lever crawler failed: {e}")
 
-    # TIER 2: Google Discovery (Serper / fallback search)
-    if len(all_discovered) < 20:
-        logger.info(f"Candidate {candidate_id} | Tier 2 Discovery triggered")
-        try:
-            google_jobs = await search_google_jobs(queries)
-            all_discovered.extend(google_jobs)
-            logger.info(f"Candidate {candidate_id} | Tier 2 found {len(google_jobs)} jobs")
-        except Exception as e:
-            logger.warning(f"Tier 2 Google discovery failed: {e}")
+    # 3. Workday and ATS fallback site-searches
+    start_time = time.time()
+    try:
+        from app.services.job_connectors import ats_sources
+        ats_jobs = await asyncio.to_thread(ats_sources.fetch, queries)
+        latency = time.time() - start_time
+        update_source_status(db, "Workday", success=True, latency=latency)
+        all_discovered.extend(ats_jobs)
+    except Exception as e:
+        latency = time.time() - start_time
+        update_source_status(db, "Workday", success=False, latency=latency)
+        logger.error(f"Workday/ATS crawler failed: {e}")
+
+    # 4. LinkedIn Jobs
+    start_time = time.time()
+    try:
+        from app.services.job_connectors import linkedin_jobs
+        linkedin_res = await asyncio.to_thread(linkedin_jobs.fetch, queries)
+        latency = time.time() - start_time
+        update_source_status(db, "LinkedIn", success=True, latency=latency)
+        all_discovered.extend(linkedin_res)
+    except Exception as e:
+        latency = time.time() - start_time
+        update_source_status(db, "LinkedIn", success=False, latency=latency)
+        logger.error(f"LinkedIn crawler failed: {e}")
+
+    # 5. Naukri
+    start_time = time.time()
+    try:
+        from app.services.job_connectors import naukri
+        naukri_res = await asyncio.to_thread(naukri.fetch, queries)
+        latency = time.time() - start_time
+        update_source_status(db, "Naukri", success=True, latency=latency)
+        all_discovered.extend(naukri_res)
+    except Exception as e:
+        latency = time.time() - start_time
+        update_source_status(db, "Naukri", success=False, latency=latency)
+        logger.error(f"Naukri crawler failed: {e}")
+
+    # 6. Telegram
+    start_time = time.time()
+    try:
+        from app.agents.telegram import TelegramCommunityAgent
+        tg_agent = TelegramCommunityAgent(db)
+        tg_jobs = await tg_agent.async_collect_jobs()
+        latency = time.time() - start_time
+        update_source_status(db, "Telegram", success=True, latency=latency)
+        all_discovered.extend(tg_jobs)
+    except Exception as e:
+        latency = time.time() - start_time
+        update_source_status(db, "Telegram", success=False, latency=latency)
+        logger.error(f"Telegram crawler failed: {e}")
+
+    # Other crawlers (Foundit, Wellfound, Indeed, Cutshort, Hirist, Internshala, Instahyre, RSS)
+    try:
+        from app.services.job_connectors import (
+            foundit, wellfound, indeed, cutshort, hirist, internshala, instahyre, hiring_posts
+        )
+        sync_connectors = [
+            ("Foundit", foundit.fetch, (queries,)),
+            ("Wellfound", wellfound.fetch, (queries,)),
+            ("Indeed", indeed.fetch, (queries,)),
+            ("Cutshort", cutshort.fetch, (queries,)),
+            ("Hirist", hirist.fetch, (queries,)),
+            ("Internshala", internshala.fetch, (queries,)),
+            ("Instahyre", instahyre.fetch, (queries,)),
+            ("LinkedIn Hiring Posts", hiring_posts.fetch, (skills,)),
+        ]
+        tasks = [asyncio.to_thread(fn, *args) for name, fn, args in sync_connectors]
+        connector_results = await asyncio.gather(*tasks, return_exceptions=True)
+        for (name, _, _), r in zip(sync_connectors, connector_results):
+            if isinstance(r, list):
+                all_discovered.extend(r)
+    except Exception as e:
+        logger.warning(f"Secondary connectors failed: {e}")
 
     # Enforce Verification Agent: filters freshness, location (India-only), groups duplicates by priority
     verifier = VerificationAgent(all_discovered)

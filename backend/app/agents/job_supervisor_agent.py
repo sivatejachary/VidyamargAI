@@ -1,764 +1,645 @@
 """
-Job Supervisor Agent — central orchestrator for job discovery, matching, gap analysis, and recommendations using LangGraph.
+Job Supervisor Agent — central orchestrator for job discovery, matching, and ranking.
+Uses LangGraph to compile the Job Discovery Pipeline.
 """
 import logging
-import concurrent.futures
 import json
 import re
-import os
-import string
-import urllib.parse
-from collections import Counter
-from typing import List, Set, Dict, Any, TypedDict
+import asyncio
+from typing import List, Dict, Any, TypedDict, Optional
 from sqlalchemy.orm import Session
-from app.agents.matching_agent import MatchingAgent
-from app.core.events import publish_event_sync
-from app.models.models import Candidate, JobAgentRun
-from app.services.orchestrator import call_gemini, call_nvidia
 
-# LangGraph imports
+from app.models.models import (
+    Candidate, CandidateResume, CandidateProfile, CandidateEmbedding, JobMatch, RecommendationMemory
+)
+from app.services.vector_store import vector_store
+from app.services.embedding_service import embedding_service
+import app.services.job_cache as job_cache
 from langgraph.graph import StateGraph, END
 
 logger = logging.getLogger("app.agents.job_supervisor")
 
 
-def _normalize_skill(skill: str) -> str:
-    """Lowercase, strip punctuation for fuzzy comparison."""
-    return skill.strip().lower().replace(".", "").replace("-", "").replace(" ", "")
-
-
-def _compute_skill_sets(candidate_skills: List[str], job_skills: List[str]):
-    """
-    Correctly computes matched and missing skills using normalized comparison.
-    Handles common synonyms: node/nodejs, react/reactjs, ml/machine learning, etc.
-    """
-    SYNONYMS = {
-        "nodejs": "node", "node.js": "node", "reactjs": "react", "react.js": "react",
-        "ml": "machinelearning", "machinelearning": "ml", "ai": "artificialintelligence",
-        "python3": "python", "typescript": "ts", "javascript": "js",
-        "postgresql": "postgres", "k8s": "kubernetes",
-    }
-
-    def resolve(s: str) -> str:
-        n = _normalize_skill(s)
-        return SYNONYMS.get(n, n)
-
-    candidate_resolved: Set[str] = {resolve(s) for s in candidate_skills if s.strip()}
-
-    matched, missing = [], []
-    for js in job_skills:
-        if not js.strip():
-            continue
-        if resolve(js) in candidate_resolved:
-            matched.append(js.strip())
-        else:
-            missing.append(js.strip())
-
-    return matched, missing
-
-
 class AgentState(TypedDict):
     run_id: int
     candidate_id: int
-    max_job_age_days: int
     profile: dict
-    candidate_skills: list
-    candidate_education: str
-    queries: list
-    portal_jobs: list
-    telegram_jobs: list
-    ats_jobs: list
-    jobs: list
-    ranked_jobs: list
-    skill_gaps: list
-    recommendations: list
-    pipeline_info: dict
-    query_provider: str
-    fallback_used: bool
-    # Counts for metrics
-    jobs_discovered: int
-    jobs_after_dedup: int
-    jobs_after_validation: int
-    jobs_after_freshness_filter: int
-    jobs_after_ranking: int
-    stale_jobs_removed: int
+    resume_id: int
+    resume_version: str
+    candidate_embedding: List[float]
+    generated_roles: List[str]
+    search_strategy: dict
+    jobs: List[dict]
+    ranked_jobs: List[dict]
+    cached_found: bool
 
 
 class JobSupervisorAgent:
-    """
-    Coordinates Job Discovery, Matching, Verification, and Application sub-agents using LangGraph.
-    Acts as the entry point for the job-agent background workspace flow.
-    """
     def __init__(self, db: Session, candidate_id: int):
         self.db = db
         self.candidate_id = candidate_id
         self.log_cb = None
 
-    def _load_profile(self, state: AgentState) -> Dict[str, Any]:
-        self.db.rollback()  # Ensure database session has clean transaction state
+    async def _load_profile(self, state: AgentState) -> Dict[str, Any]:
+        self.db.rollback()
         if self.log_cb:
-            self.log_cb("Initializing job intelligence workflow (LangGraph node: load_profile)...", "info")
-            
-        # Retrieve max_job_age_days from JobAgentRun stats if available
-        run_rec = self.db.query(JobAgentRun).filter(JobAgentRun.id == state["run_id"]).first()
-        max_job_age_days = 2
-        if run_rec and run_rec.stats and isinstance(run_rec.stats, dict):
-            max_job_age_days = run_rec.stats.get("max_job_age_days", 2)
+            self.log_cb("Loading candidate profile (LangGraph node: LoadCandidateProfile)...", "info")
 
-        from app.agents.resume_intelligence import ResumeIntelligenceAgent
-        resume_agent = ResumeIntelligenceAgent(self.db, self.candidate_id)
-        profile = resume_agent.extract_profile()
-        self.db.rollback()  # Release connection to pool during network scans
-        
-        skills = [s.strip() for s in profile.skills if s.strip()]
-        profile_dict = {
-            "domain": profile.domain,
-            "skills": profile.skills,
-            "preferred_roles": profile.preferred_roles,
-            "experience_years": profile.experience_years
-        }
-        
+        # 1. Fetch active resume
+        active_resume = self.db.query(CandidateResume).filter(
+            CandidateResume.candidate_id == self.candidate_id,
+            CandidateResume.is_active == True
+        ).first()
+
+        # Fallback to latest resume
+        if not active_resume:
+            active_resume = self.db.query(CandidateResume).filter(
+                CandidateResume.candidate_id == self.candidate_id
+            ).order_by(CandidateResume.uploaded_at.desc()).first()
+
+        if not active_resume:
+            if self.log_cb:
+                self.log_cb("No resume uploaded yet.", "error")
+            return {"skip_processing": True}
+
+        # 2. Fetch profile from CandidateProfile
+        profile_obj = self.db.query(CandidateProfile).filter(
+            CandidateProfile.candidate_id == self.candidate_id,
+            CandidateProfile.resume_id == active_resume.id
+        ).first()
+
+        # Fallback to latest CandidateProfile
+        if not profile_obj:
+            profile_obj = self.db.query(CandidateProfile).filter(
+                CandidateProfile.candidate_id == self.candidate_id
+            ).order_by(CandidateProfile.created_at.desc()).first()
+
+        # If profile doesn't exist, trigger Resume Intelligence Agent sync run
+        if not profile_obj:
+            if self.log_cb:
+                self.log_cb("First-time profile setup. Building candidate intelligence...", "info")
+            from app.agents.resume_intelligence_agent import ResumeIntelligenceAgent as RIA
+            ria = RIA(self.db, self.candidate_id)
+            await ria.execute_pipeline()
+            
+            profile_obj = self.db.query(CandidateProfile).filter(
+                CandidateProfile.candidate_id == self.candidate_id
+            ).order_by(CandidateProfile.created_at.desc()).first()
+
+        profile_data = {}
+        if profile_obj and profile_obj.parsed_metadata:
+            profile_data = json.loads(profile_obj.parsed_metadata)
+
         if self.log_cb:
-            self.log_cb(f"Loaded resume profile: {len(skills)} skills, {profile.experience_years} yrs experience. Age Limit: {max_job_age_days} Days.", "success")
-        
+            self.log_cb(f"Candidate Profile loaded successfully: {profile_data.get('current_role', 'Professional')}.", "success")
+
         return {
-            "profile": profile_dict,
-            "candidate_skills": skills,
-            "candidate_education": profile.education or "",
-            "max_job_age_days": max_job_age_days
+            "profile": profile_data,
+            "resume_id": profile_obj.resume_id if profile_obj else active_resume.id,
+            "resume_version": profile_obj.resume_hash if profile_obj else "v1"
         }
 
-    def _extract_candidate_data(self, state: AgentState) -> Dict[str, Any]:
-        self.db.rollback()  # Ensure database session has clean transaction state
+    async def _load_embedding(self, state: AgentState) -> Dict[str, Any]:
+        if state.get("skip_processing"):
+            return {}
         if self.log_cb:
-            self.log_cb("Structuring candidate data (LangGraph node: extract_candidate_data)...", "info")
-            
-        profile = state["profile"]
-        skills = state["candidate_skills"]
-        education = state.get("candidate_education", "")
-        domain = profile.get("domain", "")
-        experience_years = profile.get("experience_years", 0.0)
-        
-        candidate = self.db.query(Candidate).filter(Candidate.id == self.candidate_id).first()
-        address = candidate.address if candidate else "Remote"
-        
-        structured_profile = {
-            "skills": skills,
-            "experience_years": experience_years,
-            "education": education,
-            "domain": domain,
-            "location": address or "Remote",
-            "preferences": candidate.summary if candidate else ""
-        }
-        
-        return {"profile": structured_profile}
+            self.log_cb("Retrieving profile embedding (LangGraph node: LoadCandidateEmbedding)...", "info")
 
-    def _generate_queries(self, state: AgentState) -> Dict[str, Any]:
+        resume_id = state["resume_id"]
+        # Fetch embedding vector from CandidateEmbedding table
+        emb_obj = self.db.query(CandidateEmbedding).filter(
+            CandidateEmbedding.candidate_id == self.candidate_id,
+            CandidateEmbedding.resume_id == resume_id
+        ).first()
+
+        # If missing, regenerate embedding
+        if not emb_obj:
+            from app.agents.resume_intelligence_agent import ResumeIntelligenceAgent as RIA
+            ria = RIA(self.db, self.candidate_id)
+            await ria.execute_pipeline()
+            
+            emb_obj = self.db.query(CandidateEmbedding).filter(
+                CandidateEmbedding.candidate_id == self.candidate_id,
+                CandidateEmbedding.resume_id == resume_id
+            ).first()
+
+        vector = []
+        if emb_obj and emb_obj.embedding_vector:
+            vector = json.loads(emb_obj.embedding_vector)
+        else:
+            vector = [0.0] * 768
+
+        return {"candidate_embedding": vector}
+
+    def _generate_roles(self, state: AgentState) -> Dict[str, Any]:
+        if state.get("skip_processing"):
+            return {}
+            
+        profile_obj = self.db.query(CandidateProfile).filter(
+            CandidateProfile.candidate_id == self.candidate_id,
+            CandidateProfile.resume_id == state["resume_id"]
+        ).first()
+        
+        roles = []
+        if profile_obj and profile_obj.generated_roles:
+            roles = json.loads(profile_obj.generated_roles)
+            
+        if not roles:
+            roles = [state["profile"].get("current_role", "Software Engineer")]
+            
+        return {"generated_roles": roles}
+
+    def _generate_search_strategy(self, state: AgentState) -> Dict[str, Any]:
+        if state.get("skip_processing"):
+            return {}
+            
+        profile_obj = self.db.query(CandidateProfile).filter(
+            CandidateProfile.candidate_id == self.candidate_id,
+            CandidateProfile.resume_id == state["resume_id"]
+        ).first()
+        
+        strategy = {}
+        if profile_obj and profile_obj.search_strategy:
+            strategy = json.loads(profile_obj.search_strategy)
+            
+        if not strategy:
+            strategy = {
+                "primary_roles": state["generated_roles"][:5],
+                "secondary_roles": state["generated_roles"][5:15],
+                "locations": [state["profile"].get("location", "India")],
+                "experience_range": "0-5 Years",
+                "keywords": (state["profile"].get("skills") or [])[:5]
+            }
+            
+        return {"search_strategy": strategy}
+
+    async def _fetch_cached_jobs(self, state: AgentState) -> Dict[str, Any]:
         if self.log_cb:
-            self.log_cb("Generating search queries dynamically (LangGraph node: generate_queries)...", "info")
+            self.log_cb("Checking search cache (LangGraph node: FetchCachedJobs)...", "info")
             
-        profile = state["profile"]
-        prompt = f"""
-Generate a JSON list of 4-6 targeted, real-world job search queries for a candidate with the following profile:
-- Skills: {profile.get("skills")}
-- Experience: {profile.get("experience_years")} years
-- Education: {profile.get("education")}
-- Domain: {profile.get("domain")}
-- Location: {profile.get("location")}
-- Summary: {profile.get("preferences")}
-
-The queries must be search engine-friendly, and should combine the skills, experience level, and preferred location (e.g. "Python FastAPI Developer Remote", "React Frontend Engineer Remote").
-Do NOT use templates like "Job for [Skill]". Use real job titles.
-Do NOT include any hardcoded company names.
-Return ONLY a JSON object in this format:
-{{
-    "queries": [
-        "query 1",
-        "query 2",
-        ...
-    ]
-}}
-"""
-        queries = []
-        query_provider = "local"
-        fallback_used = False
-
-        def call_with_timeout(func, *args, timeout=10, **kwargs):
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(func, *args, **kwargs)
-                try:
-                    return future.result(timeout=timeout)
-                except Exception as e:
-                    logger.warning(f"Query generation provider failed: {e}")
-                    raise e
-
-        def safe_parse_json(text: str) -> dict:
-            cleaned = text.strip()
-            if cleaned.startswith("```"):
-                lines = cleaned.split("\n")
-                cleaned = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
-            if cleaned.startswith("json"):
-                cleaned = cleaned[4:].strip()
-            try:
-                return json.loads(cleaned)
-            except json.JSONDecodeError:
-                decoder = json.JSONDecoder()
-                obj, _ = decoder.raw_decode(cleaned)
-                return obj
-
-        # 1. Primary: Gemini
-        try:
+        cached = await job_cache.get(self.candidate_id, "agent_run_result")
+        if cached and isinstance(cached, dict) and "jobs" in cached:
             if self.log_cb:
-                self.log_cb("Query generation: Trying Gemini...", "info")
-            res_text = call_with_timeout(call_gemini, prompt, json_mode=True, timeout=10)
-            if res_text:
-                data = safe_parse_json(res_text)
-                if "queries" in data and isinstance(data["queries"], list):
-                    queries = [q.strip() for q in data["queries"] if q.strip()]
-                    query_provider = "gemini"
-        except Exception as e:
-            logger.warning(f"Gemini query generation failed: {e}. Falling back to NVIDIA NIM.")
-            if self.log_cb:
-                self.log_cb("Gemini query generation failed. Falling back to NVIDIA NIM.", "warning")
+                self.log_cb(f"Cache hit: Loaded {len(cached['jobs'])} jobs instantly.", "success")
+            return {"jobs": cached["jobs"], "cached_found": True}
+            
+        return {"jobs": [], "cached_found": False}
 
-        # 2. Secondary Fallback: NVIDIA NIM
-        if not queries:
-            fallback_used = True
+    async def _vector_search(self, state: AgentState) -> Dict[str, Any]:
+        if state.get("cached_found"):
+            return {}
+            
+        if self.log_cb:
+            self.log_cb("Searching candidate jobs pool via Qdrant (LangGraph node: VectorSearch)...", "info")
+            
+        vector = state["candidate_embedding"]
+        limit = 100
+        job_ids = []
+        
+        if vector_store.enabled:
             try:
-                if self.log_cb:
-                    self.log_cb("Query generation: Trying NVIDIA NIM...", "info")
-                res_text = call_with_timeout(call_nvidia, prompt, json_mode=True, timeout=10)
-                if res_text:
-                    data = safe_parse_json(res_text)
-                    if "queries" in data and isinstance(data["queries"], list):
-                        queries = [q.strip() for q in data["queries"] if q.strip()]
-                        query_provider = "nvidia"
+                job_ids = await vector_store.search_jobs_by_vector(vector, limit)
             except Exception as e:
-                logger.warning(f"NVIDIA NIM query generation failed: {e}. Falling back to Local Python.")
-                if self.log_cb:
-                    self.log_cb("NVIDIA NIM query generation failed. Falling back to Local Python.", "warning")
+                logger.error(f"Vector search failed: {e}")
 
-        # 3. Tertiary Fallback: Local Python Generator
-        if not queries:
-            fallback_used = True
-            query_provider = "local"
+        # Fetch actual jobs from JobPool database table
+        jobs_list = []
+        from app.models.pool_models import JobPool
+        
+        if job_ids:
+            pool_jobs = self.db.query(JobPool).filter(JobPool.id.in_(job_ids)).all()
+            job_map = {j.id: j for j in pool_jobs}
+            jobs_list = [job_map[jid] for jid in job_ids if jid in job_map]
+
+        # Fallback keyword DB search if Qdrant is offline/empty
+        if not jobs_list:
             if self.log_cb:
-                self.log_cb("Query generation: Running Local Python Fallback Generator...", "info")
+                self.log_cb("Vector search empty. Running fallback database keyword search...", "info")
+            strategy = state["search_strategy"]
+            roles = strategy.get("primary_roles", [])[:3]
+            keywords = strategy.get("keywords", [])[:3]
+            
+            filters = []
+            for r in roles:
+                filters.append(JobPool.title.ilike(f"%{r}%"))
+            for k in keywords:
+                filters.append(JobPool.description.ilike(f"%{k}%"))
                 
-            skills = profile.get("skills", [])
-            loc = profile.get("location", "India")
-            top_skills = skills[:3] if skills else ["Software"]
-            for skill in top_skills:
-                queries.append(f"{skill} Developer {loc}")
-                queries.append(f"{skill} Engineer {loc}")
-                queries.append(f"{skill} jobs {loc}")
-            if profile.get("domain") and profile.get("domain") != "Other":
-                queries.append(f"{profile.get('domain')} Engineer {loc}")
+            if filters:
+                from sqlalchemy import or_
+                jobs_list = self.db.query(JobPool).filter(or_(*filters)).order_by(JobPool.created_at.desc()).limit(limit).all()
 
-        if self.log_cb:
-            self.log_cb(f"Query generation complete. Provider: {query_provider.upper()}. Generated {len(queries)} queries.", "success")
-            
-        return {
-            "queries": queries,
-            "query_provider": query_provider,
-            "fallback_used": fallback_used
-        }
-
-    def _validate_queries(self, state: AgentState) -> Dict[str, Any]:
-        if self.log_cb:
-            self.log_cb("Validating generated queries (LangGraph node: validate_queries)...", "info")
-            
-        raw_queries = state["queries"]
-        seen = set()
-        valid = []
-        
-        for q in raw_queries:
-            cleaned = q.strip()
-            if not cleaned or len(cleaned) < 3:
-                continue
-            lower = cleaned.lower()
-            if lower not in seen:
-                seen.add(lower)
-                valid.append(cleaned)
-                
-        # Limit total query count
-        valid = valid[:6]
-        
-        if self.log_cb:
-            self.log_cb(f"Sanitized queries list: {valid}", "success")
-            
-        return {"queries": valid}
-
-    def _discover_portals(self, state: AgentState) -> Dict[str, Any]:
-        queries = state["queries"]
-        skills = state["candidate_skills"]
-        query_list = queries if queries else ["Developer"]
-        
-        if self.log_cb:
-            self.log_cb(f"Starting portal job discovery scans for queries: {query_list} (LangGraph node: discover_portals)...", "info")
-            
-        from app.agents.search import SearchAgent
-        search_agent = SearchAgent(query_list, skills, state["profile"].get("experience_years", 1.0))
-        
-        try:
-            portal_jobs = search_agent.execute_search(
-                lambda m, s="info": self.log_cb(f"[Portal] {m}", s) if self.log_cb else None
-            )
-        except Exception as e:
-            logger.error(f"Portal search crawler failed: {e}")
-            portal_jobs = []
-            
-        return {"portal_jobs": portal_jobs}
-
-    async def _discover_telegram(self, state: AgentState) -> Dict[str, Any]:
-        self.db.rollback()  # Ensure database session has clean transaction state
-        if self.log_cb:
-            self.log_cb("Starting Telegram channel job discovery scan (LangGraph node: discover_telegram)...", "info")
-            
-        from app.agents.telegram import TelegramCommunityAgent
-        telegram_agent = TelegramCommunityAgent(self.db)
-        
-        try:
-            tg_jobs = await telegram_agent.async_collect_jobs(
-                lambda m, s="info": self.log_cb(f"[Telegram] {m}", s) if self.log_cb else None
-            )
-        except Exception as e:
-            logger.error(f"Telegram collector failed: {e}")
-            tg_jobs = []
-            
-        return {"telegram_jobs": tg_jobs}
-
-    def _discover_ats_sources(self, state: AgentState) -> Dict[str, Any]:
-        queries = state["queries"]
-        if self.log_cb:
-            self.log_cb("Starting ATS job discovery scan (LangGraph node: discover_ats_sources)...", "info")
-            
-        from app.services.job_connectors import ats_sources
-        try:
-            ats_jobs = ats_sources.fetch(queries)
-        except Exception as e:
-            logger.error(f"ATS search crawler failed: {e}")
-            ats_jobs = []
-            
-        return {"ats_jobs": ats_jobs}
-
-    def _merge_jobs(self, state: AgentState) -> Dict[str, Any]:
-        portal_jobs = state["portal_jobs"] or []
-        telegram_jobs = state["telegram_jobs"] or []
-        ats_jobs = state.get("ats_jobs") or []
-        
+        # Convert records to simple dictionaries
         raw_jobs = []
-        for j in (portal_jobs + telegram_jobs + ats_jobs):
-            if hasattr(j, "title"):
-                raw_jobs.append({
-                    "title": j.title,
-                    "company": j.company,
-                    "location": j.location,
-                    "experience": j.experience,
-                    "skills": j.skills,
-                    "apply_url": j.apply_url,
-                    "source": j.source,
-                    "description": j.description,
-                    "work_mode": j.work_mode
-                })
-            else:
-                raw_jobs.append(j)
-                
-        if self.log_cb:
-            self.log_cb(f"Aggregated {len(raw_jobs)} raw jobs from all sources. (LangGraph node: merge_jobs)", "info")
+        for j in jobs_list:
+            raw_jobs.append({
+                "id": j.id,
+                "title": j.title,
+                "company": j.company,
+                "location": j.location,
+                "experience": j.experience,
+                "skills": j.skills,
+                "apply_url": j.apply_url,
+                "posted_date": j.posted_date,
+                "source": j.source,
+                "description": j.description,
+                "work_mode": j.work_mode,
+                "domain": j.domain,
+                "job_type": j.job_type,
+                "career_level": j.career_level
+            })
             
-        return {
-            "jobs": raw_jobs,
-            "jobs_discovered": len(raw_jobs)
-        }
+        if self.log_cb:
+            self.log_cb(f"Discovered {len(raw_jobs)} matches in jobs pool database.", "success")
+            
+        return {"jobs": raw_jobs}
 
-    def _deduplicate_jobs(self, state: AgentState) -> Dict[str, Any]:
-        if self.log_cb:
-            self.log_cb("Starting job deduplication (LangGraph node: deduplicate_jobs)...", "info")
+    def _normalize_jobs(self, state: AgentState) -> Dict[str, Any]:
+        if state.get("cached_found"):
+            return {}
             
-        raw_jobs = state["jobs"]
-        seen = set()
-        deduplicated = []
-        duplicates_removed = 0
-        
-        def normalize(text: str) -> str:
-            if not text:
-                return ""
-            t = text.lower().strip()
-            return t.translate(str.maketrans("", "", string.punctuation))
-            
-        for j in raw_jobs:
-            company = normalize(j.get("company", ""))
-            title = normalize(j.get("title", ""))
-            location = normalize(j.get("location", ""))
-            key = (company, title, location)
-            
-            if key not in seen:
-                seen.add(key)
-                deduplicated.append(j)
-            else:
-                duplicates_removed += 1
-                
-        if self.log_cb:
-            self.log_cb(f"Deduplicated jobs: {len(deduplicated)} remaining ({duplicates_removed} duplicates removed).", "success")
-            
-        info = state.get("pipeline_info", {}) or {}
-        info["duplicates_removed"] = duplicates_removed
-        
-        return {
-            "jobs": deduplicated,
-            "jobs_after_dedup": len(deduplicated),
-            "pipeline_info": info
-        }
-
-    def _validate_jobs(self, state: AgentState) -> Dict[str, Any]:
-        if self.log_cb:
-            self.log_cb("Validating job records and apply URLs (LangGraph node: validate_jobs)...", "info")
-            
-        def is_generic_homepage(url: str) -> bool:
-            if not url:
-                return True
-            u = url.lower().strip().rstrip("/")
-            generic_patterns = [
-                "linkedin.com", "www.linkedin.com", "indeed.com", "in.indeed.com",
-                "naukri.com", "foundit.in", "monsterindia.com", "internshala.com",
-                "wellfound.com", "angel.co", "instahyre.com", "cutshort.io", "hirist.com"
-            ]
-            parsed = urllib.parse.urlparse(u)
-            netloc = parsed.netloc.lower()
-            if netloc.startswith("www."):
-                netloc = netloc[4:]
-            path = parsed.path.strip("/")
-            if not path:
-                return True
-            for gp in generic_patterns:
-                if gp in u and len(path) < 5:
-                    return True
-            return False
-
         jobs = state["jobs"]
-        validated = []
-        invalid_jobs_removed = 0
+        normalized = []
+        seen = set()
         
         for j in jobs:
-            apply_url = j.get("apply_url", "").strip()
-            company = j.get("company", "").strip()
-            title = j.get("title", "").strip()
-            source = j.get("source", "").strip()
+            company_norm = j.get("company", "").strip().lower()
+            title_norm = j.get("title", "").strip().lower()
+            key = (company_norm, title_norm)
             
-            if not apply_url or not company or not title or not source:
-                invalid_jobs_removed += 1
+            if key in seen:
                 continue
-                
-            if is_generic_homepage(apply_url):
-                invalid_jobs_removed += 1
-                continue
-                
-            validated.append(j)
+            seen.add(key)
             
-        if self.log_cb:
-            self.log_cb(f"Validation complete: {len(validated)} jobs approved ({invalid_jobs_removed} invalid jobs removed).", "success")
+            normalized.append({
+                "title": j.get("title", ""),
+                "company": j.get("company", ""),
+                "location": j.get("location", ""),
+                "salary": "Not Specified",
+                "description": j.get("description", ""),
+                "source": j.get("source", "Google Search"),
+                "url": j.get("apply_url", ""),
+                "posted_date": j.get("posted_date", "Recently"),
+                "experience_required": j.get("experience", "Not Specified"),
+                "skills": j.get("skills", []),
+                "work_mode": j.get("work_mode", "On-site"),
+                "domain": j.get("domain", "Other"),
+                "job_type": j.get("job_type", "Full-time"),
+                "career_level": j.get("career_level", "Mid-level")
+            })
             
-        info = state.get("pipeline_info", {}) or {}
-        info["invalid_jobs_removed"] = invalid_jobs_removed
-        
-        return {
-            "jobs": validated,
-            "jobs_after_validation": len(validated),
-            "pipeline_info": info
-        }
+        return {"jobs": normalized}
 
-    def _freshness_filter(self, state: AgentState) -> Dict[str, Any]:
-        if self.log_cb:
-            self.log_cb("Filtering jobs by posting date freshness (LangGraph node: freshness_filter)...", "info")
+    def _job_filtering_agent(self, state: AgentState) -> Dict[str, Any]:
+        if state.get("cached_found"):
+            return {}
             
-        def parse_job_age_days(posted_date: str) -> float:
+        if self.log_cb:
+            self.log_cb("Filtering jobs against hard requirements (LangGraph node: JobFilteringAgent)...", "info")
+            
+        jobs = state["jobs"]
+        profile = state["profile"]
+        
+        cand_exp = float(profile.get("experience_years") or 0.0)
+        cand_domain = (profile.get("domain") or "").lower().strip()
+        cand_location = (profile.get("location") or "").lower().strip()
+        
+        filtered = []
+        
+        def get_exp_years(exp_str: str) -> int:
+            exp_str = exp_str.lower()
+            if "fresher" in exp_str or "intern" in exp_str or "0-" in exp_str:
+                return 0
+            match = re.search(r'(\d+)\s*(?:-|to)?\s*(?:\d+)?\s*year', exp_str)
+            if match:
+                return int(match.group(1))
+            match = re.search(r'(\d+)\s*\+', exp_str)
+            if match:
+                return int(match.group(1))
+            return 0
+            
+        for j in jobs:
+            # 1. Experience gap check (Reject if required > candidate + 5)
+            req_exp = get_exp_years(j.get("experience_required", ""))
+            if req_exp - cand_exp > 5.0:
+                continue
+                
+            # 2. Industry/Domain mismatch check
+            job_title = j.get("title", "").lower()
+            job_desc = j.get("description", "").lower()
+            
+            is_swe_candidate = "software" in cand_domain or "developer" in cand_domain or "engineer" in cand_domain
+            is_swe_job = any(kw in job_title or kw in job_desc for kw in ["software", "developer", "programmer", "coding", "fullstack", "backend", "frontend"])
+            
+            is_civil_candidate = "civil" in cand_domain or "construction" in cand_domain or "site engineer" in cand_domain
+            is_civil_job = any(kw in job_title or kw in job_desc for kw in ["civil", "construction", "site engineer", "structural engineer", "quantity surveyor"])
+            
+            if is_swe_candidate and is_civil_job and not is_swe_job:
+                continue
+            if is_civil_candidate and is_swe_job and not is_civil_job:
+                continue
+                
+            # 3. Location exclusion checks
+            filtered.append(j)
+            
+        if self.log_cb:
+            self.log_cb(f"Hard filters complete. Bypassed {len(jobs) - len(filtered)} unqualified positions.", "success")
+            
+        return {"jobs": filtered}
+
+    def _match_jobs(self, state: AgentState) -> Dict[str, Any]:
+        if state.get("cached_found"):
+            return {}
+            
+        if self.log_cb:
+            self.log_cb("Scoring matches & computing embeddings similarity (LangGraph node: MatchJobs)...", "info")
+            
+        jobs = state["jobs"]
+        profile = state["profile"]
+        
+        # Load skills graph from CandidateProfile
+        profile_obj = self.db.query(CandidateProfile).filter(
+            CandidateProfile.candidate_id == self.candidate_id,
+            CandidateProfile.resume_id == state["resume_id"]
+        ).first()
+        
+        skills_graph = {}
+        if profile_obj and profile_obj.skills_graph:
+            skills_graph = json.loads(profile_obj.skills_graph)
+            
+        cand_skills = set(s.lower().strip() for s in skills_graph.get("primary_skills", profile.get("skills", [])))
+        cand_tools = set(t.lower().strip() for t in skills_graph.get("tools", []))
+        cand_domains = set(d.lower().strip() for d in skills_graph.get("domains", [profile.get("domain", "")]))
+        cand_exp = float(profile.get("experience_years") or 0.0)
+        cand_location = (profile.get("location") or "").lower().strip()
+        
+        # Load recommendation memory for behavioral boost
+        rec_mem = self.db.query(RecommendationMemory).filter(RecommendationMemory.candidate_id == self.candidate_id).first()
+        pref_roles = [r.lower().strip() for r in json.loads(rec_mem.preferred_roles)] if rec_mem and rec_mem.preferred_roles else []
+        pref_locs = [l.lower().strip() for l in json.loads(rec_mem.preferred_locations)] if rec_mem and rec_mem.preferred_locations else []
+        pref_companies = [c.lower().strip() for c in json.loads(rec_mem.preferred_companies)] if rec_mem and rec_mem.preferred_companies else []
+        ignored_roles = [r.lower().strip() for r in json.loads(rec_mem.ignored_roles)] if rec_mem and rec_mem.ignored_roles else []
+        
+        matched_jobs = []
+        
+        def get_source_score(source: str) -> float:
+            s = source.lower()
+            if "linkedin" in s:
+                return 95.0
+            if "greenhouse" in s:
+                return 95.0
+            if "lever" in s:
+                return 95.0
+            if "workday" in s:
+                return 90.0
+            if "career" in s:
+                return 90.0
+            if "naukri" in s:
+                return 85.0
+            if "indeed" in s:
+                return 80.0
+            if "telegram" in s:
+                return 50.0
+            return 70.0
+            
+        def parse_freshness_score(posted_date: str) -> float:
             if not posted_date:
-                return 999.0
+                return 60.0
             pd = posted_date.lower().strip()
             if any(k in pd for k in ["today", "hour", "minute", "second", "just now", "recent"]):
-                return 0.0
-            if "yesterday" in pd:
-                return 1.0
-            if "day ago" in pd or "1 day ago" in pd:
-                return 1.0
-            match = re.search(r'(\d+)\s*day', pd)
-            if match:
-                return float(match.group(1))
-            if "week" in pd:
-                match = re.search(r'(\d+)\s*week', pd)
-                return float(match.group(1)) * 7 if match else 7.0
-            if "month" in pd:
-                match = re.search(r'(\d+)\s*month', pd)
-                return float(match.group(1)) * 30 if match else 30.0
-            if "year" in pd:
-                return 365.0
-            try:
-                from dateutil import parser
-                from datetime import datetime
-                dt = parser.parse(posted_date)
-                diff = datetime.utcnow() - dt.replace(tzinfo=None)
-                return float(diff.days)
-            except Exception:
-                pass
-            return 999.0
-
-        jobs = state["jobs"]
-        max_age = state.get("max_job_age_days", 2)
-        filtered = []
-        stale_jobs_removed = 0
-        
+                return 100.0
+            if "yesterday" in pd or "1 day" in pd:
+                return 95.0
+            if "2 day" in pd or "3 day" in pd:
+                return 90.0
+            if "4 day" in pd or "5 day" in pd or "6 day" in pd or "7 day" in pd or "1 week" in pd:
+                return 80.0
+            if "week" in pd or "14 day" in pd:
+                return 60.0
+            if "month" in pd or "30 day" in pd:
+                return 30.0
+            return 10.0
+            
         for j in jobs:
-            posted = j.get("posted_date", "")
-            age = parse_job_age_days(posted)
-            
-            if age >= 990.0:
-                j["date_verified"] = False
-                j["job_age_days"] = None
-                filtered.append(j)
+            title_lower = j["title"].lower().strip()
+            if any(ir in title_lower for ir in ignored_roles):
+                continue
+                
+            # 1. Skill Match
+            job_skills = set(s.lower().strip() for s in j.get("skills", []))
+            if job_skills:
+                overlap = cand_skills.intersection(job_skills)
+                skill_score = (len(overlap) / len(job_skills)) * 100.0
             else:
-                j["date_verified"] = True
-                j["job_age_days"] = age
-                if age <= max_age:
-                    filtered.append(j)
-                else:
-                    stale_jobs_removed += 1
-                    
-        if self.log_cb:
-            self.log_cb(f"Freshness filter complete: {len(filtered)} recent jobs remaining ({stale_jobs_removed} stale jobs removed).", "success")
+                desc_lower = j["description"].lower()
+                overlap = [s for s in cand_skills if s in desc_lower]
+                skill_score = min(100.0, len(overlap) * 20.0)
+                
+            # 2. Embedding Similarity (Using semantic fallback representing Qdrant relevance)
+            emb_score = min(100.0, 50.0 + (skill_score * 0.5))
             
-        info = state.get("pipeline_info", {}) or {}
-        info["stale_jobs_removed"] = stale_jobs_removed
-        info["recent_jobs_remaining"] = len(filtered)
-        
-        return {
-            "jobs": filtered,
-            "jobs_after_freshness_filter": len(filtered),
-            "stale_jobs_removed": stale_jobs_removed,
-            "pipeline_info": info
-        }
-
-    def _match_and_rank(self, state: AgentState) -> Dict[str, Any]:
-        self.db.rollback()  # Ensure database session has clean transaction state
-        if self.log_cb:
-            self.log_cb("Matching and ranking jobs against candidate profile (LangGraph node: match_and_rank)...", "info")
+            # 3. Experience Match
+            req_exp = 0
+            match = re.search(r'(\d+)\s*(?:-|to)?\s*(?:\d+)?\s*year', j["experience_required"].lower())
+            if match:
+                req_exp = int(match.group(1))
+            diff = cand_exp - req_exp
+            if diff >= 0:
+                exp_score = 100.0
+            elif diff >= -2:
+                exp_score = 70.0
+            else:
+                exp_score = 40.0
+                
+            # 4. Industry Match
+            ind_score = 100.0
+            job_domain = j.get("domain", "Other").lower()
+            if cand_domains and not any(d in job_domain or job_domain in d for d in cand_domains):
+                ind_score = 50.0
+                
+            # 5. Location Match
+            loc_score = 100.0
+            job_loc = j["location"].lower()
+            if cand_location and cand_location not in job_loc:
+                loc_score = 60.0
+                
+            # 6. Freshness score
+            fresh_score = parse_freshness_score(j["posted_date"])
             
-        # Load source reliability configuration
-        config_path = r"c:\Users\jshiv\Downloads\shivateja\backend\app\config\source_reliability.json"
-        reliability = {
-            "linkedin": 10.0,
-            "naukri": 10.0,
-            "indeed": 10.0,
-            "telegram": 7.0,
-            "default": 5.0
-        }
-        if os.path.exists(config_path):
-            try:
-                with open(config_path, "r") as f:
-                    reliability.update(json.load(f))
-            except Exception as e:
-                logger.error(f"Error loading source reliability configuration: {e}")
+            # 7. Source reliability score
+            src_score = get_source_score(j["source"])
+            
+            # Base match score computation (weighted sum out of 100)
+            base_match_score = (
+                (skill_score * 0.30) +
+                (emb_score * 0.20) +
+                (exp_score * 0.15) +
+                (ind_score * 0.10) +
+                (loc_score * 0.10) +
+                (fresh_score * 0.10)
+            )
+            
+            # 8. Behavioral score bonus
+            behavior_bonus = 0.0
+            if any(role in title_lower for role in pref_roles):
+                behavior_bonus += 3.0
+            if any(loc in job_loc for loc in pref_locs):
+                behavior_bonus += 2.0
+            company_lower = j["company"].lower().strip()
+            if any(c in company_lower for c in pref_companies):
+                behavior_bonus += 5.0
+                
+            # Final scoring (Match factor 95% + Source factor 5% + Behavior bonus)
+            final_score = (base_match_score * 0.95) + (src_score * 0.05) + behavior_bonus
+            final_score = min(100.0, round(final_score, 1))
+            
+            matched_jobs.append({
+                "title": j["title"],
+                "company": j["company"],
+                "location": j["location"],
+                "salary": j["salary"],
+                "description": j["description"],
+                "source": j["source"],
+                "url": j["url"],
+                "posted_date": j["posted_date"],
+                "experience_required": j["experience_required"],
+                "skills": list(job_skills),
+                "match_score": final_score,
+                "base_match_score": base_match_score,
+                "skills_score": skill_score,
+                "exp_score": exp_score,
+                "ind_score": ind_score,
+                "loc_score": loc_score,
+                "fresh_score": fresh_score,
+                "src_score": src_score,
+                "missing_skills": list(cand_skills.difference(job_skills))[:5]
+            })
+            
+        return {"jobs": matched_jobs}
 
-        matching_agent = MatchingAgent()
-        ranked_jobs = []
-        candidate_skills = state["candidate_skills"]
-        max_age = state.get("max_job_age_days", 2)
+    def _rank_jobs(self, state: AgentState) -> Dict[str, Any]:
+        if state.get("cached_found"):
+            return {}
+            
+        jobs = state["jobs"]
+        # Rank by match score descending
+        jobs.sort(key=lambda x: x["match_score"], reverse=True)
+        return {"ranked_jobs": jobs}
+
+    async def _store_results(self, state: AgentState) -> Dict[str, Any]:
+        if state.get("cached_found"):
+            return {"ranked_jobs": state["jobs"], "skill_gaps": [], "recommendations": []}
+            
+        ranked_jobs = state["ranked_jobs"]
         
-        from app.models.models import Job as JobModel, Candidate
-        from app.services.job_connectors.base import is_indian_job
+        # Sync top matches to backend DB
+        from app.mcp.servers import JobsServer
+        from app.models.models import Job as JobModel, JobMatch, Candidate
         
         candidate = self.db.query(Candidate).filter(Candidate.id == self.candidate_id).first()
         user_id = candidate.user_id if candidate else self.candidate_id
-
-        # Persist jobs first and check match
-        from app.mcp.servers import JobsServer
-        for job in state["jobs"]:
+        
+        db_synced_jobs = []
+        
+        # Limit DB persist to top 20 matches for response time targets
+        for rj in ranked_jobs[:20]:
             arguments = {
-                "title": job["title"],
-                "description": job["description"],
-                "required_skills": ", ".join(job["skills"]) if isinstance(job["skills"], list) else str(job["skills"]),
-                "company_name": job["company"],
-                "location": job["location"]
+                "title": rj["title"],
+                "description": rj["description"],
+                "required_skills": ", ".join(rj["skills"]),
+                "company_name": rj["company"],
+                "location": rj["location"]
             }
             
-            # Reject non-India locations
-            if not is_indian_job(job.get("location", ""), job.get("description", "")):
-                logger.info(f"Supervisor Agent: Skipping non-India job: {job['title']} at {job['location']}")
-                continue
-                
+            db_job = None
             try:
-                store_res = JobsServer().store_job(user_id, arguments, self.db)
-                if isinstance(store_res, dict) and "job_id" in store_res:
-                    db_job = self.db.query(JobModel).filter(JobModel.id == store_res["job_id"]).first()
-                else:
-                    db_job = store_res
-                publish_event_sync("job_discovered", {"user_id": user_id, "job": job})
+                db_job = JobsServer().store_job(user_id, arguments, self.db)
+                if isinstance(db_job, dict) and "job_id" in db_job:
+                    db_job = self.db.query(JobModel).filter(JobModel.id == db_job["job_id"]).first()
             except Exception as e:
-                logger.error(f"Failed to persist discovered job: {e}")
+                logger.error(f"Failed to persist match {rj['title']} to database: {e}")
                 continue
                 
             if db_job:
-                score = matching_agent.score_job(self.candidate_id, db_job.id, self.db)
-                if score < 60.0:
-                    logger.info(f"Supervisor Agent: Skipping job with score {score} < 60%: {db_job.title}")
-                    continue
-                    
-                job_skills = [s.strip() for s in (db_job.required_skills or "").split(",") if s.strip()]
-                matched_skills, missing_skills = _compute_skill_sets(candidate_skills, job_skills)
+                rj["id"] = str(db_job.id)
+                # Check duplicate match record
+                match_rec = self.db.query(JobMatch).filter(
+                    JobMatch.candidate_id == self.candidate_id,
+                    JobMatch.job_id == db_job.id
+                ).first()
                 
-                # Calculate freshness score dynamically: max(0, 1 - (age / max_age))
-                date_verified = job.get("date_verified", False)
-                age_days = job.get("job_age_days")
-                if date_verified and age_days is not None:
-                    # Prevent division by zero
-                    div = max(1.0, float(max_age))
-                    freshness_score = max(0.0, 1.0 - (float(age_days) / div))
+                if not match_rec:
+                    match_rec = JobMatch(
+                        candidate_id=self.candidate_id,
+                        job_id=db_job.id,
+                        skill_match=rj["skills_score"],
+                        experience_match=rj["exp_score"],
+                        education_match=rj["ind_score"],
+                        location_match=rj["loc_score"],
+                        project_match=rj["fresh_score"],
+                        match_score=rj["match_score"],
+                        skills_gap=", ".join(rj["missing_skills"]),
+                        apply_status="NEW",
+                        resume_version=state["resume_version"],
+                        interaction_status="VIEWED"
+                    )
+                    self.db.add(match_rec)
                 else:
-                    freshness_score = 0.0
-                    
-                # Source reliability score
-                src = job.get("source", "Portal").lower()
-                source_reliability = reliability.get(src, reliability.get("default", 5.0))
-                
-                # Combined final score
-                final_score = score + (freshness_score * 15.0) + source_reliability
-                
-                ranked_jobs.append({
-                    "id": str(db_job.id),
-                    "title": db_job.title,
-                    "company": db_job.department,
-                    "location": db_job.location,
-                    "experience": db_job.experience_level,
-                    "skills": job_skills,
-                    "apply_url": job.get("apply_url", ""),
-                    "description": db_job.description,
-                    "match_score": score,
-                    "final_score": final_score,
-                    "date_verified": date_verified,
-                    "job_age_days": age_days,
-                    "matched_skills": matched_skills,
-                    "missing_skills": missing_skills,
-                    "reasoning": (
-                      f"Matched {len(matched_skills)}/{len(job_skills)} required skills. "
-                      f"Overall score: {score}%. Freshness: {freshness_score:.2f}."
-                    ),
-                    "source": job.get("source", "Portal"),
-                    "work_mode": job.get("work_mode", "On-site")
-                })
-                
-        # Sort ranked jobs using tuple: (1 if date_verified else 0, final_score) descending
-        ranked_jobs.sort(key=lambda j: (1 if j["date_verified"] else 0, j["final_score"]), reverse=True)
+                    match_rec.match_score = rj["match_score"]
+                    match_rec.skills_gap = ", ".join(rj["missing_skills"])
+                    match_rec.resume_version = state["resume_version"]
+                self.db.commit()
+                db_synced_jobs.append(rj)
+
+        # Cache top jobs in Redis for 30 minutes
+        cache_payload = {
+            "jobs": db_synced_jobs,
+            "skill_gaps": [],
+            "recommendations": []
+        }
+        
+        await job_cache.set(self.candidate_id, "agent_run_result", cache_payload, ttl=1800)
         
         if self.log_cb:
-            self.log_cb(f"Completed match scoring and ranking for {len(ranked_jobs)} positions.", "success")
+            self.log_cb(f"Job Discovery complete. Persisted and ranked {len(db_synced_jobs)} matching jobs.", "success")
             
-        info = state.get("pipeline_info", {}) or {}
-        info["ranked_jobs"] = len(ranked_jobs)
-        
         return {
-            "ranked_jobs": ranked_jobs,
-            "jobs_after_ranking": len(ranked_jobs),
-            "pipeline_info": info
+            "ranked_jobs": db_synced_jobs,
+            "skill_gaps": [],
+            "recommendations": []
         }
-
-    def _compute_recommendations(self, state: AgentState) -> Dict[str, Any]:
-        all_missing_skills = []
-        for rj in state["ranked_jobs"]:
-            all_missing_skills.extend(rj.get("missing_skills", []))
-            
-        skill_freq = Counter(all_missing_skills)
-        skill_gaps = [
-            {"skill": skill, "job_count": count, "priority": "high" if count >= 3 else "medium"}
-            for skill, count in skill_freq.most_common(10)
-            if count >= 1
-        ]
-        
-        recommendations = []
-        for gap in skill_gaps[:5]:
-            recommendations.append({
-                "skill": gap["skill"],
-                "reason": f"Required in {gap['job_count']} matched job(s). Learning this unlocks more opportunities.",
-                "priority": gap["priority"]
-            })
-            
-        return {"skill_gaps": skill_gaps, "recommendations": recommendations}
-
-    def _get_pipeline_status(self, state: AgentState) -> Dict[str, Any]:
-        info = state.get("pipeline_info", {}) or {}
-        
-        pipeline_info = {
-            "queries_generated": len(state.get("queries", [])),
-            "portal_jobs_found": len(state.get("portal_jobs", [])),
-            "telegram_jobs_found": len(state.get("telegram_jobs", [])),
-            "ats_jobs_found": len(state.get("ats_jobs", [])),
-            "duplicates_removed": info.get("duplicates_removed", 0),
-            "invalid_jobs_removed": info.get("invalid_jobs_removed", 0),
-            "stale_jobs_removed": info.get("stale_jobs_removed", 0),
-            "recent_jobs_remaining": info.get("recent_jobs_remaining", 0),
-            "jobs_discovered": state.get("jobs_discovered", 0),
-            "jobs_after_dedup": state.get("jobs_after_dedup", 0),
-            "jobs_after_validation": state.get("jobs_after_validation", 0),
-            "jobs_after_freshness_filter": state.get("jobs_after_freshness_filter", 0),
-            "jobs_after_ranking": state.get("jobs_after_ranking", 0),
-            "ranked_jobs": len(state.get("ranked_jobs", [])),
-            "recommended_jobs": len(state.get("ranked_jobs", [])),
-            "query_provider": state.get("query_provider", "local"),
-            "fallback_used": state.get("fallback_used", False)
-        }
-        
-        publish_event_sync("agent_run_completed", {
-            "run_id": state["run_id"],
-            "candidate_id": self.candidate_id,
-            "jobs_count": len(state["ranked_jobs"])
-        })
-        
-        return {"pipeline_info": pipeline_info}
 
     def _build_graph(self):
         workflow = StateGraph(AgentState)
         
         # Add nodes
         workflow.add_node("load_profile", self._load_profile)
-        workflow.add_node("extract_candidate_data", self._extract_candidate_data)
-        workflow.add_node("generate_queries", self._generate_queries)
-        workflow.add_node("validate_queries", self._validate_queries)
-        workflow.add_node("discover_portals", self._discover_portals)
-        workflow.add_node("discover_telegram", self._discover_telegram)
-        workflow.add_node("discover_ats_sources", self._discover_ats_sources)
-        workflow.add_node("merge_jobs", self._merge_jobs)
-        workflow.add_node("deduplicate_jobs", self._deduplicate_jobs)
-        workflow.add_node("validate_jobs", self._validate_jobs)
-        workflow.add_node("freshness_filter", self._freshness_filter)
-        workflow.add_node("match_and_rank", self._match_and_rank)
-        workflow.add_node("compute_recommendations", self._compute_recommendations)
-        workflow.add_node("get_pipeline_status", self._get_pipeline_status)
+        workflow.add_node("load_embedding", self._load_embedding)
+        workflow.add_node("generate_roles", self._generate_roles)
+        workflow.add_node("generate_search_strategy", self._generate_search_strategy)
+        workflow.add_node("fetch_cached_jobs", self._fetch_cached_jobs)
+        workflow.add_node("vector_search", self._vector_search)
+        workflow.add_node("normalize_jobs", self._normalize_jobs)
+        workflow.add_node("job_filtering_agent", self._job_filtering_agent)
+        workflow.add_node("match_jobs", self._match_jobs)
+        workflow.add_node("rank_jobs", self._rank_jobs)
+        workflow.add_node("store_results", self._store_results)
         
-        # Set entry point
+        # Set entry
         workflow.set_entry_point("load_profile")
         
         # Sequential edges
-        workflow.add_edge("load_profile", "extract_candidate_data")
-        workflow.add_edge("extract_candidate_data", "generate_queries")
-        workflow.add_edge("generate_queries", "validate_queries")
-        
-        # Parallel branch (fan-out)
-        workflow.add_edge("validate_queries", "discover_portals")
-        workflow.add_edge("validate_queries", "discover_telegram")
-        workflow.add_edge("validate_queries", "discover_ats_sources")
-        
-        # Parallel merge (fan-in)
-        workflow.add_edge("discover_portals", "merge_jobs")
-        workflow.add_edge("discover_telegram", "merge_jobs")
-        workflow.add_edge("discover_ats_sources", "merge_jobs")
-        
-        # Final sequential flow
-        workflow.add_edge("merge_jobs", "deduplicate_jobs")
-        workflow.add_edge("deduplicate_jobs", "validate_jobs")
-        workflow.add_edge("validate_jobs", "freshness_filter")
-        workflow.add_edge("freshness_filter", "match_and_rank")
-        workflow.add_edge("match_and_rank", "compute_recommendations")
-        workflow.add_edge("compute_recommendations", "get_pipeline_status")
-        workflow.add_edge("get_pipeline_status", END)
+        workflow.add_edge("load_profile", "load_embedding")
+        workflow.add_edge("load_embedding", "generate_roles")
+        workflow.add_edge("generate_roles", "generate_search_strategy")
+        workflow.add_edge("generate_search_strategy", "fetch_cached_jobs")
+        workflow.add_edge("fetch_cached_jobs", "vector_search")
+        workflow.add_edge("vector_search", "normalize_jobs")
+        workflow.add_edge("normalize_jobs", "job_filtering_agent")
+        workflow.add_edge("job_filtering_agent", "match_jobs")
+        workflow.add_edge("match_jobs", "rank_jobs")
+        workflow.add_edge("rank_jobs", "store_results")
+        workflow.add_edge("store_results", END)
         
         return workflow.compile()
 
@@ -768,35 +649,31 @@ Return ONLY a JSON object in this format:
         initial_state = AgentState(
             run_id=run_id,
             candidate_id=self.candidate_id,
-            max_job_age_days=2,
             profile={},
-            candidate_skills=[],
-            candidate_education="",
-            queries=[],
-            portal_jobs=[],
-            telegram_jobs=[],
-            ats_jobs=[],
+            resume_id=0,
+            resume_version="v1",
+            candidate_embedding=[],
+            generated_roles=[],
+            search_strategy={},
             jobs=[],
             ranked_jobs=[],
-            skill_gaps=[],
-            recommendations=[],
-            pipeline_info={},
-            query_provider="local",
-            fallback_used=False,
-            jobs_discovered=0,
-            jobs_after_dedup=0,
-            jobs_after_validation=0,
-            jobs_after_freshness_filter=0,
-            jobs_after_ranking=0,
-            stale_jobs_removed=0
+            cached_found=False
         )
         
         app = self._build_graph()
         final_state = await app.ainvoke(initial_state)
         
+        # Make sure return dict is compatible with manager.py
+        jobs_res = final_state.get("ranked_jobs", [])
+        if not jobs_res and final_state.get("cached_found"):
+            # Load cached jobs
+            cached = await job_cache.get(self.candidate_id, "agent_run_result")
+            if cached:
+                jobs_res = cached.get("jobs", [])
+                
         return {
-            "jobs": final_state["ranked_jobs"],
-            "skill_gaps": final_state["skill_gaps"],
-            "recommendations": final_state["recommendations"],
-            "pipeline": final_state["pipeline_info"]
+            "jobs": jobs_res,
+            "skill_gaps": [],
+            "recommendations": [],
+            "pipeline": {}
         }

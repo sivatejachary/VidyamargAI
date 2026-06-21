@@ -14,7 +14,7 @@ def fetch(queries: List[str]) -> List[LiveJob]:
     seen_urls = set()
 
     for query in queries[:3]:
-        search_query = f'({query}) site:cutshort.io/job/ OR site:cutshort.io/jobs "India"'
+        search_query = f'{query} site:cutshort.io/job/ OR site:cutshort.io/jobs "India"'
         soup = yahoo_search(search_query, COMMON_HEADERS, timeout=8)
         results = extract_yahoo_results(soup)
 

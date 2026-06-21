@@ -566,4 +566,39 @@ async def analyze_resume_ats(
     }
 
 
+@router.post("/candidates/resume/{resume_id}/activate")
+async def activate_resume(
+    resume_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    candidate = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+        
+    resume = db.query(CandidateResume).filter(
+        CandidateResume.id == resume_id,
+        CandidateResume.candidate_id == candidate.id
+    ).first()
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+        
+    # Deactivate all other resumes for this candidate
+    db.query(CandidateResume).filter(
+        CandidateResume.candidate_id == candidate.id
+    ).update({CandidateResume.is_active: False})
+    
+    # Activate selected resume
+    resume.is_active = True
+    db.commit()
+    
+    # Trigger ResumeIntelligenceAgent asynchronously to rebuild profile
+    from app.agents.resume_intelligence_agent import ResumeIntelligenceAgent as RIA
+    ria = RIA(db, candidate.id)
+    await ria.execute_pipeline()
+    
+    return {"message": "Resume activated successfully", "resume_id": resume.id}
+
+
+
 

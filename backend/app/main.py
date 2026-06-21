@@ -502,6 +502,21 @@ def init_db_safely():
 
             # Add domain, job_type, career_level, all_sources, reasons_json, and stats columns to respective tables
             migration_configs = [
+                ("candidate_resumes", [
+                    ("is_active", "BOOLEAN DEFAULT false")
+                ]),
+                ("candidate_profiles", [
+                    ("resume_id", "INTEGER"),
+                    ("resume_hash", "VARCHAR(64)"),
+                    ("role_version", "VARCHAR(10) DEFAULT 'v1'"),
+                    ("industry", "VARCHAR(100)"),
+                    ("specialization", "VARCHAR(100)"),
+                    ("experience_years", "REAL"),
+                    ("current_role", "VARCHAR(100)"),
+                    ("generated_roles", "JSONB" if is_postgres else "TEXT"),
+                    ("search_strategy", "JSONB" if is_postgres else "TEXT"),
+                    ("skills_graph", "JSONB" if is_postgres else "TEXT")
+                ]),
                 ("jobs_pool", [
                     ("domain", "VARCHAR(100)"),
                     ("job_type", "VARCHAR(50) DEFAULT 'Full-time'"),
@@ -517,7 +532,10 @@ def init_db_safely():
                     ("reasons_json", "JSONB" if is_postgres else "TEXT")
                 ]),
                 ("job_matches", [
-                    ("reasons_json", "JSONB" if is_postgres else "TEXT")
+                    ("reasons_json", "JSONB" if is_postgres else "TEXT"),
+                    ("apply_status", "VARCHAR(50) DEFAULT 'NEW'"),
+                    ("resume_version", "VARCHAR(100)"),
+                    ("interaction_status", "VARCHAR(50) DEFAULT 'VIEWED'")
                 ]),
                 ("job_agent_runs", [
                     ("stats", "JSONB" if is_postgres else "TEXT")

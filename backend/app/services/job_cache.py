@@ -265,3 +265,32 @@ async def invalidate_study_plan(candidate_id: int) -> None:
     await _delete_key(f"study_plan:{candidate_id}")
 
 
+async def get_generated_roles(candidate_id: int) -> Optional[List[str]]:
+    return await _get_key_data(f"generated_roles:{candidate_id}")
+
+async def set_generated_roles(candidate_id: int, roles: List[str]) -> None:
+    await _set_key_data(f"generated_roles:{candidate_id}", roles, ttl=1800)
+
+async def invalidate_generated_roles(candidate_id: int) -> None:
+    await _delete_key(f"generated_roles:{candidate_id}")
+
+
+async def get_search_strategy(candidate_id: int) -> Optional[Dict[str, Any]]:
+    return await _get_key_data(f"search_strategy:{candidate_id}")
+
+async def set_search_strategy(candidate_id: int, strategy: Dict[str, Any]) -> None:
+    await _set_key_data(f"search_strategy:{candidate_id}", strategy, ttl=1800)
+
+async def invalidate_search_strategy(candidate_id: int) -> None:
+    await _delete_key(f"search_strategy:{candidate_id}")
+
+
+async def get_text_embedding(text: str) -> Optional[List[float]]:
+    text_hash = hashlib.md5(text.encode("utf-8")).hexdigest()
+    return await _get_key_data(f"embedding:{text_hash}")
+
+async def set_text_embedding(text: str, embedding: List[float]) -> None:
+    text_hash = hashlib.md5(text.encode("utf-8")).hexdigest()
+    await _set_key_data(f"embedding:{text_hash}", embedding, ttl=86400) # Cache for 24 hours
+
+

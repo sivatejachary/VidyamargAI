@@ -279,10 +279,16 @@ class AgentOrchestrator:
         user_folder = get_user_folder_name(candidate.user)
         resume_url = storage_service.upload_file(f"users/{user_folder}/resumes", f"{candidate_id}_{filename}", file_content)
         
+        # Deactivate all other resumes for this candidate to make the new one active
+        db.query(CandidateResume).filter(
+            CandidateResume.candidate_id == candidate_id
+        ).update({CandidateResume.is_active: False})
+        
         # Record in DB
         resume = CandidateResume(
             candidate_id=candidate_id,
-            resume_url=resume_url
+            resume_url=resume_url,
+            is_active=True
         )
         db.add(resume)
         db.commit()
@@ -300,7 +306,8 @@ class AgentOrchestrator:
         profile = CandidateProfile(
             candidate_id=candidate_id,
             resume_text=extracted_text,
-            parsed_metadata="{}"
+            parsed_metadata="{}",
+            resume_id=resume.id
         )
         db.add(profile)
         db.commit()
@@ -420,6 +427,14 @@ class AgentOrchestrator:
             await self.rebuild_candidate_profile_data(db, candidate)
         except Exception as e:
             logger.error(f"Failed to auto-rebuild profile after resume parsing: {e}")
+            
+        # Trigger ResumeIntelligenceAgent asynchronously to compute embeddings, roles, strategy
+        try:
+            from app.agents.resume_intelligence_agent import ResumeIntelligenceAgent as RIA
+            ria = RIA(db, candidate_id)
+            await ria.execute_pipeline()
+        except Exception as e:
+            logger.error(f"Failed to trigger ResumeIntelligenceAgent pipeline: {e}")
 
     # 3. RESUME SCREENING AGENT
     async def run_resume_screening_agent(self, db: Session, application_id: int):

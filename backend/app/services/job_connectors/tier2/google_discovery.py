@@ -39,7 +39,7 @@ async def _search_serper(queries: List[str], api_key: str) -> List[LiveJob]:
                 resp = await client.post(
                     "https://google.serper.dev/search",
                     headers={"X-API-KEY": api_key, "Content-Type": "application/json"},
-                    json={"q": q, "num": 15}
+                    json={"q": q, "num": 10}
                 )
                 if resp.status_code == 200:
                     data = resp.json()

@@ -27,7 +27,7 @@ def fetch(queries: List[str]) -> List[LiveJob]:
 
     for query in queries[:2]:
         for site in ats_sites:
-            search_query = f'({query}) site:{site} "India"'
+            search_query = f'{query} site:{site} "India"'
             try:
                 soup = yahoo_search(search_query, COMMON_HEADERS, timeout=8)
                 results = extract_yahoo_results(soup)
