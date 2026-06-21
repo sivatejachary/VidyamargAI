@@ -503,7 +503,8 @@ def init_db_safely():
             # Add domain, job_type, career_level, all_sources, reasons_json, and stats columns to respective tables
             migration_configs = [
                 ("candidate_resumes", [
-                    ("is_active", "BOOLEAN DEFAULT false")
+                    ("is_active", "BOOLEAN DEFAULT false"),
+                    ("resume_type", "VARCHAR(20) DEFAULT 'general'")
                 ]),
                 ("candidate_profiles", [
                     ("resume_id", "INTEGER"),
@@ -547,7 +548,7 @@ def init_db_safely():
                     for col_name, col_type in cols:
                         if col_name not in existing_cols:
                             try:
-                                conn.execute(text(f"ALTER TABLE {tbl} ADD COLUMN {col_name} {col_type}"))
+                                conn.execute(text(f'ALTER TABLE "{tbl}" ADD COLUMN "{col_name}" {col_type}'))
                                 logger.info(f"Migration: Added column {col_name} ({col_type}) to table {tbl}")
                             except Exception as e:
                                 logger.warning(f"Failed to add column {col_name} to {tbl}: {e}")
