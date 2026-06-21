@@ -20,6 +20,21 @@ from langgraph.graph import StateGraph, END
 logger = logging.getLogger("app.agents.job_supervisor")
 
 
+def safe_loads(val, default=None):
+    if not val:
+        return default if default is not None else {}
+    if isinstance(val, (list, dict)):
+        return val
+    if isinstance(val, str):
+        try:
+            res = json.loads(val)
+            if isinstance(res, (list, dict)):
+                return res
+        except Exception:
+            pass
+    return default if default is not None else {}
+
+
 class AgentState(TypedDict):
     run_id: int
     candidate_id: int
@@ -88,7 +103,7 @@ class JobSupervisorAgent:
 
         profile_data = {}
         if profile_obj and profile_obj.parsed_metadata:
-            profile_data = json.loads(profile_obj.parsed_metadata)
+            profile_data = safe_loads(profile_obj.parsed_metadata)
 
         if self.log_cb:
             self.log_cb(f"Candidate Profile loaded successfully: {profile_data.get('current_role', 'Professional')}.", "success")
@@ -125,7 +140,7 @@ class JobSupervisorAgent:
 
         vector = []
         if emb_obj and emb_obj.embedding_vector:
-            vector = json.loads(emb_obj.embedding_vector)
+            vector = safe_loads(emb_obj.embedding_vector, [])
         else:
             vector = [0.0] * 768
 
@@ -142,7 +157,7 @@ class JobSupervisorAgent:
         
         roles = []
         if profile_obj and profile_obj.generated_roles:
-            roles = json.loads(profile_obj.generated_roles)
+            roles = safe_loads(profile_obj.generated_roles, [])
             
         if not roles:
             roles = [state["profile"].get("current_role", "Software Engineer")]
@@ -160,7 +175,7 @@ class JobSupervisorAgent:
         
         strategy = {}
         if profile_obj and profile_obj.search_strategy:
-            strategy = json.loads(profile_obj.search_strategy)
+            strategy = safe_loads(profile_obj.search_strategy)
             
         if not strategy:
             strategy = {
@@ -365,7 +380,7 @@ class JobSupervisorAgent:
         
         skills_graph = {}
         if profile_obj and profile_obj.skills_graph:
-            skills_graph = json.loads(profile_obj.skills_graph)
+            skills_graph = safe_loads(profile_obj.skills_graph)
             
         cand_skills = set(s.lower().strip() for s in skills_graph.get("primary_skills", profile.get("skills", [])))
         cand_tools = set(t.lower().strip() for t in skills_graph.get("tools", []))
