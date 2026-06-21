@@ -276,6 +276,26 @@ class AgentOrchestrator:
         if not candidate:
             raise Exception("Candidate not found")
             
+        # Initial status updates
+        candidate.resume_status = "uploading"
+        candidate.resume_progress = 10
+        candidate.resume_step = "Uploading PDF"
+        candidate.resume_processing_error = None
+        db.commit()
+        
+        # Broadcast uploading state
+        from app.core.ws import manager
+        try:
+            await manager.broadcast_to_user(f"candidate_{candidate_id}", {
+                "type": "resume_processing",
+                "candidate_id": candidate_id,
+                "status": "uploading",
+                "progress": 10,
+                "step": "Uploading PDF"
+            })
+        except Exception as ws_err:
+            logger.warning(f"Failed to broadcast upload status: {ws_err}")
+
         # Upload resume to storage
         user_folder = get_user_folder_name(candidate.user)
         resume_url = storage_service.upload_file(f"users/{user_folder}/resumes", f"{candidate_id}_{filename}", file_content)
@@ -297,7 +317,23 @@ class AgentOrchestrator:
         
         candidate.status = "Resume Uploaded"
         candidate.current_step = "Apply"
+        
+        candidate.resume_status = "extracting_text"
+        candidate.resume_progress = 20
+        candidate.resume_step = "Extracting text from PDF"
         db.commit()
+        
+        # Broadcast extracting text state
+        try:
+            await manager.broadcast_to_user(f"candidate_{candidate_id}", {
+                "type": "resume_processing",
+                "candidate_id": candidate_id,
+                "status": "extracting_text",
+                "progress": 20,
+                "step": "Extracting text from PDF"
+            })
+        except Exception as ws_err:
+            logger.warning(f"Failed to broadcast extraction status: {ws_err}")
         
         # Extract actual text from the PDF file content
         extracted_text = extract_text_from_pdf(file_content)
@@ -340,139 +376,220 @@ class AgentOrchestrator:
         if not candidate or not profile:
             return
             
-        # Extract metadata via Gemini or fallback
-        text_to_parse = profile.resume_text
-        prompt = (
-            "You are an expert resume parser. Parse this resume and output a JSON object with keys: "
-            "'name', 'email', 'phone', 'summary', 'skills', 'experience', 'education', 'projects', "
-            "'certifications', 'achievements', 'languages', 'github', 'linkedin', 'portfolio'.\n"
-            "Rules:\n"
-            "1. For 'skills', return a comma-separated string of skills.\n"
-            "2. For 'education', return a JSON array of objects with keys: degree, school, year.\n"
-            "3. For 'experience', return a JSON array of objects with keys: role, company, years, description.\n"
-            "4. For 'projects', return a JSON array of objects with keys: name, description, technologies.\n"
-            "5. For 'certifications', return a comma-separated string.\n"
-            "6. For 'achievements', return a JSON array of strings.\n"
-            "7. For 'languages', return a comma-separated string.\n"
-            "8. For 'summary', return a single string professional summary.\n"
-            "9. Output strictly valid JSON only. Do not wrap in backticks or markdown tags. "
-            "Ensure all double quotes inside JSON string values are properly escaped as \\\" or replaced with single quotes so that it parses successfully with json.loads.\n\n"
-            f"Resume Text:\n{text_to_parse}"
-        )
-        
-        ai_response = None
-        if settings.GEMINI_API_KEY:
-            ai_response = call_gemini(prompt, json_mode=True)
-        
-        if not ai_response and settings.NVIDIA_API_KEY:
-            messages = [{"role": "user", "content": prompt + "\nRemember: Return ONLY valid JSON, do not include any other text."}]
-            ai_response = call_nvidia(messages)
-            
-        data = {}
-        if ai_response:
-            try:
-                cleaned = ai_response.strip()
-                if cleaned.startswith("```"):
-                    cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned[3:]
-                if cleaned.endswith("```"):
-                    cleaned = cleaned[:-3]
-                cleaned = cleaned.strip()
-                if cleaned.startswith("json"):
-                    cleaned = cleaned[4:].strip()
-                
-                # Pre-clean known problematic character formats
-                cleaned = cleaned.replace('\uFFFD', '').replace('', '')
-                
-                data = json.loads(cleaned)
-            except Exception as e:
-                logger.error(f"Error parsing AI JSON response: {e}")
-                # Try a fallback recovery by escaping raw control characters and cleaning quotes
-                try:
-                    import re
-                    # Escape raw backslashes (but not already escaped ones)
-                    fixed = re.sub(r'(?<!\\)\\(?!["\\/bfnrtu])', r'\\\\', cleaned)
-                    # Try to parse again
-                    data = json.loads(fixed)
-                    logger.info("Successfully recovered JSON using regex normalization.")
-                except Exception as ex:
-                    logger.error(f"Fallback JSON recovery failed: {ex}")
-                    data = {}
-                
-        if not data:
-            # Parse metrics from the actual PDF text using regex/keyword scans
-            data = fallback_parse_resume_text(text_to_parse)
-            
-        if candidate.user and data.get("name"):
-            candidate.user.full_name = data.get("name")
-            
-        # Normalize fields - ensure education/experience/projects/achievements are JSON strings
-        for field in ['education', 'experience', 'projects', 'achievements']:
-            val = data.get(field)
-            if val is not None and isinstance(val, (list, dict)):
-                data[field] = json.dumps(val)
-        
-        # Normalize comma-separated fields
-        for field in ['skills', 'certifications', 'languages']:
-            val = data.get(field)
-            if val is not None and isinstance(val, list):
-                data[field] = ', '.join(str(v) for v in val)
-        
-        # Update candidate details
-        candidate.phone = data.get("phone", candidate.phone)
-        candidate.skills = data.get("skills", candidate.skills)
-        candidate.education = data.get("education", candidate.education)
-        candidate.experience = data.get("experience", candidate.experience)
-        candidate.projects = data.get("projects", candidate.projects)
-        candidate.certifications = data.get("certifications", candidate.certifications)
-        candidate.summary = data.get("summary", candidate.summary)
-        candidate.achievements = data.get("achievements", candidate.achievements)
-        candidate.languages = data.get("languages", candidate.languages)
-        candidate.github = data.get("github", candidate.github)
-        candidate.linkedin = data.get("linkedin", candidate.linkedin)
-        candidate.portfolio = data.get("portfolio", candidate.portfolio)
-        candidate.parsed_name = data.get("name", candidate.parsed_name)
-        candidate.parsed_email = data.get("email", candidate.parsed_email)
-        candidate.current_step = "Apply"
-        
-        profile.parsed_metadata = json.dumps(data)
-        db.commit()
-        
-        # Rebuild structured Candidate Profile with domain, confidence, experience, preferred roles, etc.
+        from app.core.ws import manager
         try:
-            await self.rebuild_candidate_profile_data(db, candidate)
-        except Exception as e:
-            logger.error(f"Failed to auto-rebuild profile after resume parsing: {e}")
+            # Set status to parsing resume
+            candidate.resume_status = "parsing_resume"
+            candidate.resume_progress = 40
+            candidate.resume_step = "Parsing resume sections with Gemini/NVIDIA"
+            db.commit()
             
-        # Trigger ResumeIntelligenceAgent asynchronously in a background task to compute embeddings, roles, strategy
-        async def run_ria_bg(cand_id: int):
-            from app.core.database import SessionLocal
-            db_session = SessionLocal()
             try:
-                from app.agents.resume_intelligence_agent import ResumeIntelligenceAgent as RIA
-                ria = RIA(db_session, cand_id)
-                await ria.execute_pipeline()
-                
-                # Automatically run job crawling and matching for the candidate
-                from app.workers.discovery_worker import run_discovery_for_candidate
-                await run_discovery_for_candidate(cand_id)
-            except Exception as bg_err:
-                logger.error(f"Background ResumeIntelligenceAgent failed: {bg_err}")
-            finally:
-                db_session.close()
+                await manager.broadcast_to_user(f"candidate_{candidate_id}", {
+                    "type": "resume_processing",
+                    "candidate_id": candidate_id,
+                    "status": "parsing_resume",
+                    "progress": 40,
+                    "step": "Parsing resume sections with Gemini/NVIDIA"
+                })
+            except Exception as ws_err:
+                logger.warning(f"Failed to broadcast parsing status: {ws_err}")
 
-        if background_tasks:
-            background_tasks.add_task(run_ria_bg, candidate_id)
-        else:
-            try:
-                from app.agents.resume_intelligence_agent import ResumeIntelligenceAgent as RIA
-                ria = RIA(db, candidate_id)
-                await ria.execute_pipeline()
+            # Extract metadata via Gemini or fallback
+            text_to_parse = profile.resume_text
+            prompt = (
+                "You are an expert resume parser. Parse this resume and output a JSON object with keys: "
+                "'name', 'email', 'phone', 'summary', 'skills', 'experience', 'education', 'projects', "
+                "'certifications', 'achievements', 'languages', 'github', 'linkedin', 'portfolio'.\n"
+                "Rules:\n"
+                "1. For 'skills', return a comma-separated string of skills.\n"
+                "2. For 'education', return a JSON array of objects with keys: degree, school, year.\n"
+                "3. For 'experience', return a JSON array of objects with keys: role, company, years, description.\n"
+                "4. For 'projects', return a JSON array of objects with keys: name, description, technologies.\n"
+                "5. For 'certifications', return a comma-separated string.\n"
+                "6. For 'achievements', return a JSON array of strings.\n"
+                "7. For 'languages', return a comma-separated string.\n"
+                "8. For 'summary', return a single string professional summary.\n"
+                "9. Output strictly valid JSON only. Do not wrap in backticks or markdown tags. "
+                "Ensure all double quotes inside JSON string values are properly escaped as \\\" or replaced with single quotes so that it parses successfully with json.loads.\n\n"
+                f"Resume Text:\n{text_to_parse}"
+            )
+            
+            ai_response = None
+            if settings.GEMINI_API_KEY:
+                ai_response = call_gemini(prompt, json_mode=True)
+            
+            if not ai_response and settings.NVIDIA_API_KEY:
+                messages = [{"role": "user", "content": prompt + "\nRemember: Return ONLY valid JSON, do not include any other text."}]
+                ai_response = call_nvidia(messages)
                 
-                # Automatically run job crawling and matching for the candidate
-                from app.workers.discovery_worker import run_discovery_for_candidate
-                await run_discovery_for_candidate(candidate_id)
+            data = {}
+            if ai_response:
+                try:
+                    cleaned = ai_response.strip()
+                    if cleaned.startswith("```"):
+                        cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned[3:]
+                    if cleaned.endswith("```"):
+                        cleaned = cleaned[:-3]
+                    cleaned = cleaned.strip()
+                    if cleaned.startswith("json"):
+                        cleaned = cleaned[4:].strip()
+                    
+                    # Pre-clean known problematic character formats
+                    cleaned = cleaned.replace('\uFFFD', '').replace('', '')
+                    
+                    data = json.loads(cleaned)
+                except Exception as e:
+                    logger.error(f"Error parsing AI JSON response: {e}")
+                    try:
+                        import re
+                        fixed = re.sub(r'(?<!\\)\\(?!["\\/bfnrtu])', r'\\\\', cleaned)
+                        data = json.loads(fixed)
+                        logger.info("Successfully recovered JSON using regex normalization.")
+                    except Exception as ex:
+                        logger.error(f"Fallback JSON recovery failed: {ex}")
+                        data = {}
+                    
+            if not data:
+                data = fallback_parse_resume_text(text_to_parse)
+                
+            if candidate.user and data.get("name"):
+                candidate.user.full_name = data.get("name")
+                
+            # Normalize fields - ensure education/experience/projects/achievements are JSON strings
+            for field in ['education', 'experience', 'projects', 'achievements']:
+                val = data.get(field)
+                if val is not None and isinstance(val, (list, dict)):
+                    data[field] = json.dumps(val)
+            
+            # Normalize comma-separated fields
+            for field in ['skills', 'certifications', 'languages']:
+                val = data.get(field)
+                if val is not None and isinstance(val, list):
+                    data[field] = ', '.join(str(v) for v in val)
+            
+            # Update candidate details
+            candidate.phone = data.get("phone", candidate.phone)
+            candidate.skills = data.get("skills", candidate.skills)
+            candidate.education = data.get("education", candidate.education)
+            candidate.experience = data.get("experience", candidate.experience)
+            candidate.projects = data.get("projects", candidate.projects)
+            candidate.certifications = data.get("certifications", candidate.certifications)
+            candidate.summary = data.get("summary", candidate.summary)
+            candidate.achievements = data.get("achievements", candidate.achievements)
+            candidate.languages = data.get("languages", candidate.languages)
+            candidate.github = data.get("github", candidate.github)
+            candidate.linkedin = data.get("linkedin", candidate.linkedin)
+            candidate.portfolio = data.get("portfolio", candidate.portfolio)
+            candidate.parsed_name = data.get("name", candidate.parsed_name)
+            candidate.parsed_email = data.get("email", candidate.parsed_email)
+            candidate.current_step = "Apply"
+            
+            profile.parsed_metadata = json.dumps(data)
+            db.commit()
+
+            # Set status to building profile
+            candidate.resume_status = "building_profile"
+            candidate.resume_progress = 65
+            candidate.resume_step = "Syncing details and calculating career metadata"
+            db.commit()
+            
+            try:
+                await manager.broadcast_to_user(f"candidate_{candidate_id}", {
+                    "type": "resume_processing",
+                    "candidate_id": candidate_id,
+                    "status": "building_profile",
+                    "progress": 65,
+                    "step": "Syncing details and calculating career metadata"
+                })
+            except Exception as ws_err:
+                logger.warning(f"Failed to broadcast profile sync status: {ws_err}")
+
+            # Rebuild structured Candidate Profile with domain, confidence, experience, preferred roles, etc.
+            try:
+                await self.rebuild_candidate_profile_data(db, candidate)
             except Exception as e:
-                logger.error(f"Failed to trigger ResumeIntelligenceAgent pipeline: {e}")
+                logger.error(f"Failed to auto-rebuild profile after resume parsing: {e}")
+
+            # Set status to generating embeddings
+            candidate.resume_status = "generating_embeddings"
+            candidate.resume_progress = 85
+            candidate.resume_step = "Generating AI embeddings and search strategy"
+            db.commit()
+            
+            try:
+                await manager.broadcast_to_user(f"candidate_{candidate_id}", {
+                    "type": "resume_processing",
+                    "candidate_id": candidate_id,
+                    "status": "generating_embeddings",
+                    "progress": 85,
+                    "step": "Generating AI embeddings and search strategy"
+                })
+            except Exception as ws_err:
+                logger.warning(f"Failed to broadcast embeddings status: {ws_err}")
+
+            # Trigger ResumeIntelligenceAgent synchronously in the background worker
+            from app.agents.resume_intelligence_agent import ResumeIntelligenceAgent as RIA
+            ria = RIA(db, candidate_id)
+            await ria.execute_pipeline()
+
+            # Mark ingestion complete
+            candidate.resume_status = "completed"
+            candidate.resume_progress = 100
+            candidate.resume_step = "Resume analysis complete"
+            candidate.resume_last_processed_at = datetime.utcnow()
+            candidate.resume_processing_error = None
+            db.commit()
+
+            # Broadcast completion
+            try:
+                await manager.broadcast_to_user(f"candidate_{candidate_id}", {
+                    "type": "resume_processed",
+                    "candidate_id": candidate_id,
+                    "status": "completed",
+                    "progress": 100,
+                    "step": "Resume analysis complete"
+                })
+            except Exception as ws_err:
+                logger.warning(f"Failed to broadcast completion status: {ws_err}")
+
+            # ── Split Discovery from Ingestion: trigger crawling & matching asynchronously ──
+            async def run_discovery_bg(cand_id: int):
+                from app.core.database import SessionLocal
+                db_session = SessionLocal()
+                try:
+                    from app.workers.discovery_worker import run_discovery_for_candidate
+                    await run_discovery_for_candidate(cand_id)
+                except Exception as bg_discovery_err:
+                    logger.error(f"Background job discovery failed: {bg_discovery_err}")
+                finally:
+                    db_session.close()
+            
+            asyncio.create_task(run_discovery_bg(candidate_id))
+
+        except Exception as pipeline_err:
+            logger.error(f"Resume processing pipeline failed for candidate {candidate_id}: {pipeline_err}")
+            db.rollback()
+            try:
+                # Reload candidate in a clean transaction block to save the error status
+                candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+                if candidate:
+                    candidate.resume_status = "failed"
+                    candidate.resume_progress = 100
+                    candidate.resume_step = "Failed to process resume"
+                    candidate.resume_processing_error = str(pipeline_err)
+                    db.commit()
+                
+                await manager.broadcast_to_user(f"candidate_{candidate_id}", {
+                    "type": "resume_failed",
+                    "candidate_id": candidate_id,
+                    "status": "failed",
+                    "progress": 100,
+                    "step": "Failed to process resume",
+                    "error": str(pipeline_err)
+                })
+            except Exception as save_err:
+                logger.error(f"Failed to persist pipeline failure: {save_err}")
 
     # 3. RESUME SCREENING AGENT
     async def run_resume_screening_agent(self, db: Session, application_id: int):

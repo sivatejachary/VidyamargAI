@@ -20,6 +20,8 @@ export default function CandidateProfile() {
   const [portfolio, setPortfolio] = useState("");
   const [parsedName, setParsedName] = useState("");
   const [parsedEmail, setParsedEmail] = useState("");
+  const [summary, setSummary] = useState("");
+  const [projects, setProjects] = useState("");
   
   // UI States
   const [isEditMode, setIsEditMode] = useState(false);
@@ -38,6 +40,7 @@ export default function CandidateProfile() {
       setPortfolio(data.portfolio || "");
       setParsedName(data.parsed_name || "");
       setParsedEmail(data.parsed_email || "");
+      setSummary(data.summary || "");
 
       // Format education JSON for input form
       if (data.education) {
@@ -66,6 +69,22 @@ export default function CandidateProfile() {
           setExperience(data.experience);
         }
       }
+
+      // Format projects JSON for input form
+      if (data.projects) {
+        try {
+          const parsedProj = JSON.parse(data.projects);
+          if (Array.isArray(parsedProj)) {
+            setProjects(JSON.stringify(parsedProj, null, 2));
+          } else {
+            setProjects(data.projects);
+          }
+        } catch {
+          setProjects(data.projects);
+        }
+      } else {
+        setProjects("");
+      }
     } catch (err) {
       console.error("Failed to load profile:", err);
     }
@@ -89,7 +108,9 @@ export default function CandidateProfile() {
         certifications,
         linkedin,
         github,
-        portfolio
+        portfolio,
+        summary,
+        projects
       });
       setSaveSuccess(true);
       setIsEditMode(false);
@@ -115,6 +136,7 @@ export default function CandidateProfile() {
 
   const eduList = parseJsonArray(education);
   const expList = parseJsonArray(experience);
+  const projectList = parseJsonArray(projects);
   const skillsList = skills ? skills.split(",").map(s => s.trim()).filter(Boolean) : [];
 
   return (
@@ -253,6 +275,18 @@ export default function CandidateProfile() {
           {/* Right Side: Timeline Experience & Education (7/12 width) */}
           <div className="lg:col-span-7 flex flex-col gap-6">
             
+            {/* Professional Summary */}
+            {summary && (
+              <div className="bg-white dark:bg-card border border-gray-200 dark:border-gray-800 rounded-3xl p-6 shadow-sm flex flex-col gap-4">
+                <h3 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider border-b border-gray-100 dark:border-gray-850 pb-2">
+                  Professional Summary
+                </h3>
+                <p className="text-xs text-gray-700 dark:text-gray-250 leading-relaxed whitespace-pre-wrap">
+                  {summary}
+                </p>
+              </div>
+            )}
+
             {/* Experience Timeline */}
             <div className="bg-white dark:bg-card border border-gray-200 dark:border-gray-800 rounded-3xl p-6 shadow-sm flex flex-col gap-5">
               <h3 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider border-b border-gray-100 dark:border-gray-850 pb-2 flex items-center gap-1.5">
@@ -316,6 +350,51 @@ export default function CandidateProfile() {
               )}
             </div>
 
+            {/* Extracted Projects */}
+            {projectList.length > 0 && (
+              <div className="bg-white dark:bg-card border border-gray-200 dark:border-gray-800 rounded-3xl p-6 shadow-sm flex flex-col gap-5">
+                <h3 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider border-b border-gray-100 dark:border-gray-850 pb-2 flex items-center gap-1.5">
+                  <Code2 size={14} className="text-indigo-500" />
+                  <span>Extracted Projects</span>
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {projectList.map((proj: any, idx: number) => (
+                    <div key={idx} className="p-4 rounded-2xl border border-gray-150 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/20 space-y-2 flex flex-col justify-between">
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between items-start gap-3">
+                          <h5 className="text-xs font-bold text-gray-900 dark:text-white leading-snug">{proj.name || "Project Name"}</h5>
+                          {proj.link && (
+                            <a href={proj.link} target="_blank" rel="noopener noreferrer" className="text-10 font-bold text-indigo-500 hover:underline flex items-center gap-1 cursor-pointer shrink-0">
+                              <span>Link</span>
+                              <Globe size={10} />
+                            </a>
+                          )}
+                        </div>
+                        {proj.description && (
+                          <p className="text-11 text-gray-500 leading-relaxed">
+                            {proj.description}
+                          </p>
+                        )}
+                      </div>
+                      {proj.technologies && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {(Array.isArray(proj.technologies) ? proj.technologies : String(proj.technologies).split(",")).map((tech: string, tIdx: number) => {
+                            const clean = tech.trim();
+                            if (!clean) return null;
+                            return (
+                              <span key={tIdx} className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white dark:bg-background border border-gray-200 dark:border-gray-800 text-gray-500">
+                                {clean}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
           </div>
 
         </div>
@@ -350,6 +429,17 @@ export default function CandidateProfile() {
                   className="bg-white dark:bg-card border border-gray-250 dark:border-gray-800 rounded-xl px-4 py-2.5 text-xs text-gray-800 dark:text-white focus:outline-none focus:border-indigo-500"
                 />
               </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-gray-500">Professional Summary</label>
+              <textarea
+                placeholder="A brief overview of your background, experience, and key skills..."
+                value={summary}
+                onChange={(e) => setSummary(e.target.value)}
+                rows={3}
+                className="bg-white dark:bg-card border border-gray-250 dark:border-gray-800 rounded-xl px-4 py-2.5 text-xs text-gray-800 dark:text-white focus:outline-none focus:border-indigo-500 resize-none"
+              />
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -395,6 +485,17 @@ export default function CandidateProfile() {
                   className="bg-white dark:bg-card border border-gray-255 dark:border-gray-800 rounded-xl px-4 py-2.5 text-xs text-gray-800 dark:text-white focus:outline-none focus:border-indigo-500 font-mono resize-none"
                 />
               </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-gray-500">Extracted Projects (JSON Array)</label>
+              <textarea
+                placeholder='[\n  {\n    "name": "Project Name",\n    "description": "Built core features for...",\n    "technologies": "Python, React",\n    "link": "https://github.com/..."\n  }\n]'
+                value={projects}
+                onChange={(e) => setProjects(e.target.value)}
+                rows={5}
+                className="bg-white dark:bg-card border border-gray-255 dark:border-gray-800 rounded-xl px-4 py-2.5 text-xs text-gray-800 dark:text-white focus:outline-none focus:border-indigo-500 font-mono resize-none"
+              />
             </div>
 
             <div className="flex items-center gap-2 border-b border-gray-100 dark:border-gray-850 pb-3 mt-2">

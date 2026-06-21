@@ -51,6 +51,13 @@ class Candidate(Base):
     github = Column(String, nullable=True)
     portfolio = Column(String, nullable=True)
     
+    # Resume ingestion tracking
+    resume_status = Column(String, default="pending")  # pending, uploading, extracting_text, parsing_resume, building_profile, generating_embeddings, completed, failed
+    resume_progress = Column(Integer, default=0)
+    resume_step = Column(String(100), nullable=True)
+    resume_last_processed_at = Column(DateTime, nullable=True)
+    resume_processing_error = Column(Text, nullable=True)
+    
     status = Column(String, default="Registered") # Registered, Complete, Applied, Offer, etc.
     current_step = Column(String, default="Profile")
     created_at = Column(DateTime, default=datetime.utcnow)

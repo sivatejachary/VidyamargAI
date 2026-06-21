@@ -90,6 +90,11 @@ class CandidateResponse(BaseModel):
     parsed_name: Optional[str] = None
     parsed_email: Optional[str] = None
     experience_years: Optional[float] = 0.0
+    resume_status: Optional[str] = "pending"
+    resume_progress: Optional[int] = 0
+    resume_step: Optional[str] = None
+    resume_last_processed_at: Optional[datetime] = None
+    resume_processing_error: Optional[str] = None
     user: UserResponse
 
     class Config:

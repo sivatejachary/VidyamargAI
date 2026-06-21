@@ -1,23 +1,24 @@
-# Auto Apply Agent — Build Tasks
+# Auto Apply Agent — Build# Task List
 
-## Layer 1 — DB Models
-- [x] `models/auto_apply_models.py` — all 9 new tables
-- [x] Extend `UserConsent` in `models/models.py` (+revoked_at, +metadata_json)
-- [x] Extend `CandidateResume` (+resume_type) and `UserPreference` (+auto_apply_* cols)
-
-## Layer 2 — Core Services
-- [x] `services/auto_apply/credential_vault.py`
-- [x] `services/auto_apply/consent_service.py`
-- [x] `services/auto_apply/audit_service.py`
-- [x] `services/auto_apply/platform_health_service.py`
-- [x] `services/auto_apply/platform_rate_limiter.py`
-- [x] `services/auto_apply/requirements_validator.py`
-- [x] `services/auto_apply/resume_match_agent.py`
-- [x] `services/auto_apply/cover_letter_generator.py`
-- [x] `services/auto_apply/screening_answer_engine.py`
-- [x] `services/auto_apply/application_queue.py`
-
-## Layer 3 — Platform Adapters
+- [x] 1. Database schema and models updates
+    - [x] Add columns to `Candidate` class in `backend/app/models/models.py`
+    - [x] Add migrations to `init_db_safely()` in `backend/app/main.py`
+    - [x] Add fields to `CandidateResponse` and `CandidateProfileUpdate` in `backend/app/schemas/schemas.py`
+- [x] 2. Update backend processing logic & WebSockets
+    - [x] Update `/candidates/resume/upload` endpoint in `backend/app/api/routers/resume.py` to support background task initialization
+    - [x] Update parsing pipeline `run_resume_parsing_agent` in `backend/app/services/orchestrator.py` to save steps/progress and broadcast via WebSocket to `candidate_{candidate_id}`
+    - [x] Separate job discovery matching task from resume ingestion completion
+- [x] 3. Update frontend resume builder page
+    - [x] Add `useWebSockets` hook with `candidate_{candidate_id}` connection
+    - [x] Handle real-time WebSocket progress/failure events
+    - [x] Implement adaptive fallback polling
+    - [x] Build the new **Resume Analysis** dashboard section rendering extracted summary, experience, projects, and education
+- [x] 4. Update frontend profile page
+    - [x] Add `summary` and `projects` states and input/display sections
+    - [x] Wire up with `apiService.updateProfile`
+- [x] 5. Verification and tests
+    - [x] Run backend tests
+    - [x] Verify UI updates dynamically
 - [x] `services/auto_apply/adapters/__init__.py` (registry + detect_platform)
 - [x] `services/auto_apply/adapters/base.py`
 - [x] 19 adapter files

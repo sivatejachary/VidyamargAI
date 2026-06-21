@@ -508,6 +508,13 @@ def init_db_safely():
 
             # Add domain, job_type, career_level, all_sources, reasons_json, and stats columns to respective tables
             migration_configs = [
+                ("candidates", [
+                    ("resume_status", "VARCHAR(30) DEFAULT 'pending'"),
+                    ("resume_progress", "INTEGER DEFAULT 0"),
+                    ("resume_step", "VARCHAR(100)"),
+                    ("resume_last_processed_at", "TIMESTAMP"),
+                    ("resume_processing_error", "TEXT")
+                ]),
                 ("candidate_resumes", [
                     ("is_active", "BOOLEAN DEFAULT false"),
                     ("resume_type", "VARCHAR(20) DEFAULT 'general'")

@@ -1,8 +1,9 @@
 "use client";
-
+ 
 import { useEffect, useState, useRef } from "react";
 import { apiService, getBackendBaseUrl } from "@/services/api";
 import { useAuthStore } from "@/store/authStore";
+import { useWebSockets } from "@/hooks/useWebSockets";
 import Link from "next/link";
 import { 
   Download, Trash2, Edit, Eye, RotateCcw, Upload, Plus, 
@@ -212,6 +213,108 @@ export default function ResumeBuilder() {
     }
   };
 
+  // Connect WebSocket for real-time progress updates
+  const clientId = profile?.id ? `candidate_${profile.id}` : "";
+  const { addMessageListener } = useWebSockets(clientId);
+
+  useEffect(() => {
+    if (!clientId) return;
+    
+    const removeListener = addMessageListener((event: any) => {
+      console.log("WebSocket event in ResumeBuilder:", event);
+      if (event.type === "resume_processing") {
+        setUploading(true);
+        // Translate state status to our step indicator
+        let stepNum = 1;
+        if (event.status === "uploading") stepNum = 1;
+        else if (event.status === "extracting_text") stepNum = 2;
+        else if (event.status === "parsing_resume") stepNum = 3;
+        else if (event.status === "building_profile") stepNum = 4;
+        else if (event.status === "generating_embeddings") stepNum = 5;
+        
+        setUploadStep(stepNum);
+        setUploadProgress(event.progress || 0);
+      } else if (event.type === "resume_processed") {
+        setUploadStep(5);
+        setUploadProgress(100);
+        setSuccessMsg("Resume uploaded and parsed successfully! AI profile is ready.");
+        setUploading(false);
+        setTimeout(() => setSuccessMsg(""), 5000);
+        loadDashboardData(true);
+      } else if (event.type === "resume_failed") {
+        setErrorMsg(`Failed to parse resume: ${event.error || "Unknown error"}`);
+        setUploading(false);
+        setTimeout(() => setErrorMsg(""), 5000);
+        loadDashboardData(true);
+      }
+    });
+    
+    return () => {
+      removeListener();
+    };
+  }, [clientId, addMessageListener]);
+
+  // Adaptive Polling Fallback
+  useEffect(() => {
+    if (!profile) return;
+    
+    const isProcessing = ["uploading", "extracting_text", "parsing_resume", "building_profile", "generating_embeddings"].includes(profile.resume_status);
+    if (!isProcessing) return;
+
+    setUploading(true);
+    let stepNum = 1;
+    if (profile.resume_status === "uploading") stepNum = 1;
+    else if (profile.resume_status === "extracting_text") stepNum = 2;
+    else if (profile.resume_status === "parsing_resume") stepNum = 3;
+    else if (profile.resume_status === "building_profile") stepNum = 4;
+    else if (profile.resume_status === "generating_embeddings") stepNum = 5;
+    setUploadStep(stepNum);
+    setUploadProgress(profile.resume_progress || 0);
+
+    let pollInterval = 2000; // start with 2 seconds
+    let elapsed = 0;
+    let timer: NodeJS.Timeout;
+
+    const poll = async () => {
+      try {
+        const prof = await apiService.getProfile();
+        setProfile(prof);
+        setCachedValue("resume_profile", prof);
+        
+        const nextIsProcessing = ["uploading", "extracting_text", "parsing_resume", "building_profile", "generating_embeddings"].includes(prof.resume_status);
+        if (!nextIsProcessing) {
+          setUploading(false);
+          loadDashboardData(true);
+          return;
+        }
+
+        let nextStep = 1;
+        if (prof.resume_status === "uploading") nextStep = 1;
+        else if (prof.resume_status === "extracting_text") nextStep = 2;
+        else if (prof.resume_status === "parsing_resume") nextStep = 3;
+        else if (prof.resume_status === "building_profile") nextStep = 4;
+        else if (prof.resume_status === "generating_embeddings") nextStep = 5;
+        setUploadStep(nextStep);
+        setUploadProgress(prof.resume_progress || 0);
+
+      } catch (err) {
+        console.error("Error in fallback poll:", err);
+      }
+
+      elapsed += pollInterval;
+      if (elapsed >= 60000) {
+        pollInterval = 10000; // throttle to 10 seconds after 1 minute
+      }
+      timer = setTimeout(poll, pollInterval);
+    };
+
+    timer = setTimeout(poll, pollInterval);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [profile?.resume_status]);
+
   useEffect(() => {
     loadDashboardData();
   }, []);
@@ -235,42 +338,18 @@ export default function ResumeBuilder() {
     setErrorMsg("");
     setSuccessMsg("");
 
-    // Simulate progress while uploading and parsing
-    const progressInterval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev < 90) {
-          const next = prev + Math.floor(Math.random() * 5) + 2;
-          // Dynamically adjust steps based on progress
-          if (next >= 20 && next < 40) setUploadStep(2);
-          else if (next >= 40 && next < 65) setUploadStep(3);
-          else if (next >= 65 && next < 85) setUploadStep(4);
-          else if (next >= 85) setUploadStep(5);
-          return Math.min(next, 92);
-        }
-        return prev;
-      });
-    }, 250);
-
     try {
       await apiService.uploadResume(selectedFile);
-      clearInterval(progressInterval);
-      setUploadStep(5);
-      setUploadProgress(100);
-      
-      // Let the user see the 100% completion for a brief moment
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      
-      setSuccessMsg("Resume uploaded and parsed successfully! AI scores are updating...");
-      setTimeout(() => setSuccessMsg(""), 5000);
-      await loadDashboardData(true);
+      // Immediately fetch candidate profile to trigger adaptive polling status loop
+      const prof = await apiService.getProfile();
+      setProfile(prof);
+      setCachedValue("resume_profile", prof);
     } catch (err: any) {
-      clearInterval(progressInterval);
       setErrorMsg(err.message || "Resume upload failed.");
-      setTimeout(() => setErrorMsg(""), 5000);
-    } finally {
       setUploading(false);
       setUploadProgress(0);
       setUploadStep(0);
+      setTimeout(() => setErrorMsg(""), 5000);
     }
   };
 
@@ -1317,6 +1396,178 @@ export default function ResumeBuilder() {
                   </div>
                 </div>
               </Card>
+
+              {/* Row 4: Extracted Resume Analysis & Preview (Summary, Experience, Projects, Education) */}
+              {profile?.resume_status === "completed" && (
+                <Card className="p-6 space-y-6 border border-border bg-card shadow-sm rounded-3xl">
+                  <div className="flex items-center gap-3 border-b border-border pb-4">
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0 border border-indigo-500/20">
+                      <FileText size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-black text-foreground">Resume Analysis & Preview</h3>
+                      <p className="text-xs text-muted-foreground">Extracted resume details synced dynamically to your profile</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-6">
+                    {/* Extracted Summary */}
+                    {editForm.summary && (
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                          Professional Summary
+                        </h4>
+                        <p className="text-xs text-slate-700 dark:text-slate-350 leading-relaxed bg-muted/20 dark:bg-slate-900/20 p-4 rounded-2xl border border-border/55 whitespace-pre-line font-medium">
+                          {editForm.summary}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Skills Grid */}
+                    {skillsList.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                          Skills & Competencies
+                        </h4>
+                        <div className="flex flex-wrap gap-1.5 bg-muted/20 dark:bg-slate-900/20 p-4 rounded-2xl border border-border/55">
+                          {skillsList.map((skill: string, idx: number) => (
+                            <Badge key={idx} variant="outline" className="text-xs font-bold px-2.5 py-1 bg-background border-border text-foreground">
+                              {skill}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Experience Timeline */}
+                    {editForm.experienceList.length > 0 && (
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                          Work Experience Timeline
+                        </h4>
+                        <div className="relative border-l border-border ml-3 pl-6 space-y-6 py-2 bg-muted/10 dark:bg-slate-900/10 p-5 rounded-2xl border border-border/40">
+                          {editForm.experienceList.map((exp: any, index: number) => (
+                            <div key={index} className="relative">
+                              <span className="absolute left-[-29px] top-1 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-indigo-500 border border-indigo-500 shadow-sm shadow-indigo-500/20" />
+                              <div className="space-y-1">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1">
+                                  <h5 className="text-xs font-bold text-foreground">{exp.role || "Role not specified"}</h5>
+                                  {exp.years && (
+                                    <span className="text-10 font-bold px-2 py-0.5 rounded bg-muted text-muted-foreground shrink-0 border border-border/45">
+                                      {exp.years} years
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-11 font-bold text-slate-550 dark:text-slate-400">{exp.company || "Company not specified"}</p>
+                                {exp.description && (
+                                  <p className="text-xs text-muted-foreground leading-relaxed pt-2 whitespace-pre-wrap">
+                                    {exp.description}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Projects Grid */}
+                    {editForm.projectList.length > 0 && (
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                          Projects Grid
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {editForm.projectList.map((proj: any, index: number) => (
+                            <div key={index} className="p-4 rounded-2xl border border-border bg-muted/20 dark:bg-slate-900/20 space-y-2 flex flex-col justify-between">
+                              <div className="space-y-1.5">
+                                <div className="flex justify-between items-start gap-3">
+                                  <h5 className="text-xs font-bold text-foreground leading-snug">{proj.name || "Project Name"}</h5>
+                                  {proj.link && (
+                                    <a href={proj.link} target="_blank" rel="noopener noreferrer" className="text-10 font-bold text-blue-650 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer shrink-0">
+                                      <span>Link</span>
+                                      <Globe size={10} />
+                                    </a>
+                                  )}
+                                </div>
+                                {proj.description && (
+                                  <p className="text-11 text-muted-foreground leading-relaxed">
+                                    {proj.description}
+                                  </p>
+                                )}
+                              </div>
+                              {proj.technologies && (
+                                <div className="flex flex-wrap gap-1 mt-2.5">
+                                  {(Array.isArray(proj.technologies) ? proj.technologies : String(proj.technologies).split(",")).map((tech: string, tIdx: number) => {
+                                    const clean = tech.trim();
+                                    if (!clean) return null;
+                                    return (
+                                      <span key={tIdx} className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-background border border-border text-muted-foreground">
+                                        {clean}
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Education & Certifications Side-by-side */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Education */}
+                      {editForm.educationList.length > 0 && (
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                            Education History
+                          </h4>
+                          <div className="relative border-l border-border ml-3 pl-6 space-y-5 py-2 bg-muted/10 dark:bg-slate-900/10 p-5 rounded-2xl border border-border/40">
+                            {editForm.educationList.map((edu: any, index: number) => (
+                              <div key={index} className="relative">
+                                <span className="absolute left-[-29px] top-1 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-purple-500 border border-purple-500 shadow-sm" />
+                                <div className="space-y-0.5">
+                                  <div className="flex justify-between items-start gap-3">
+                                    <h5 className="text-xs font-bold text-foreground">{edu.degree || "Degree not specified"}</h5>
+                                    {edu.year && (
+                                      <span className="text-10 font-bold px-2 py-0.5 rounded bg-muted text-muted-foreground shrink-0 border border-border/45">
+                                        {edu.year}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-11 text-slate-550 dark:text-slate-400">{edu.school || "School not specified"}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Certifications */}
+                      {editForm.certifications && (
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                            Certifications
+                          </h4>
+                          <div className="flex flex-wrap gap-2 bg-muted/10 dark:bg-slate-900/10 p-5 rounded-2xl border border-border/40 min-h-[90px] content-start">
+                            {editForm.certifications.split(",").map((cert: string, idx: number) => {
+                              const clean = cert.trim();
+                              if (!clean) return null;
+                              return (
+                                <span key={idx} className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-background border border-border text-slate-705 dark:text-slate-300">
+                                  {clean}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                  </div>
+                </Card>
+              )}
 
             </div>
 
