@@ -541,6 +541,14 @@ class AgentOrchestrator:
             candidate.resume_processing_error = None
             db.commit()
 
+            # Invalidate AI Mentor profile cache
+            try:
+                from app.services.mentor_cache import invalidate_mentor_profile
+                invalidate_mentor_profile(candidate.user_id)
+                logger.info(f"Invalidated AI Mentor profile cache for user {candidate.user_id}")
+            except Exception as cache_err:
+                logger.warning(f"Failed to invalidate AI Mentor profile cache: {cache_err}")
+
             # Broadcast completion
             try:
                 await manager.broadcast_to_user(f"candidate_{candidate_id}", {

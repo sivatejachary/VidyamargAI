@@ -57,6 +57,12 @@ async def update_candidate_profile(profile_in: schemas.CandidateProfileUpdate, c
         
     from app.services.resume_cache import invalidate_resume_analysis
     invalidate_resume_analysis(candidate.id)
+    try:
+        from app.services.mentor_cache import invalidate_mentor_profile
+        invalidate_mentor_profile(candidate.user_id)
+        logger.info(f"Invalidated AI Mentor profile cache for user {candidate.user_id}")
+    except Exception as cache_err:
+        logger.warning(f"Failed to invalidate AI Mentor profile cache: {cache_err}")
     db.refresh(candidate)
     
     # Attach experience_years from CandidateProfile

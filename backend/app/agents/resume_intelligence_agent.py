@@ -143,7 +143,6 @@ class ResumeIntelligenceAgent:
         if state.get("skip_processing"):
             return {}
             
-        logger.info(f"[Resume Intelligence] Extracting details using NVIDIA LLM for candidate {state['candidate_id']}")
         prompt = f"""
 You are an expert resume parsing agent. Parse the candidate's resume text and extract structured candidate intelligence.
 Return ONLY a strictly valid JSON object with the following keys and data types. Do NOT wrap in markdown blocks, backticks, or write any explanatory text. Ensure all quotes are escaped properly.
@@ -159,6 +158,7 @@ Keys:
 - industry: string (primary industry, e.g. "Construction", "Software", "Healthcare", "Education")
 - domain: string (primary domain, e.g. "Civil Engineering", "Software Engineering", "Nursing")
 - specialization: string (core focus area)
+- summary: string (professional summary about candidate)
 - skills: array of strings
 - technologies: array of strings
 - tools: array of strings
@@ -189,6 +189,7 @@ Resume Text:
                 "industry": "Other",
                 "domain": "General",
                 "specialization": "Generalist",
+                "summary": "",
                 "skills": [],
                 "technologies": [],
                 "tools": [],
@@ -334,7 +335,7 @@ Candidate Profile:
         candidate = self.db.query(Candidate).filter(Candidate.id == candidate_id).first()
         if candidate:
             candidate.skills = ", ".join(profile_data.get("skills", []))
-            candidate.summary = profile_data.get("summary", "")
+            candidate.summary = profile_data.get("summary") or candidate.summary or ""
             candidate.phone = profile_data.get("phone", candidate.phone)
             candidate.parsed_name = profile_data.get("name", candidate.parsed_name)
             candidate.parsed_email = profile_data.get("email", candidate.parsed_email)
