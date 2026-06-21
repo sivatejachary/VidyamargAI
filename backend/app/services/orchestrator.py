@@ -3,6 +3,7 @@ import logging
 import os
 import requests
 from typing import List, Optional, Tuple, Dict, Any
+from fastapi import BackgroundTasks
 import random
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -270,7 +271,7 @@ async def log_agent_action(db: Session, application_id: int, agent_name: str, st
 class AgentOrchestrator:
     
     # 1. RESUME COLLECTION AGENT
-    async def run_resume_collection_agent(self, db: Session, candidate_id: int, file_content: bytes, filename: str) -> CandidateResume:
+    async def run_resume_collection_agent(self, db: Session, candidate_id: int, file_content: bytes, filename: str, background_tasks: Optional[BackgroundTasks] = None) -> CandidateResume:
         candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
         if not candidate:
             raise Exception("Candidate not found")
@@ -313,12 +314,12 @@ class AgentOrchestrator:
         db.commit()
         
         # Trigger parsing agent asynchronously or synchronously
-        await self.run_resume_parsing_agent(db, candidate_id)
+        await self.run_resume_parsing_agent(db, candidate_id, background_tasks)
         
         return resume
 
     # 2. RESUME PARSING AGENT
-    async def run_resume_parsing_agent(self, db: Session, candidate_id: int):
+    async def run_resume_parsing_agent(self, db: Session, candidate_id: int, background_tasks: Optional[BackgroundTasks] = None):
         candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
         profile = db.query(CandidateProfile).filter(CandidateProfile.candidate_id == candidate_id).order_by(CandidateProfile.created_at.desc()).first()
         
@@ -428,13 +429,28 @@ class AgentOrchestrator:
         except Exception as e:
             logger.error(f"Failed to auto-rebuild profile after resume parsing: {e}")
             
-        # Trigger ResumeIntelligenceAgent asynchronously to compute embeddings, roles, strategy
-        try:
-            from app.agents.resume_intelligence_agent import ResumeIntelligenceAgent as RIA
-            ria = RIA(db, candidate_id)
-            await ria.execute_pipeline()
-        except Exception as e:
-            logger.error(f"Failed to trigger ResumeIntelligenceAgent pipeline: {e}")
+        # Trigger ResumeIntelligenceAgent asynchronously in a background task to compute embeddings, roles, strategy
+        async def run_ria_bg(cand_id: int):
+            from app.core.database import SessionLocal
+            db_session = SessionLocal()
+            try:
+                from app.agents.resume_intelligence_agent import ResumeIntelligenceAgent as RIA
+                ria = RIA(db_session, cand_id)
+                await ria.execute_pipeline()
+            except Exception as bg_err:
+                logger.error(f"Background ResumeIntelligenceAgent failed: {bg_err}")
+            finally:
+                db_session.close()
+
+        if background_tasks:
+            background_tasks.add_task(run_ria_bg, candidate_id)
+        else:
+            try:
+                from app.agents.resume_intelligence_agent import ResumeIntelligenceAgent as RIA
+                ria = RIA(db, candidate_id)
+                await ria.execute_pipeline()
+            except Exception as e:
+                logger.error(f"Failed to trigger ResumeIntelligenceAgent pipeline: {e}")
 
     # 3. RESUME SCREENING AGENT
     async def run_resume_screening_agent(self, db: Session, application_id: int):

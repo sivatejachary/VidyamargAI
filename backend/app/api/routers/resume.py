@@ -23,7 +23,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.post("/candidates/resume")
-async def upload_resume(file: UploadFile = File(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def upload_resume(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     candidate = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate profile not found")
@@ -65,7 +70,7 @@ async def upload_resume(file: UploadFile = File(...), current_user: User = Depen
         )
 
         
-    resume = await orchestrator.run_resume_collection_agent(db, candidate.id, content, file.filename)
+    resume = await orchestrator.run_resume_collection_agent(db, candidate.id, content, file.filename, background_tasks)
     from app.services.resume_cache import invalidate_resume_analysis
     invalidate_resume_analysis(candidate.id)
     return {"message": "Resume uploaded and parsing completed", "url": resume.resume_url}
