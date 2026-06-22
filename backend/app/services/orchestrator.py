@@ -1,4 +1,5 @@
 import json
+import asyncio
 import logging
 import os
 import requests
@@ -539,6 +540,11 @@ class AgentOrchestrator:
             candidate.resume_step = "Resume analysis complete"
             candidate.resume_last_processed_at = datetime.utcnow()
             candidate.resume_processing_error = None
+            
+            # Clear existing matches to force recalculation on the new profile
+            from app.models.pool_models import JobPoolMatch
+            db.query(JobPoolMatch).filter(JobPoolMatch.candidate_id == candidate_id).delete()
+            
             db.commit()
 
             # Invalidate AI Mentor profile cache
@@ -1456,10 +1462,7 @@ def calculate_experience_intervals(exp_json) -> dict:
                 duration_val = role.get("duration") or role.get("years")
                 if duration_val:
                     # Normalize separators like en-dash, em-dash, "to", etc. to standard hyphen
-                    normalized_duration = str(duration_val)
-                    for sep in ["\u2013", "\u2014", "\u2212", " to ", " till ", " until "]:
-                        if sep in normalized_duration:
-                            normalized_duration = normalized_duration.replace(sep, "-")
+                    normalized_duration = re.sub(r'\s*(?:to|till|until|\u2013|\u2014|\u2212|-)\s*', '-', str(duration_val), flags=re.IGNORECASE)
                     
                     if "-" in normalized_duration:
                         parts = normalized_duration.split("-")

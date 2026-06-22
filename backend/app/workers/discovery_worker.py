@@ -30,7 +30,7 @@ from app.services.job_connectors import (
 from app.agents.telegram import TelegramCommunityAgent
 from app.core.config import settings
 from app.agents.verification import VerificationAgent
-from app.services.job_connectors.base import classify_job, LiveJob
+from app.services.job_connectors.base import classify_job, LiveJob, get_canonical_domain
 from app.services.vector_store import vector_store
 import app.services.job_cache as job_cache
 from app.agents.matching_agent import calculate_match_score_and_reasons
@@ -136,17 +136,34 @@ def bulk_insert_or_do_nothing(db: Session, model, mappings: List[dict]):
         db.bulk_insert_mappings(model, mappings)
 
 
-def generate_crawling_queries(roles: List[str], skills: List[str]) -> List[str]:
-    """Backward compatibility fallback wrapper."""
+def generate_crawling_queries(roles: List[str], skills: List[str], experience_years: float = 0.0, locations: List[str] = None) -> List[str]:
+    """Dynamically generates a deduplicated query list from roles, experience, and locations."""
     queries = set()
-    for r in roles[:15]:
-        queries.add(f'"{r}" India')
-        queries.add(f'"{r}" Remote India')
-    if len(queries) < 10:
-        for s in skills[:10]:
-            queries.add(f'"{s} Developer" India')
-            queries.add(f'"{s} Engineer" India')
-    return list(queries)[:30]
+    exp_str = f"{int(experience_years)} years" if experience_years > 0 else ""
+    loc_list = locations if locations else []
+    
+    for r in (roles or []):
+        r_clean = r.strip()
+        if not r_clean:
+            continue
+        queries.add(f"{r_clean} India")
+        queries.add(f"{r_clean} Remote")
+        if exp_str:
+            queries.add(f"{r_clean} {exp_str}")
+        for loc in loc_list:
+            loc_clean = loc.strip()
+            if loc_clean:
+                queries.add(f"{r_clean} {loc_clean}")
+                
+    # Fallback to skills if no queries were generated
+    if not queries:
+        for s in (skills or [])[:10]:
+            s_clean = s.strip()
+            if s_clean:
+                queries.add(f"{s_clean} Developer India")
+                queries.add(f"{s_clean} Engineer India")
+                
+    return list(queries)[:50]
 
 
 def get_crawler_queries_and_skills(db: Session) -> Tuple[List[str], List[str]]:
@@ -530,11 +547,16 @@ async def save_and_match_discovered_jobs(candidate_id: int, candidate_skills: li
 
 def check_rules_match(profile: Any, job: JobPool) -> bool:
     """Rule-Based Filter: Checks Domain, Location, Work Mode, and Experience criteria in-memory (<1ms)."""
+    import re
+    
     # 1. Domain match
     profile_domain = getattr(profile, "domain", "Other")
     job_domain = getattr(job, "domain", "Other")
-    if profile_domain and job_domain and profile_domain != "Other" and job_domain != "Other":
-        if profile_domain.lower() != job_domain.lower():
+    p_canonical = get_canonical_domain(profile_domain)
+    j_canonical = get_canonical_domain(job_domain)
+    
+    if p_canonical != "other" and j_canonical != "other":
+        if p_canonical != j_canonical:
             return False
             
     # 2. Location & Work mode
@@ -549,14 +571,43 @@ def check_rules_match(profile: Any, job: JobPool) -> bool:
     experience_years = getattr(profile, "experience_years", 0.0) or 0.0
     job_exp_str = (getattr(job, "experience", "") or "").lower()
     
+    # Experience parsing helper
+    def parse_exp(exp_str: str) -> tuple:
+        if not exp_str:
+            return (0, 99)
+        if "fresher" in exp_str or "intern" in exp_str or "0-1" in exp_str:
+            return (0, 1)
+        match = re.search(r'(\d+)\s*(?:-|to)\s*(\d+)', exp_str)
+        if match:
+            return (int(match.group(1)), int(match.group(2)))
+        match = re.search(r'(\d+)\s*\+', exp_str)
+        if match:
+            return (int(match.group(1)), 99)
+        match = re.search(r'(\d+)', exp_str)
+        if match:
+            val = int(match.group(1))
+            return (val, val)
+        if "senior" in exp_str:
+            return (5, 99)
+        if "mid" in exp_str:
+            return (2, 5)
+        return (0, 99)
+        
+    min_exp, max_exp = parse_exp(job_exp_str)
+    
+    # Reject if required min experience is more than 5 years above candidate's experience
+    if min_exp > (experience_years + 5.0):
+        return False
+        
+    # Standard matching heuristics
     if "fresher" in job_exp_str or "0-1" in job_exp_str:
         if experience_years > 3.0:
             return False
     elif "5+" in job_exp_str or "senior" in job_exp_str:
-        if experience_years < 4.0:
+        if experience_years < 3.0:
             return False
     elif "3-5" in job_exp_str:
-        if experience_years < 2.0 or experience_years > 7.0:
+        if experience_years < 1.0 or experience_years > 7.0:
             return False
             
     return True
@@ -631,6 +682,17 @@ async def match_pool_jobs_for_candidate(candidate: Candidate, db: Session, candi
         if not skills:
             skills = candidate_skills
             
+        cand_domain = None
+        if profile_rec.parsed_metadata:
+            try:
+                meta = safe_loads(profile_rec.parsed_metadata)
+                if isinstance(meta, dict) and meta.get("domain"):
+                    cand_domain = meta.get("domain")
+            except Exception:
+                pass
+        if not cand_domain:
+            cand_domain = profile_rec.specialization or profile_rec.industry or "Software Engineering"
+
         profile = CandidateProfileData(
             skills=skills,
             experience_years=profile_rec.experience_years or 0.0,
@@ -638,7 +700,7 @@ async def match_pool_jobs_for_candidate(candidate: Candidate, db: Session, candi
             projects=candidate.projects or "[]",
             certifications=[s.strip() for s in (candidate.certifications or "").split(",") if s.strip()],
             summary=candidate.summary or "",
-            domain=profile_rec.specialization or profile_rec.industry or "Software Engineering",
+            domain=cand_domain,
             preferred_roles=preferred_roles,
             locations=[candidate.address] if candidate.address else []
         )
@@ -684,14 +746,15 @@ async def match_pool_jobs_for_candidate(candidate: Candidate, db: Session, candi
     # Fetch Top 10 newest jobs from DB
     newest_jobs = db.query(JobPool).order_by(JobPool.id.desc()).limit(10).all()
     newest_job_ids = [j.id for j in newest_jobs]
-
-    # Merge and deduplicate
+    
+    # Merge and deduplicate in priority order
     shortlist_ids = []
     seen_ids = set()
     for jid in semantic_job_ids + domain_job_ids + newest_job_ids:
         if jid not in seen_ids:
             seen_ids.add(jid)
             shortlist_ids.append(jid)
+            
     shortlist_ids = shortlist_ids[:50]
     
     # Incremental match optimization: filter by new crawler discoveries if specified
@@ -725,7 +788,7 @@ async def match_pool_jobs_for_candidate(candidate: Candidate, db: Session, candi
     if not rule_matched_jobs:
         return
 
-    logger.info(f"Candidate {candidate.id} | LLM scoring for {len(rule_matched_jobs)} shortlisted jobs (out of {len(unmatched_jobs)})")
+    logger.info(f"Candidate {candidate.id} | scoring for {len(rule_matched_jobs)} shortlisted jobs (out of {len(unmatched_jobs)})")
     
     matches = []
     for job in rule_matched_jobs:
@@ -739,14 +802,20 @@ async def match_pool_jobs_for_candidate(candidate: Candidate, db: Session, candi
         score = res["match_score"]
         opp_score = score
         
+        missing_skills_val = res.get("missing_skills") or []
+        if isinstance(missing_skills_val, str):
+            skills_gap_str = missing_skills_val
+        else:
+            skills_gap_str = ",".join(missing_skills_val)
+            
         matches.append({
             "candidate_id": candidate.id,
             "job_pool_id": job.id,
             "match_score": score,
             "opportunity_score": opp_score,
-            "skills_gap": ",".join(res["missing_skills"]),
+            "skills_gap": skills_gap_str,
             "reasons_json": res["reasons"],
-            "should_apply": opp_score >= 70.0,
+            "should_apply": opp_score >= 70.0 and not res.get("rejected", False),
             "created_at": datetime.utcnow()
         })
         
@@ -812,13 +881,29 @@ async def run_discovery_for_candidate(candidate_id: int):
             if candidate.skills:
                 skills.update([s.strip() for s in candidate.skills.split(",") if s.strip()])
                 
+        # Check pool size and freshness
+        jobs_pool_count = db.query(JobPool).count()
+        latest_job = db.query(JobPool).order_by(JobPool.created_at.desc()).first()
+        latest_job_age_hours = 999.0
+        if latest_job and latest_job.created_at:
+            latest_job_age_hours = (datetime.utcnow() - latest_job.created_at).total_seconds() / 3600.0
+
+        skip_live_crawl = False
+        if jobs_pool_count > 500 and latest_job_age_hours < 24:
+            skip_live_crawl = True
+
         # Generate dynamic queries
-        generated_queries = generate_crawling_queries(list(queries), list(skills))
+        exp_years = profile.experience_years if profile else 0.0
+        locations = [candidate.address] if candidate.address else []
+        generated_queries = generate_crawling_queries(list(queries), list(skills), exp_years, locations)
         
         discovered_jobs = []
-        if generated_queries:
+        if generated_queries and not skip_live_crawl:
+            logger.info(f"Candidate {candidate_id} | Job pool is small or stale ({jobs_pool_count} jobs, latest age: {latest_job_age_hours:.1f}h). Triggering live crawl.")
             # Force crawl immediately bypassing scheduled source status
             discovered_jobs = await discover_jobs_network_independent(db, generated_queries, list(skills)[:30], force_run=True)
+        else:
+            logger.info(f"Candidate {candidate_id} | Skipping live crawl (Pool size: {jobs_pool_count}, latest age: {latest_job_age_hours:.1f}h). Matching against existing pool.")
             
         candidate_skills_list = list(skills)
         await save_and_match_discovered_jobs(candidate_id, candidate_skills_list, discovered_jobs)

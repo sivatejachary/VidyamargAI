@@ -341,57 +341,140 @@ def is_fresh_job(posted_date: str) -> bool:
     return True
 
 
+def get_canonical_domain(domain_str: str) -> str:
+    if not domain_str:
+        return "other"
+    d = domain_str.lower().strip()
+    if any(k in d for k in ["civil", "structural", "construction", "geotechnical", "transportation", "environmental", "site engineer", "quantity surveyor"]):
+        return "civil engineering"
+    if any(k in d for k in ["software", "computer science", "it", "web developer", "information technology", "developer", "backend", "frontend", "devops", "full stack", "fullstack", "qa", "quality assurance"]):
+        return "software engineering"
+    if any(k in d for k in ["ai", "ml", "machine learning", "deep learning", "nlp", "computer vision", "data science"]):
+        return "ai/ml"
+    if any(k in d for k in ["mechanical", "cad"]):
+        return "mechanical engineering"
+    if any(k in d for k in ["electrical", "electronics", "embed", "vlsi"]):
+        return "electrical engineering"
+    if any(k in d for k in ["chartered accountant", "auditor", "audit"]):
+        return "chartered accountant"
+    if any(k in d for k in ["accountant", "accounts", "accounting"]):
+        return "accounting"
+    if any(k in d for k in ["finance", "financial", "investment"]):
+        return "finance"
+    if any(k in d for k in ["hr", "human resource", "recruiter", "talent acquisition"]):
+        return "hr"
+    if any(k in d for k in ["marketing", "seo", "branding"]):
+        return "marketing"
+    if any(k in d for k in ["sales", "business development"]):
+        return "sales"
+    if any(k in d for k in ["healthcare", "medical", "clinical", "doctor", "nurse"]):
+        return "healthcare"
+    if any(k in d for k in ["legal", "lawyer", "counsel"]):
+        return "legal"
+    if any(k in d for k in ["operations", "logistics", "supply chain"]):
+        return "operations"
+    return d
+
+
 def classify_job(title: str, description: str, skills: List[str]) -> dict:
-    """Classifies a job into domain, job_type, and career_level."""
+    """Classifies a job into domain, job_type, and career_level using heuristics first, with AI fallback on low confidence."""
     t = (title or "").lower()
     d = (description or "").lower()
     
-    # 1. Domain classification
+    # 1. Domain classification - Heuristic keywords first
     domain = "Other"
+    confidence = 0.0
     
     # AI/ML
     if any(k in t for k in ["ai", "ml", "machine learning", "deep learning", "nlp", "computer vision", "data scientist", "data science"]):
         domain = "AI/ML"
-    # Software Engineering
-    elif any(k in t for k in ["software", "developer", "engineer", "frontend", "backend", "full stack", "fullstack", "devops", "qa", "quality assurance"]):
-        domain = "Software Engineering"
-    # Civil Engineering
-    elif any(k in t for k in ["civil", "site engineer", "quantity surveyor", "structural engineer"]):
+        confidence = 1.0
+    # Civil Engineering (checked BEFORE Software Engineering to prevent matching generic "engineer")
+    elif any(k in t for k in ["civil", "site engineer", "quantity surveyor", "structural engineer", "structural design"]):
         domain = "Civil Engineering"
+        confidence = 1.0
     # Mechanical Engineering
     elif any(k in t for k in ["mechanical", "cad designer", "ansys", "solidworks"]):
         domain = "Mechanical Engineering"
+        confidence = 1.0
     # Electrical Engineering
     elif any(k in t for k in ["electrical", "electronics", "embed", "vlsi"]):
         domain = "Electrical Engineering"
+        confidence = 1.0
+    # Software Engineering
+    elif any(k in t for k in ["software", "developer", "engineer", "frontend", "backend", "full stack", "fullstack", "devops", "qa", "quality assurance"]):
+        domain = "Software Engineering"
+        confidence = 1.0
     # CA / Chartered Accountant
     elif any(k in t for k in ["ca", "chartered accountant", "auditor", "audit manager"]):
         domain = "Chartered Accountant"
+        confidence = 1.0
     # Accounting
     elif any(k in t for k in ["accountant", "accounts", "bookkeeper", "accounting"]):
         domain = "Accounting"
+        confidence = 1.0
     # Finance
     elif any(k in t for k in ["finance", "financial", "investment", "analyst", "treasury"]):
         domain = "Finance"
+        confidence = 1.0
     # HR
     elif any(k in t for k in ["hr", "human resource", "recruiter", "talent acquisition"]):
         domain = "HR"
+        confidence = 1.0
     # Marketing
     elif any(k in t for k in ["marketing", "seo", "branding", "social media"]):
         domain = "Marketing"
+        confidence = 1.0
     # Sales
     elif any(k in t for k in ["sales", "business development", "bde", "account manager"]):
         domain = "Sales"
+        confidence = 1.0
     # Healthcare
     elif any(k in t for k in ["doctor", "nurse", "healthcare", "medical", "clinical"]):
         domain = "Healthcare"
+        confidence = 1.0
     # Legal
     elif any(k in t for k in ["legal", "lawyer", "counsel", "compliance"]):
         domain = "Legal"
+        confidence = 1.0
     # Operations
     elif any(k in t for k in ["operations", "ops", "logistics", "supply chain"]):
         domain = "Operations"
-        
+        confidence = 1.0
+
+    # AI Fallback only if confidence < 0.5 (domain is Other)
+    if confidence < 0.5:
+        try:
+            from app.services.orchestrator import call_nvidia
+            import json
+            
+            prompt = f"""
+You are an expert recruitment system AI. Classify the following job based on its title, description, and required skills.
+Return ONLY a strictly valid JSON object with the following keys. Do NOT wrap in markdown blocks, backticks, or write any explanatory text.
+
+Keys:
+- domain: string (The broad professional domain of the job. Example: "Software Engineering", "AI/ML", "Data Science", "Civil Engineering", "Mechanical Engineering", "Electrical Engineering", "Finance", "HR", "Marketing", "Healthcare", "Construction", "Architecture", "Legal", "Operations", or any other specific industry/domain).
+
+Job Details:
+Title: {title}
+Skills: {", ".join(skills or [])}
+Description: {description[:1000] if description else ""}
+"""
+            res = call_nvidia(prompt)
+            res_clean = res.strip()
+            if res_clean.startswith("```"):
+                lines = res_clean.split("\n")
+                res_clean = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
+            if res_clean.startswith("json"):
+                res_clean = res_clean[4:].strip()
+                
+            data = json.loads(res_clean)
+            ai_domain = data.get("domain")
+            if ai_domain and ai_domain.strip():
+                domain = ai_domain.strip()
+        except Exception as e:
+            logger.warning(f"AI classification fallback failed: {e}")
+
     # 2. Job Type
     job_type = "Full-time"
     if "intern" in t or "internship" in t:
