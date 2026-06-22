@@ -587,9 +587,13 @@ export default function CandidateJobs() {
       setLoading(true);
       setError("");
       setLogs([]);
+      setJobs([]); // Clear current jobs list
       setAgentStatus("running");
       setCachedValue("jobs_agent_status", "running");
       setCachedValue("jobs_agent_logs", []);
+      setCachedValue("jobs_list", []); // Clear cached jobs list
+      setCachedValue("jobs_skill_gaps", []); // Clear cached skill gaps
+      setCachedValue("jobs_recommendations", null); // Clear cached recommendations
       setCurrentPage(1);
       setShowAllOpportunities(false);
 
