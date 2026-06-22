@@ -321,7 +321,31 @@ async def get_jobs(
         saved_job_ids = {str(s.job_id) for s in saved_records}
 
     # --- Generate search queries ---
-    queries = generate_queries(candidate_skills_raw)
+    if search:
+        queries = [
+            f'"{search}" India',
+            f'"{search}" Remote India',
+            f'"{search}" jobs'
+        ]
+    else:
+        profile = None
+        if candidate:
+            profile = db.query(CandidateProfile).filter(CandidateProfile.candidate_id == candidate.id).order_by(CandidateProfile.created_at.desc()).first()
+        
+        roles = []
+        if profile and profile.generated_roles:
+            try:
+                roles = json.loads(profile.generated_roles)
+            except Exception:
+                pass
+        
+        if roles and isinstance(roles, list):
+            queries = []
+            for r in roles[:5]:
+                queries.append(f'"{r}" India')
+                queries.append(f'"{r}" Remote India')
+        else:
+            queries = generate_queries(candidate_skills_raw)
 
     # --- Fan out to all connectors concurrently ---
     import concurrent.futures

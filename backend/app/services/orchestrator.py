@@ -1359,6 +1359,10 @@ class AgentOrchestrator:
                 profile = CandidateProfile(candidate_id=candidate.id)
                 db.add(profile)
             
+            profile.experience_years = exp_years
+            profile.generated_roles = json.dumps(preferred_roles)
+            profile.specialization = subdomains[0] if subdomains else ""
+            profile.current_role = preferred_roles[0] if preferred_roles else ""
             profile.parsed_metadata = json.dumps(profile_data)
             db.commit()
             logger.info(f"Candidate profile rebuilt successfully for candidate {candidate.id}")
@@ -1543,107 +1547,50 @@ def calculate_experience_intervals(exp_json) -> dict:
 
 
 def classify_candidate_domain(skills: List[str], summary: str) -> dict:
-    """Classifies candidate profile into domain, confidence, subdomains, and preferred roles."""
-    import re
-    skills_lower = [s.lower().strip() for s in skills]
-    text = " ".join(skills_lower) + " " + (summary or "").lower()
+    """Classifies candidate profile into domain, confidence, subdomains, and preferred roles using NVIDIA LLM."""
+    import json
     
-    domain_keywords = {
-        "AI/ML": ["ai", "ml", "machine learning", "deep learning", "nlp", "computer vision", "tensorflow", "pytorch", "keras", "data science", "data scientist", "llm", "transformers"],
-        "Civil Engineering": ["civil", "site engineer", "quantity surveyor", "structural engineer", "autocad", "concrete", "structural design"],
-        "Mechanical Engineering": ["mechanical", "cad designer", "ansys", "solidworks", "catia", "cad/cam", "thermodynamics"],
-        "Electrical Engineering": ["electrical", "electronics", "embed", "vlsi", "microcontroller", "arduino", "circuits"],
-        "Chartered Accountant": ["ca", "chartered accountant", "auditor", "audit manager", "taxation", "gst audit"],
-        "Accounting": ["accountant", "accounts", "bookkeeper", "accounting", "tally", "gst", "bookkeeping"],
-        "Finance": ["finance", "financial", "investment", "analyst", "treasury", "portfolio manager", "corporate finance"],
-        "HR": ["hr", "human resource", "recruiter", "talent acquisition", "payroll", "employee relations"],
-        "Marketing": ["marketing", "seo", "branding", "social media", "digital marketing", "adwords", "copywriting"],
-        "Sales": ["sales", "business development", "bde", "account manager", "inside sales", "cold calling"],
-        "Healthcare": ["doctor", "nurse", "healthcare", "medical", "clinical", "mbbs", "pharma"],
-        "Legal": ["legal", "lawyer", "counsel", "compliance", "advocate", "litigation"],
-        "Operations": ["operations", "ops", "logistics", "supply chain", "inventory", "operations management"]
-    }
-    
-    scores = {}
-    for dom, keywords in domain_keywords.items():
-        score = 0
-        for kw in keywords:
-            # Use word boundaries for short keywords to prevent false positive substring matches
-            if len(kw) <= 3:
-                pattern = r'\b' + re.escape(kw) + r'\b'
-            else:
-                pattern = re.escape(kw)
-            matches = len(re.findall(pattern, text))
-            if matches > 0:
-                score += matches * 10
-        if score > 0:
-            scores[dom] = score
+    prompt = f"""
+You are an expert recruitment AI. Analyze the candidate's skills and professional summary, and classify their profile.
+Return ONLY a strictly valid JSON object with the following keys. Do NOT wrap in markdown blocks, backticks, or write any explanatory text.
+
+Keys:
+- domain: string (The primary professional domain. Examples: "Software Engineering", "Civil Engineering", "Mechanical Engineering", "Chartered Accountant", "Finance", "HR", "Marketing", "Healthcare", "Legal", "Operations", or any other specific industry/domain).
+- subdomains: list of strings (3-4 core sub-specializations based on skills/summary)
+- preferred_roles: list of strings (3-4 specific job titles / roles they are qualified for)
+- confidence: integer (0-100 score of how confident you are in this classification)
+- career_level: string (e.g. "Entry-level", "Mid-level", "Senior", "Lead/Management")
+
+Profile Details:
+Skills: {", ".join(skills) if skills else "None"}
+Summary: {summary if summary else "None"}
+"""
+    try:
+        messages = [{"role": "user", "content": prompt}]
+        res = call_nvidia(messages)
+        res_clean = res.strip()
+        if res_clean.startswith("```"):
+            lines = res_clean.split("\n")
+            res_clean = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
+        if res_clean.startswith("json"):
+            res_clean = res_clean[4:].strip()
             
-    if not scores:
-        domain = "Software Engineering"
-        confidence = 85
-        subdomains = ["Full Stack Development", "Backend Development", "Frontend Development", "DevOps"]
-        preferred_roles = ["Software Engineer", "Full Stack Developer", "Backend Developer"]
-        career_level = "Mid-level"
-    else:
-        sorted_domains = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-        domain = sorted_domains[0][0]
-        
-        total_score = sum(scores.values())
-        highest_score = sorted_domains[0][1]
-        
-        confidence = int(min(98, max(60, (highest_score / total_score) * 100)))
-        career_level = "Mid-level"
-        
-        if domain == "AI/ML":
-            subdomains = ["Data Science", "Deep Learning", "NLP", "Computer Vision"]
-            preferred_roles = ["AI Engineer", "ML Engineer", "Data Scientist"]
-        elif domain == "Civil Engineering":
-            subdomains = ["Structural Engineering", "Construction Management", "Site Engineering"]
-            preferred_roles = ["Civil Engineer", "Site Engineer", "Quantity Surveyor"]
-        elif domain == "Mechanical Engineering":
-            subdomains = ["Product Design", "Thermal Engineering", "Manufacturing"]
-            preferred_roles = ["Mechanical Engineer", "Design Engineer", "Production Engineer"]
-        elif domain == "Electrical Engineering":
-            subdomains = ["Embedded Systems", "Power Systems", "VLSI Design"]
-            preferred_roles = ["Electrical Engineer", "Embedded Engineer", "VLSI Engineer"]
-        elif domain == "Chartered Accountant":
-            subdomains = ["Direct Tax", "Indirect Tax", "Statutory Audit", "Internal Audit"]
-            preferred_roles = ["Chartered Accountant", "Tax Consultant", "Auditor"]
-        elif domain == "Accounting":
-            subdomains = ["Financial Accounting", "Taxation", "Accounts Payable/Receivable"]
-            preferred_roles = ["Accountant", "Finance Executive", "Accounts Analyst"]
-        elif domain == "Finance":
-            subdomains = ["Investment Banking", "Corporate Finance", "Financial Analysis"]
-            preferred_roles = ["Finance Manager", "Financial Analyst", "Investment Analyst"]
-        elif domain == "HR":
-            subdomains = ["Recruitment", "HR Operations", "Employee Relations"]
-            preferred_roles = ["HR Generalist", "Recruiter", "Talent Acquisition Specialist"]
-        elif domain == "Marketing":
-            subdomains = ["Digital Marketing", "Brand Management", "SEO/SEM"]
-            preferred_roles = ["Marketing Manager", "SEO Specialist", "Digital Marketing Executive"]
-        elif domain == "Sales":
-            subdomains = ["Inside Sales", "Enterprise Sales", "Business Development"]
-            preferred_roles = ["Sales Manager", "Business Development Executive", "Account Executive"]
-        elif domain == "Healthcare":
-            subdomains = ["General Medicine", "Nursing", "Hospital Administration"]
-            preferred_roles = ["Medical Practitioner", "Staff Nurse", "Healthcare Administrator"]
-        elif domain == "Legal":
-            subdomains = ["Corporate Law", "Litigation", "Compliance"]
-            preferred_roles = ["Legal Counsel", "Corporate Lawyer", "Compliance Officer"]
-        elif domain == "Operations":
-            subdomains = ["Supply Chain Management", "Logistics", "Operations Management"]
-            preferred_roles = ["Operations Manager", "Logistics Coordinator", "Supply Chain Analyst"]
-        else:
-            subdomains = ["Full Stack Development", "Backend Development", "Frontend Development"]
-            preferred_roles = ["Software Engineer", "Full Stack Developer"]
-            
-    return {
-        "domain": domain,
-        "confidence": confidence,
-        "subdomains": subdomains,
-        "preferred_roles": preferred_roles,
-        "career_level": career_level
-    }
+        data = json.loads(res_clean)
+        return {
+            "domain": data.get("domain", "Software Engineering"),
+            "confidence": int(data.get("confidence", 85)),
+            "subdomains": data.get("subdomains", ["Full Stack Development"]),
+            "preferred_roles": data.get("preferred_roles", ["Software Engineer"]),
+            "career_level": data.get("career_level", "Mid-level")
+        }
+    except Exception as e:
+        logger.warning(f"AI candidate domain classification failed: {e}. Falling back to default.")
+        return {
+            "domain": "Software Engineering",
+            "confidence": 80,
+            "subdomains": ["Full Stack Development"],
+            "preferred_roles": ["Software Engineer"],
+            "career_level": "Mid-level"
+        }
 
 orchestrator = AgentOrchestrator()

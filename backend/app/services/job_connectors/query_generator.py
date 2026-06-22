@@ -78,7 +78,36 @@ def generate_queries(skills: List[str], locations: List[str] = None) -> List[str
         return [f"{r} India" for r in FALLBACK_ROLES]
 
     if not locations:
-        locations = ["India", "Bangalore India", "Hyderabad India", "Remote India"]
+        locations = ["India", "Remote India"]
+
+    # Try to use NVIDIA/Gemini LLM to generate generic professional roles for these skills dynamically
+    try:
+        from app.services.orchestrator import call_nvidia
+        import json
+        
+        prompt = f"""
+You are an expert recruitment AI. Given a list of professional skills, generate 3-5 standard professional job titles / designations that typically require these skills.
+Return ONLY a strictly valid JSON list of strings, e.g. ["Role 1", "Role 2", ...]. Do NOT wrap in markdown blocks, backticks, or write any explanatory text.
+
+Skills: {", ".join(skills)}
+"""
+        res = call_nvidia(prompt)
+        res_clean = res.strip()
+        if res_clean.startswith("```"):
+            lines = res_clean.split("\n")
+            res_clean = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
+        if res_clean.startswith("json"):
+            res_clean = res_clean[4:].strip()
+        roles = json.loads(res_clean)
+        if isinstance(roles, list) and roles:
+            queries = set()
+            for role in roles:
+                for loc in locations[:2]:
+                    queries.add(f'"{role}" {loc} jobs')
+                    queries.add(f'"{role}" {loc}')
+            return list(queries)[:12]
+    except Exception as e:
+        logger.warning(f"AI query generation fallback failed: {e}. Using heuristics.")
 
     queries = set()
 

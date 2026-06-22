@@ -340,18 +340,13 @@ class JobSupervisorAgent:
                 continue
                 
             # 2. Industry/Domain mismatch check
-            job_title = j.get("title", "").lower()
-            job_desc = j.get("description", "").lower()
+            from app.services.job_connectors.base import get_canonical_domain
+            job_domain = j.get("domain", "Other")
             
-            is_swe_candidate = "software" in cand_domain or "developer" in cand_domain or "engineer" in cand_domain
-            is_swe_job = any(kw in job_title or kw in job_desc for kw in ["software", "developer", "programmer", "coding", "fullstack", "backend", "frontend"])
+            cand_canon = get_canonical_domain(cand_domain)
+            job_canon = get_canonical_domain(job_domain)
             
-            is_civil_candidate = "civil" in cand_domain or "construction" in cand_domain or "site engineer" in cand_domain
-            is_civil_job = any(kw in job_title or kw in job_desc for kw in ["civil", "construction", "site engineer", "structural engineer", "quantity surveyor"])
-            
-            if is_swe_candidate and is_civil_job and not is_swe_job:
-                continue
-            if is_civil_candidate and is_swe_job and not is_civil_job:
+            if cand_canon != "other" and job_canon != "other" and cand_canon != job_canon:
                 continue
                 
             # 3. Location exclusion checks
