@@ -522,6 +522,31 @@ async def start_job_agent_run(
     candidate = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
+
+    # Clear existing match data to trigger fresh matching
+    try:
+        from app.models.pool_models import JobPoolMatch
+        from app.models.models import JobMatch
+        db.query(JobPoolMatch).filter(JobPoolMatch.candidate_id == candidate.id).delete()
+        db.query(JobMatch).filter(JobMatch.candidate_id == candidate.id).delete()
+        db.commit()
+        logger.info(f"Truncated existing job match data for candidate {candidate.id} on agent rerun")
+    except Exception as d_err:
+        logger.error(f"Failed to truncate matches on rerun: {d_err}")
+        db.rollback()
+
+    # Clear user-specific job and search caches
+    try:
+        import app.services.job_cache as job_cache
+        await job_cache.invalidate(current_user.id)
+        await job_cache.invalidate_jobs_pool(candidate.id)
+        await job_cache.invalidate_candidate_profile(candidate.id)
+        await job_cache.invalidate_skill_gap(candidate.id)
+        await job_cache.invalidate_generated_roles(candidate.id)
+        await job_cache.invalidate_search_strategy(candidate.id)
+        logger.info(f"Invalidated job caches for candidate {candidate.id} on agent rerun")
+    except Exception as c_err:
+        logger.error(f"Failed to invalidate caches on rerun: {c_err}")
         
     # Check if there is an active run
     active_run = db.query(JobAgentRun).filter(
