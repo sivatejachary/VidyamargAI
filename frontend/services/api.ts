@@ -1010,11 +1010,11 @@ export const apiService = {
     return res.json();
   },
 
-  async triggerAgentRun(runType: string = "full") {
+  async triggerAgentRun(runType: string = "full", fast: boolean = false) {
     const res = await customFetch(`${getBaseUrl()}/job-agent/run`, {
       method: "POST",
       headers: { ...getHeaders(), "Content-Type": "application/json" },
-      body: JSON.stringify({ run_type: runType }),
+      body: JSON.stringify({ run_type: runType, fast }),
     });
     if (!res.ok) throw new Error((await res.json()).detail || "Failed to trigger run");
     return res.json();

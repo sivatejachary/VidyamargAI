@@ -52,6 +52,7 @@ logger = logging.getLogger("app.api.job_agent")
 
 class AgentRunRequest(BaseModel):
     run_type: str = "full"  # full, discovery, matching, resume
+    fast: Optional[bool] = False
 
 
 class MatchReactionRequest(BaseModel):
@@ -222,16 +223,34 @@ async def trigger_agent_run(
     if recent_run:
         return {"message": "Agent is already running", "run_id": recent_run.id}
 
-    background_tasks.add_task(_run_agent_background, candidate.id, request.run_type, "manual", db)
+    if request.fast:
+        from app.agents.career_supervisor import career_supervisor
+        summary = career_supervisor.run(
+            db=db,
+            candidate_id=candidate.id,
+            run_type=request.run_type,
+            trigger="manual",
+            fast=True,
+        )
+        return {
+            "message": f"Agent {request.run_type} run completed instantly in fast mode",
+            "candidate_id": candidate.id,
+            "run_type": request.run_type,
+            "fast": True,
+            "summary": summary,
+        }
+
+    background_tasks.add_task(_run_agent_background, candidate.id, request.run_type, "manual", db, False)
 
     return {
         "message": f"Agent {request.run_type} run triggered",
         "candidate_id": candidate.id,
         "run_type": request.run_type,
+        "fast": False,
     }
 
 
-def _run_agent_background(candidate_id: int, run_type: str, trigger: str, db: Session):
+def _run_agent_background(candidate_id: int, run_type: str, trigger: str, db: Session, fast: bool = False):
     """Background task to run the career supervisor pipeline."""
     try:
         from app.core.database import SessionLocal
@@ -242,6 +261,7 @@ def _run_agent_background(candidate_id: int, run_type: str, trigger: str, db: Se
                 candidate_id=candidate_id,
                 run_type=run_type,
                 trigger=trigger,
+                fast=fast,
             )
     except Exception as e:
         logger.error(f"Background agent run failed for candidate {candidate_id}: {e}", exc_info=True)

@@ -573,6 +573,7 @@ export default function JobAgentPage() {
   const [careerData, setCareerData] = useState<any>(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [fastMode, setFastMode] = useState(false);
 
   // Load dashboard
   const loadDashboard = useCallback(async () => {
@@ -662,7 +663,7 @@ export default function JobAgentPage() {
   const handleRunAgent = async () => {
     setRunningAgent(true);
     try {
-      await apiClient.triggerAgentRun("full");
+      await apiClient.triggerAgentRun("full", fastMode);
       setTimeout(() => {
         loadDashboard();
         loadJobs(1);
@@ -849,7 +850,18 @@ export default function JobAgentPage() {
             </div>
           )}
 
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-3 ml-auto">
+            {/* Fast Mode Toggle */}
+            <label className="flex items-center gap-2 text-xs select-none cursor-pointer bg-white/5 border border-white/10 rounded-lg py-1.5 px-3 hover:bg-white/10 transition-colors">
+              <input
+                type="checkbox"
+                checked={fastMode}
+                onChange={(e) => setFastMode(e.target.checked)}
+                className="rounded border-slate-700 bg-slate-900 text-violet-600 focus:ring-violet-500"
+              />
+              <span className="font-medium text-slate-300">⚡ Instant Mode</span>
+            </label>
+
             {/* Refresh agent */}
             <button
               id="run-agent-btn"

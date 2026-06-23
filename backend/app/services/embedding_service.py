@@ -82,7 +82,7 @@ class EmbeddingService:
                     "input": [text],
                     "input_type": "query"
                 }
-                resp = await client.post(url, json=payload)
+                resp = await client.post(url, headers=headers, json=payload)
                 if resp.status_code == 200:
                     data = resp.json()
                     embedding_values = data.get("data", [{}])[0].get("embedding", [])
