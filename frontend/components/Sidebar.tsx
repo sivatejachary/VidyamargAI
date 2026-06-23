@@ -132,10 +132,8 @@ export default function Sidebar({ portal }: SidebarProps) {
   ];
 
   const adminLinks = [
-    { name: "Recruit Overview", href: "/admin", icon: LayoutDashboard },
-    { name: "Candidates", href: "/admin/candidates", icon: Users },
-    { name: "Pipeline Flow", href: "/admin/pipeline", icon: GitFork },
-    { name: "AI Agent Orchestrator", href: "/admin/agents", icon: Cpu },
+    { name: "Overview", href: "/admin", icon: LayoutDashboard },
+    { name: "Students", href: "/admin/candidates", icon: Users },
     { name: "Course Management", href: "/admin/courses", icon: BookOpen }
   ];
 

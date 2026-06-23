@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Response, BackgroundTasks, WebSocket, WebSocketDisconnect, Request
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Response, BackgroundTasks, WebSocket, WebSocketDisconnect, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any, Union, Tuple
 from datetime import datetime, timedelta
@@ -65,6 +65,62 @@ def get_admin_dashboard_metrics(db: Session = Depends(get_db), admin: User = Dep
             }
         }
     }
+
+
+@router.get("/admin/candidates")
+def get_admin_candidates(db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    candidates = db.query(Candidate).order_by(Candidate.created_at.desc()).all()
+    results = []
+    for c in candidates:
+        user = c.user
+        
+        # Get active resume
+        active_resume = db.query(CandidateResume).filter(
+            CandidateResume.candidate_id == c.id,
+            CandidateResume.is_active == True
+        ).first()
+        
+        # Or fall back to latest resume
+        if not active_resume:
+            active_resume = db.query(CandidateResume).filter(
+                CandidateResume.candidate_id == c.id
+            ).order_by(CandidateResume.uploaded_at.desc()).first()
+
+        results.append({
+            "id": c.id,
+            "user_id": c.user_id,
+            "full_name": user.full_name if user else c.parsed_name or "Unknown",
+            "email": user.email if user else c.parsed_email or "Unknown",
+            "phone": c.phone,
+            "address": c.address,
+            "status": c.status,
+            "education": c.education,
+            "experience": c.experience,
+            "skills": c.skills,
+            "projects": c.projects,
+            "certifications": c.certifications,
+            "summary": c.summary,
+            "achievements": c.achievements,
+            "languages": c.languages,
+            "linkedin": c.linkedin,
+            "github": c.github,
+            "portfolio": c.portfolio,
+            "resume_status": c.resume_status,
+            "resume_progress": c.resume_progress,
+            "resume_step": c.resume_step,
+            "hackathon_team": c.hackathon_team,
+            "assigned_mentor": c.assigned_mentor,
+            "hackathon_problem": c.hackathon_problem,
+            "hackathon_members": c.hackathon_members,
+            "created_at": c.created_at.isoformat() if c.created_at else None,
+            "resume": {
+                "id": active_resume.id,
+                "resume_url": active_resume.resume_url,
+                "uploaded_at": active_resume.uploaded_at.isoformat() if active_resume.uploaded_at else None,
+                "resume_type": active_resume.resume_type
+            } if active_resume else None
+        })
+    return results
 
 
 # ----------------- STORAGE SERVING & LISTING -----------------

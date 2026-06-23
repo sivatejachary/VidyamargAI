@@ -196,29 +196,7 @@ export default function Messages() {
         });
       }
 
-      // 3. Hiring teams from applications
-      try {
-        const apps = await apiService.getApplications();
-        if (apps && apps.length > 0) {
-          const jobs = await apiService.getJobs();
-          apps.forEach((app: any) => {
-            const job = jobs.find((j: any) => j.id === app.job_id);
-            if (job) {
-              const initials = job.title.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
-              items.push({
-                id: `hiring_team_${app.id}`,
-                name: `${job.title} Hiring Team`,
-                avatar: initials,
-                category: "companies",
-                iconBg: "bg-blue-100 dark:bg-blue-950/40",
-                iconText: "text-blue-600 dark:text-blue-400",
-              });
-            }
-          });
-        }
-      } catch (err) {
-        console.error("Failed to load hiring teams:", err);
-      }
+
 
       // 4. Support — always present, at bottom
       items.push({

@@ -300,11 +300,13 @@ export const apiService = {
     return res.json();
   },
 
-  async getRankings() {
-    const res = await customFetch(`${getBaseUrl()}/admin/rankings`, {
+
+
+  async getCandidates() {
+    const res = await customFetch(`${getBaseUrl()}/admin/candidates`, {
       headers: getHeaders(),
     });
-    if (!res.ok) throw new Error("Failed to fetch rankings");
+    if (!res.ok) throw new Error("Failed to fetch candidates");
     return res.json();
   },
 

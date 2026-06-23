@@ -3,40 +3,25 @@
 import { useEffect, useState } from "react";
 import { apiService } from "@/services/api";
 import { useWebSockets } from "@/hooks/useWebSockets";
-import { Users, ClipboardList, CheckCircle, XCircle, Video, FileSignature, Terminal, Sparkles } from "lucide-react";
-import dynamic from "next/dynamic";
-
-const FunnelChart = dynamic(
-  () => import("@/components/admin/AdminCharts").then((m) => m.FunnelChart),
-  { ssr: false, loading: () => <div className="h-64 animate-pulse bg-gray-800/40 rounded-xl" /> }
-);
-
+import { Users, FileText, Terminal, Sparkles, Activity, Video } from "lucide-react";
 
 export default function AdminDashboard() {
   const [metrics, setMetrics] = useState<any>({
     total_candidates: 0,
-    total_applications: 0,
-    shortlisted: 0,
-    rejected: 0,
-    interviewed: 0,
-    offers_sent: 0,
-    offers_accepted: 0
+    total_resumes: 0,
+    parsing_efficiency: "0.0%"
   });
-  const [funnel, setFunnel] = useState<any[]>([]);
-  const [fraudTrends, setFraudTrends] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
   const [videoAnalytics, setVideoAnalytics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // Connect websocket for live logs & proctor alerts
+  // Connect websocket for live logs & system alerts
   const { addMessageListener } = useWebSockets("admin");
 
   const loadData = async () => {
     try {
       const data = await apiService.getAdminMetrics();
       setMetrics(data.metrics);
-      setFunnel(data.funnel);
-      setFraudTrends(data.fraud_trends);
       setLogs(data.logs);
       setVideoAnalytics(data.video_analytics);
     } catch (err) {
@@ -51,7 +36,7 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
-    // Listen to real-time logs from agent runs
+    // Listen to real-time logs from system runs
     const removeListener = addMessageListener((msg: any) => {
       if (msg.type === "agent_log") {
         setLogs((prev) => [
@@ -61,7 +46,7 @@ export default function AdminDashboard() {
         loadData(); // Reload numbers
       } else if (msg.type === "proctor_alert") {
         setLogs((prev) => [
-          { action: "Proctor Alert", details: `${msg.data.candidate_name}: ${msg.data.event_type} - ${msg.data.details}`, time: msg.data.timestamp },
+          { action: "System Alert", details: `${msg.data.candidate_name}: ${msg.data.event_type} - ${msg.data.details}`, time: msg.data.timestamp },
           ...prev.slice(0, 14)
         ]);
         loadData();
@@ -70,9 +55,6 @@ export default function AdminDashboard() {
 
     return () => removeListener();
   }, [addMessageListener]);
-
-
-
 
   if (loading) {
     return (
@@ -88,34 +70,30 @@ export default function AdminDashboard() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-800 pb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight flex items-center gap-2">
-            <span>Recruiter Admin Portal</span>
+            <span>Vidyamarg Admin Dashboard</span>
             <Sparkles size={20} className="text-purple-400" />
           </h1>
           <p className="text-sm text-gray-400 mt-1">
-            Autonomous recruitment execution logs, metrics summaries, and applicant funnels.
+            System administration metrics, candidate resume processing status, and LMS content distribution logs.
           </p>
         </div>
       </div>
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[
-          { label: "Total Candidates", value: metrics.total_candidates, icon: Users, color: "text-purple-400" },
-          { label: "Applications", value: metrics.total_applications, icon: ClipboardList, color: "text-blue-400" },
-          { label: "Shortlisted", value: metrics.shortlisted, icon: CheckCircle, color: "text-emerald-400" },
-          { label: "Rejected", value: metrics.rejected, icon: XCircle, color: "text-red-400" },
-          { label: "Interviewed", value: metrics.interviewed, icon: Video, color: "text-indigo-400" },
-          { label: "Offers Sent", value: metrics.offers_sent, icon: FileSignature, color: "text-pink-400" },
-          { label: "Offers Accepted", value: metrics.offers_accepted, icon: CheckCircle, color: "text-emerald-400" }
+          { label: "Registered Students", value: metrics.total_candidates, icon: Users, color: "text-purple-400" },
+          { label: "Resumes Uploaded", value: metrics.total_resumes, icon: FileText, color: "text-blue-400" },
+          { label: "AI Parsing Efficiency", value: metrics.parsing_efficiency, icon: Activity, color: "text-emerald-400" }
         ].map((c, i) => {
           const Icon = c.icon;
           return (
-            <div key={i} className="glass-panel p-4 rounded-xl border border-gray-800 flex flex-col justify-between gap-3 bg-card/40">
+            <div key={i} className="glass-panel p-6 rounded-xl border border-gray-800 flex flex-col justify-between gap-4 bg-card/40">
               <div className="flex justify-between items-center">
-                <span className="text-10 text-gray-400 font-bold uppercase tracking-wider">{c.label}</span>
-                <Icon size={14} className={c.color} />
+                <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">{c.label}</span>
+                <Icon size={20} className={c.color} />
               </div>
-              <span className="text-xl font-bold text-white">{c.value}</span>
+              <span className="text-3xl font-bold text-white">{c.value}</span>
             </div>
           );
         })}
@@ -126,10 +104,10 @@ export default function AdminDashboard() {
         <div className="glass-panel p-6 rounded-2xl border border-gray-800 bg-card/40 flex flex-col gap-4">
           <div className="flex justify-between items-center">
             <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              <Video size={16} className="text-indigo-405" />
+              <Video size={16} className="text-indigo-400" />
               <span>Video Playback & CDN Performance</span>
             </h2>
-            <span className="text-[10px] font-mono text-gray-405 bg-gray-900 border border-gray-800 px-2 py-0.5 rounded uppercase font-bold tracking-wider">
+            <span className="text-[10px] font-mono text-gray-400 bg-gray-900 border border-gray-800 px-2 py-0.5 rounded uppercase font-bold tracking-wider">
               Live Edge CDN metrics
             </span>
           </div>
@@ -145,46 +123,12 @@ export default function AdminDashboard() {
               <div key={i} className="p-4 rounded-xl border border-gray-800/40 bg-muted/20 flex flex-col justify-between gap-1">
                 <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">{stat.label}</span>
                 <span className={`text-lg font-black ${stat.status}`}>{stat.value}</span>
-                <span className="text-[9px] text-gray-500 font-medium">{stat.desc}</span>
+                <span className="text-[9px] text-gray-550 font-medium">{stat.desc}</span>
               </div>
             ))}
           </div>
         </div>
       )}
-
-
-      {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Funnel Chart */}
-        <div className="lg:col-span-2 glass-panel p-6 rounded-2xl border border-gray-800 flex flex-col gap-4 bg-card/40">
-          <h2 className="text-sm font-bold text-white">Recruitment Funnel Conversion</h2>
-          <div className="h-64 mt-2">
-            <FunnelChart data={funnel} />
-          </div>
-
-        </div>
-
-        {/* Fraud Trends Panel */}
-        <div className="glass-panel p-6 rounded-2xl border border-gray-800 bg-muted/40 flex flex-col gap-4">
-          <h2 className="text-sm font-bold text-white">AI Proctoring Flags</h2>
-          <div className="flex-1 flex flex-col justify-center gap-3">
-            {fraudTrends.length === 0 ? (
-              <div className="text-center py-12 text-gray-500 text-xs">No fraud logs registered.</div>
-            ) : (
-              fraudTrends.map((t, i) => (
-                <div key={i} className="flex justify-between items-center text-xs p-3 rounded-xl border border-gray-800/40 bg-muted/40">
-                  <span className="text-gray-400 capitalize">{t.event.replace("_", " ")}</span>
-                  <span className="font-bold text-red-400 bg-red-950/20 px-2 py-0.5 rounded border border-red-900/30">
-                    {t.count} flags
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-      </div>
 
       {/* Live Logs Terminal */}
       <div className="glass-panel p-6 rounded-2xl border border-gray-800 bg-card/40 flex flex-col gap-4">
@@ -193,9 +137,9 @@ export default function AdminDashboard() {
           <span>Live Orchestration execution logs</span>
         </h2>
         
-        <div className="h-52 overflow-y-auto bg-background border border-gray-800 rounded-xl p-4 font-mono text-11 flex flex-col gap-2.5">
+        <div className="h-52 overflow-y-auto bg-background border border-gray-800 rounded-xl p-4 font-mono text-xs flex flex-col gap-2.5">
           {logs.length === 0 ? (
-            <span className="text-gray-600 italic">Logs stream starting... Waiting for agent triggers.</span>
+            <span className="text-gray-600 italic">Logs stream starting... Waiting for system events.</span>
           ) : (
             logs.map((log, i) => (
               <div key={i} className="flex gap-4 items-start text-gray-400 hover:text-white transition-colors">
