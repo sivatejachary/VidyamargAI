@@ -46,45 +46,4 @@ def _init_default_registry():
     except ImportError as e:
         logger.warning(f"Could not import LearningOSAgent: {e}")
 
-    try:
-        from app.agents.job_supervisor_agent import JobSupervisorAgent
-        register_agent("job-agent", JobSupervisorAgent)
-    except ImportError as e:
-        logger.warning(f"Could not import JobSupervisorAgent: {e}")
 
-    # 2. Consolidated 7 Core Runtime Client Agents
-    try:
-        from app.agents.discovery_agent import DiscoveryAgent
-        register_agent("discovery", DiscoveryAgent)
-    except ImportError as e:
-        logger.warning(f"Could not import DiscoveryAgent: {e}")
-
-    try:
-        from app.agents.matching_agent import MatchingAgent
-        register_agent("matching", MatchingAgent)
-    except ImportError as e:
-        logger.warning(f"Could not import MatchingAgent: {e}")
-
-    try:
-        from app.agents.application_agent import ApplicationAgent
-        register_agent("application", ApplicationAgent)
-    except ImportError as e:
-        logger.warning(f"Could not import ApplicationAgent: {e}")
-
-    try:
-        from app.agents.tracking_agent import TrackingAgent
-        register_agent("tracking", TrackingAgent)
-    except ImportError as e:
-        logger.warning(f"Could not import TrackingAgent: {e}")
-
-    try:
-        from app.agents.intelligence_agent import IntelligenceAgent
-        register_agent("intelligence", IntelligenceAgent)
-    except ImportError as e:
-        logger.warning(f"Could not import IntelligenceAgent: {e}")
-
-    try:
-        from app.agents.human_queue_agent import HumanQueueAgent
-        register_agent("human_queue", HumanQueueAgent)
-    except ImportError as e:
-        logger.warning(f"Could not import HumanQueueAgent: {e}")

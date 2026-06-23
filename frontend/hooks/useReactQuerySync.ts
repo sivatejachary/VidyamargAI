@@ -70,7 +70,6 @@ export const useReactQuerySync = (userId: string | number, token: string) => {
         queryClient.invalidateQueries({ queryKey: ["profile", userId] });
         queryClient.invalidateQueries({ queryKey: ["resume", userId] });
       } else if (payload.tier === 2) {
-        queryClient.invalidateQueries({ queryKey: ["jobs", userId] });
         queryClient.invalidateQueries({ queryKey: ["lms", "progress", userId] });
       }
     });
@@ -84,17 +83,7 @@ export const useReactQuerySync = (userId: string | number, token: string) => {
       offlineSyncManager.cacheSet(`resume:ai_feedback:${userId}`, payload.analysis);
     });
 
-    // --- 3. Jobs Matches Sync Event ---
-    socket.on("jobs:sync", (payload: { delta: number; total: number; message: string; newJobs: any[] }) => {
-      console.info("[Sync] Jobs match sync received", payload.message);
-      // Trigger query cache invalidation to reload matching lists
-      queryClient.invalidateQueries({ queryKey: ["jobs", userId] });
-      
-      // Push notifications using Web API or in-app custom banner triggers
-      if (Notification.permission === "granted") {
-        new Notification("New Job Matches Found!", { body: payload.message });
-      }
-    });
+
 
     // --- 4. LMS Progress Tracker Sync Event ---
     socket.on("lms:progress:sync", (payload: { courseId: string; progress: number; completedLessons: string[] }) => {
@@ -140,7 +129,7 @@ export const useReactQuerySync = (userId: string | number, token: string) => {
     return () => {
       socket.off("warmup:tier_complete");
       socket.off("resume:sync");
-      socket.off("jobs:sync");
+
       socket.off("lms:progress:sync");
       socket.off("lms:certificate:sync");
       socket.off("message:new");

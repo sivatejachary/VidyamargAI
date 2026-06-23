@@ -204,26 +204,7 @@ def init_db_safely():
                     questions_json TEXT NOT NULL
                 )
             """))
-            # written_assessments table
-            conn.execute(text(f"""
-                CREATE TABLE IF NOT EXISTS written_assessments (
-                    id VARCHAR PRIMARY KEY,
-                    moduleid VARCHAR NOT NULL,
-                    title VARCHAR NOT NULL,
-                    passpercentage INTEGER,
-                    questions_json TEXT NOT NULL
-                )
-            """))
-            # ai_interviews table
-            conn.execute(text(f"""
-                CREATE TABLE IF NOT EXISTS ai_interviews (
-                    id VARCHAR PRIMARY KEY,
-                    moduleid VARCHAR NOT NULL,
-                    title VARCHAR NOT NULL,
-                    passpercentage INTEGER,
-                    questions_json TEXT NOT NULL
-                )
-            """))
+            # [ARCHIVED] written_assessments and ai_interviews tables moved to archive schema
             # user_progress table
             conn.execute(text(f"""
                 CREATE TABLE IF NOT EXISTS user_progress (
@@ -262,37 +243,7 @@ def init_db_safely():
                     difficulty VARCHAR
                 )
             """))
-            # final_assessments table
-            conn.execute(text(f"""
-                CREATE TABLE IF NOT EXISTS final_assessments (
-                    id VARCHAR PRIMARY KEY,
-                    courseid VARCHAR NOT NULL,
-                    title VARCHAR NOT NULL,
-                    passpercentage INTEGER,
-                    questions_json TEXT NOT NULL
-                )
-            """))
-            # final_ai_interviews table
-            conn.execute(text(f"""
-                CREATE TABLE IF NOT EXISTS final_ai_interviews (
-                    id VARCHAR PRIMARY KEY,
-                    courseid VARCHAR NOT NULL,
-                    title VARCHAR NOT NULL,
-                    passpercentage INTEGER,
-                    questions_json TEXT NOT NULL
-                )
-            """))
-            # readiness_scores table
-            conn.execute(text(f"""
-                CREATE TABLE IF NOT EXISTS readiness_scores (
-                    id VARCHAR PRIMARY KEY,
-                    "courseId" VARCHAR NOT NULL,
-                    "quizWeight" REAL DEFAULT 25.0,
-                    "writtenWeight" REAL DEFAULT 20.0,
-                    "interviewWeight" REAL DEFAULT 25.0,
-                    "projectWeight" REAL DEFAULT 30.0
-                )
-            """))
+            # [ARCHIVED] final_assessments, final_ai_interviews, and readiness_scores tables moved to archive schema
             # quiz_attempts table
             conn.execute(text(f"""
                 CREATE TABLE IF NOT EXISTS quiz_attempts (
@@ -304,35 +255,7 @@ def init_db_safely():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """))
-            # written_assessment_attempts table
-            conn.execute(text(f"""
-                CREATE TABLE IF NOT EXISTS written_assessment_attempts (
-                    id {serial},
-                    user_id INTEGER NOT NULL,
-                    written_assessment_id VARCHAR NOT NULL,
-                    answers_json TEXT NOT NULL,
-                    score REAL,
-                    passed BOOLEAN,
-                    feedback TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """))
-            # ai_interview_attempts table
-            conn.execute(text(f"""
-                CREATE TABLE IF NOT EXISTS ai_interview_attempts (
-                    id {serial},
-                    user_id INTEGER NOT NULL,
-                    ai_interview_id VARCHAR NOT NULL,
-                    transcript_json TEXT NOT NULL,
-                    knowledge_score REAL,
-                    communication_score REAL,
-                    confidence_score REAL,
-                    interview_score REAL,
-                    passed BOOLEAN,
-                    feedback TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """))
+            # [ARCHIVED] written_assessment_attempts and ai_interview_attempts tables moved to archive schema
             
             # ai_mentor_sessions table
             conn.execute(text(f"""
@@ -439,40 +362,7 @@ def init_db_safely():
             """))
             conn.execute(text("CREATE INDEX IF NOT EXISTS idx_user_career_profile_user ON user_career_profiles(user_id)"))
 
-            # mcp_chat_sessions table
-            conn.execute(text(f"""
-                CREATE TABLE IF NOT EXISTS mcp_chat_sessions (
-                    id VARCHAR PRIMARY KEY,
-                    user_id INTEGER NOT NULL,
-                    title VARCHAR NOT NULL,
-                    mode VARCHAR DEFAULT 'general',
-                    is_pinned BOOLEAN DEFAULT false,
-                    is_archived BOOLEAN DEFAULT false,
-                    is_deleted BOOLEAN DEFAULT false,
-                    deleted_at TIMESTAMP,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """))
-            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_mcp_chat_session_user ON mcp_chat_sessions(user_id)"))
-            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_mcp_chat_session_pinned_updated ON mcp_chat_sessions(is_pinned, updated_at DESC)"))
-
-            # mcp_chat_messages table
-            conn.execute(text(f"""
-                CREATE TABLE IF NOT EXISTS mcp_chat_messages (
-                    id VARCHAR PRIMARY KEY,
-                    session_id VARCHAR NOT NULL,
-                    user_id INTEGER NOT NULL,
-                    sender VARCHAR NOT NULL,
-                    text TEXT NOT NULL,
-                    actions JSONB DEFAULT '[]'::jsonb,
-                    action_cards JSONB DEFAULT '[]'::jsonb,
-                    memory_updated BOOLEAN DEFAULT false,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """))
-            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_mcp_chat_message_session ON mcp_chat_messages(session_id)"))
-            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_mcp_chat_message_user ON mcp_chat_messages(user_id)"))
+            # [ARCHIVED] mcp_chat_sessions and mcp_chat_messages tables and indexes moved to archive schema
 
 
             # Archiving migrations for existing tables
@@ -674,26 +564,7 @@ async def startup_event():
     except Exception as e:
         logger.error(f"Failed to run workflow recovery: {e}")
     
-    # Initialize Browser Fleet
-    try:
-        from app.services.auto_apply.browser_fleet import fleet_manager
-        await fleet_manager.start()
-        logger.info("Browser Fleet Manager initialized successfully.")
-    except Exception as e:
-        logger.error(f"Failed to start Browser Fleet: {e}")
 
-    try:
-        from app.core.browser_pool import browser_pool
-        await browser_pool.start()
-        logger.info("Browser Pool Manager initialized successfully.")
-    except Exception as e:
-        logger.error(f"Failed to start Browser Pool: {e}")
-    
-    try:
-        from app.core.queue import recover_queued_jobs_on_startup
-        recover_queued_jobs_on_startup()
-    except Exception as e:
-        logger.error(f"Failed to run startup queue recovery: {e}")
 
     try:
         from app.services.mcp_audit import audit_logger_worker
@@ -728,16 +599,7 @@ async def shutdown_event():
         shutdown_scheduler()
     except Exception:
         pass
-    try:
-        from app.services.auto_apply.browser_fleet import fleet_manager
-        await fleet_manager.shutdown()
-    except Exception:
-        pass
-    try:
-        from app.core.browser_pool import browser_pool
-        await browser_pool.shutdown()
-    except Exception:
-        pass
+
     try:
         from app.core.http import http_client
         await http_client.aclose()

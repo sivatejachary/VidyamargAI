@@ -450,29 +450,6 @@ class AdminJobsDashboardResponse(BaseModel):
     source_performance: List[dict]
 
 
-class JobAgentLogResponse(BaseModel):
-    id: int
-    run_id: int
-    message: str
-    status: str
-    timestamp: datetime
-
-    class Config:
-        from_attributes = True
-
-
-class JobAgentRunResponse(BaseModel):
-    id: int
-    candidate_id: int
-    status: str
-    created_at: datetime
-    completed_at: Optional[datetime] = None
-    logs: List[JobAgentLogResponse] = []
-
-    class Config:
-        from_attributes = True
-
-
 class TelegramSourceCreate(BaseModel):
     channel_name: str
     active: Optional[bool] = True

@@ -8,7 +8,6 @@ from sqlalchemy.pool import StaticPool
 from app.main import app
 from app.core.database import Base, get_db
 from app.models.models import User, Candidate
-from app.models.pool_models import JobPool, JobPoolMatch
 
 # SQLite in-memory engine config
 engine = create_engine(
@@ -31,25 +30,6 @@ class TestSmokeSuite(unittest.TestCase):
         app.dependency_overrides[get_db] = override_get_db
         Base.metadata.create_all(bind=engine)
         cls.client = TestClient(app)
-        
-        # Seed basic static data if needed
-        db = TestingSessionLocal()
-        try:
-            # Seed a mock job in the pool
-            job = JobPool(
-                stable_id="mock_job_1",
-                title="Senior Python Developer",
-                company="TechCorp",
-                location="India",
-                apply_url="https://example.com/apply",
-                source="Greenhouse",
-                description="Looking for an experienced Python developer.",
-                work_mode="Remote"
-            )
-            db.add(job)
-            db.commit()
-        finally:
-            db.close()
 
     @classmethod
     def tearDownClass(cls):
@@ -124,37 +104,16 @@ class TestSmokeSuite(unittest.TestCase):
         updated = resp.json()
         self.assertEqual(updated["skills"], "Python, React, AWS")
 
-    def test_04_smoke_job_pool(self):
-        """Test candidate job pool retrieval."""
-        token = self.get_token()
-        headers = {"Authorization": f"Bearer {token}"}
-        
-        resp = self.client.get("/api/v1/candidate/jobs/pool", headers=headers)
-        self.assertEqual(resp.status_code, 200)
-        self.assertIsInstance(resp.json(), list)
-
-    def test_05_smoke_agent_result(self):
-        """Test background agent results retrieval."""
-        token = self.get_token()
-        headers = {"Authorization": f"Bearer {token}"}
-        
-        resp = self.client.get("/api/v1/candidate/agent/result", headers=headers)
-        self.assertEqual(resp.status_code, 200)
-        self.assertIn("jobs", resp.json())
-        self.assertIn("skill_gaps", resp.json())
-
     def test_06_smoke_copilot_chat(self):
         """Test Copilot chat gateway endpoint."""
         token = self.get_token()
         headers = {"Authorization": f"Bearer {token}"}
         
-        # Bypass LLM call inside chat copilot locally if keys are missing
         resp = self.client.post(
             "/api/v1/chat/copilot",
             json={"message": "Hello, Copilot!", "history": []},
             headers=headers
         )
-        # Should be 200 (or if LLM calls fail, handles gracefully)
         self.assertIn(resp.status_code, [200, 500])
 
     def test_07_smoke_refresh_and_logout(self):
@@ -190,4 +149,3 @@ class TestSmokeSuite(unittest.TestCase):
             json={"refresh_token": refresh_token}
         )
         self.assertEqual(resp.status_code, 401)
-

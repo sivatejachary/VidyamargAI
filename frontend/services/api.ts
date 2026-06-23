@@ -136,77 +136,7 @@ export const apiService = {
   },
 
 
-  // Jobs
-  async getJobs(search?: string) {
-    const url = search ? `${getBaseUrl()}/jobs?search=${encodeURIComponent(search)}` : `${getBaseUrl()}/jobs`;
-    const res = await customFetch(url, { headers: getHeaders() });
-    if (!res.ok) throw new Error("Failed to fetch jobs");
-    return res.json();
-  },
 
-  async createJob(data: any) {
-    const res = await customFetch(`${getBaseUrl()}/jobs`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...getHeaders() },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error("Failed to create job");
-    return res.json();
-  },
-
-  async deleteJob(id: number) {
-    const res = await customFetch(`${getBaseUrl()}/jobs/${id}`, {
-      method: "DELETE",
-      headers: getHeaders(),
-    });
-    if (!res.ok) throw new Error("Failed to delete job");
-    return res.json();
-  },
-
-  async getSavedJobs() {
-    const res = await customFetch(`${getBaseUrl()}/candidate/jobs/saved`, { headers: getHeaders() });
-    if (!res.ok) throw new Error("Failed to fetch saved jobs");
-    return res.json();
-  },
-
-  async saveJob(jobId: number | string) {
-    const res = await customFetch(`${getBaseUrl()}/candidate/jobs/${jobId}/save`, {
-      method: "POST",
-      headers: getHeaders(),
-    });
-    if (!res.ok) throw new Error("Failed to save job");
-    return res.json();
-  },
-
-  async unsaveJob(jobId: number | string) {
-    const res = await customFetch(`${getBaseUrl()}/candidate/jobs/${jobId}/save`, {
-      method: "DELETE",
-      headers: getHeaders(),
-    });
-    if (!res.ok) throw new Error("Failed to unsave job");
-    return res.json();
-  },
-
-  async refreshJobs() {
-    const res = await customFetch(`${getBaseUrl()}/candidate/jobs/refresh`, {
-      method: "POST",
-      headers: getHeaders(),
-    });
-    if (!res.ok) throw new Error("Failed to refresh jobs");
-    return res.json();
-  },
-
-  async getSearchHistory() {
-    const res = await customFetch(`${getBaseUrl()}/candidate/jobs/search-history`, { headers: getHeaders() });
-    if (!res.ok) throw new Error("Failed to fetch search history");
-    return res.json();
-  },
-
-  async getCandidateJobsDashboard() {
-    const res = await customFetch(`${getBaseUrl()}/candidate/jobs/dashboard`, { headers: getHeaders() });
-    if (!res.ok) throw new Error("Failed to fetch candidate jobs dashboard");
-    return res.json();
-  },
 
   // Profile
   async getProfile() {
@@ -286,23 +216,7 @@ export const apiService = {
     return res.json();
   },
 
-  // Applications
-  async applyJob(jobId: number) {
-    const res = await customFetch(`${getBaseUrl()}/applications?job_id=${jobId}`, {
-      method: "POST",
-      headers: getHeaders(),
-    });
-    if (!res.ok) throw new Error((await res.json()).detail || "Apply failed");
-    return res.json();
-  },
 
-  async getApplications() {
-    const res = await customFetch(`${getBaseUrl()}/applications`, {
-      headers: getHeaders(),
-    });
-    if (!res.ok) throw new Error("Failed to get applications");
-    return res.json();
-  },
 
   // Assessments
   async getAssessment(appId: number) {
@@ -1079,74 +993,7 @@ export const apiService = {
     return res.json();
   },
 
-  // ── Job Pool (pre-collected, < 100ms) ────────────────────────────────────
-  async getJobPool(params: {
-    minScore?: number;
-    source?: string;
-    workMode?: string;
-    limit?: number;
-    offset?: number;
-  } = {}) {
-    const query = new URLSearchParams();
-    if (params.minScore !== undefined) query.set("min_score", String(params.minScore));
-    if (params.source) query.set("source", params.source);
-    if (params.workMode) query.set("work_mode", params.workMode);
-    if (params.limit !== undefined) query.set("limit", String(params.limit));
-    if (params.offset !== undefined) query.set("offset", String(params.offset));
-    const res = await customFetch(`${getBaseUrl()}/candidate/jobs/pool?${query}`, {
-      headers: getHeaders(),
-    });
-    if (!res.ok) return [];
-    return res.json();
-  },
 
-  // ── Auto Apply ────────────────────────────────────────────────────────────
-  async autoApplyJob(jobId: string) {
-    const res = await customFetch(`${getBaseUrl()}/candidate/agent/auto-apply/${jobId}`, {
-      method: "POST",
-      headers: getHeaders(),
-    });
-    if (!res.ok) throw new Error("Failed to queue auto-apply");
-    return res.json();
-  },
-
-  async getAutoApplyStatus(jobId: string) {
-    const res = await customFetch(
-      `${getBaseUrl()}/candidate/agent/auto-apply/status/${jobId}`,
-      { headers: getHeaders() }
-    );
-    if (!res.ok) return { status: "unknown" };
-    return res.json();
-  },
-
-  /** Trigger a new Auto Apply All run — queues all matched jobs. */
-  async triggerAutoApplyRun() {
-    const res = await customFetch(`${getBaseUrl()}/auto-apply/run`, {
-      method: "POST",
-      headers: getHeaders(),
-    });
-    if (!res.ok) throw new Error("Failed to start Auto Apply run");
-    return res.json(); // { run_id, status }
-  },
-
-  /** Poll the latest Auto Apply run: returns tasks[] + metrics. */
-  async getAutoApplyRuns() {
-    const res = await customFetch(`${getBaseUrl()}/auto-apply/runs`, {
-      headers: getHeaders(),
-    });
-    if (!res.ok) return { tasks: [], metrics: {} };
-    return res.json(); // { run_id, tasks: ApplicationTask[], metrics: ApplyAllMetrics }
-  },
-
-  /** Perform an action on a specific task: approve | reject | resume | cancel */
-  async autoApplyTaskAction(taskId: number, action: "approve" | "reject" | "resume" | "cancel") {
-    const res = await customFetch(`${getBaseUrl()}/auto-apply/tasks/${taskId}/${action}`, {
-      method: "POST",
-      headers: getHeaders(),
-    });
-    if (!res.ok) throw new Error(`Failed to ${action} task`);
-    return res.json();
-  },
 
   // ── Autonomous Tasks ──────────────────────────────────────────────────────
   async getAutonomousTasks() {

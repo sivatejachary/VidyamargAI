@@ -124,7 +124,6 @@ export default function Sidebar({ portal }: SidebarProps) {
 
   const candidateLinks = [
     { name: "Ask Tush AI", href: "/candidate/chat", icon: Sparkles },
-    { name: "Jobs", href: "/candidate/jobs", icon: Briefcase },
     { name: "Resume Builder", href: "/candidate/resume", icon: FileText },
     { name: "Skill Lab", href: "/candidate/skill-lab", icon: Compass },
     { name: "Hackathons", href: "/candidate/hackathons", icon: Trophy },
@@ -134,7 +133,6 @@ export default function Sidebar({ portal }: SidebarProps) {
 
   const adminLinks = [
     { name: "Recruit Overview", href: "/admin", icon: LayoutDashboard },
-    { name: "Job Management", href: "/admin/jobs", icon: Briefcase },
     { name: "Candidates", href: "/admin/candidates", icon: Users },
     { name: "Pipeline Flow", href: "/admin/pipeline", icon: GitFork },
     { name: "AI Agent Orchestrator", href: "/admin/agents", icon: Cpu },
@@ -420,7 +418,6 @@ export default function Sidebar({ portal }: SidebarProps) {
         >
           {[
             { name: "Resume", href: "/candidate/resume", icon: FileText },
-            { name: "Jobs", href: "/candidate/jobs", icon: Briefcase },
             { name: "Skill Lab", href: "/candidate/skill-lab", icon: Compass },
             { name: "Ask Tush AI", href: "/candidate/chat", icon: Sparkles },
             { name: "Profile", href: "/candidate/profile", icon: Users }

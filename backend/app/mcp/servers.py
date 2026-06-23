@@ -14,7 +14,7 @@ from sqlalchemy import text
 
 from app.mcp.base import BaseMCPServer
 from app.mcp.gateway import register_server
-from app.models.models import UserConsent, Candidate, CandidateProfile, Job, Application, User
+from app.models.models import UserConsent, Candidate, CandidateProfile, User
 from app.models.mcp_models import MCPAuditLog, ToolPermission, VectorMemoryChunk
 from app.services.orchestrator import call_gemini, call_nvidia
 
@@ -249,59 +249,6 @@ class VectorServer(BaseMCPServer):
         db.commit()
         return {"status": "success", "chunk_id": chunk.id}
 
-    async def search_similar_jobs(self, user_id: int, arguments: Dict[str, Any], db: Session) -> Dict[str, Any]:
-        """ANN vector similarity search across active jobs."""
-        query_text = arguments.get("query", "")
-        top_k = arguments.get("top_k", 5)
-        query_vector = await get_semantic_embedding(query_text)
-        
-        # Load all active jobs from DB
-        jobs = db.query(Job).filter(Job.status == "active").all()
-        scored_jobs = []
-        for job in jobs:
-            # Combine title and description for matching
-            job_text = f"{job.title} {job.description} {job.required_skills}"
-            job_vector = await get_semantic_embedding(job_text)
-            score = cosine_similarity(query_vector, job_vector)
-            scored_jobs.append((score, job))
-            
-        # Sort and take top k
-        scored_jobs.sort(key=lambda x: x[0], reverse=True)
-        results = []
-        for score, job in scored_jobs[:top_k]:
-            results.append({
-                "job_id": job.id,
-                "title": job.title,
-                "department": job.department,
-                "location": job.location,
-                "score": score
-            })
-        return {"matches": results}
-
-    async def search_similar_candidates(self, user_id: int, arguments: Dict[str, Any], db: Session) -> Dict[str, Any]:
-        """Reverse matching: search candidates matching a job description."""
-        job_text = arguments.get("job_description", "")
-        top_k = arguments.get("top_k", 5)
-        job_vector = await get_semantic_embedding(job_text)
-        
-        candidates = db.query(Candidate).all()
-        scored_cands = []
-        for cand in candidates:
-            cand_text = f"{cand.skills} {cand.summary} {cand.education}"
-            cand_vector = await get_semantic_embedding(cand_text)
-            score = cosine_similarity(job_vector, cand_vector)
-            scored_cands.append((score, cand))
-            
-        scored_cands.sort(key=lambda x: x[0], reverse=True)
-        results = []
-        for score, cand in scored_cands[:top_k]:
-            results.append({
-                "candidate_id": cand.id,
-                "phone": cand.phone,
-                "skills": cand.skills,
-                "score": score
-            })
-        return {"matches": results}
 
 
 # --------------------------------------------------------------------------
@@ -460,55 +407,6 @@ class SkillLabServer(BaseMCPServer):
         return {"progress": enrolls}
 
 
-# --------------------------------------------------------------------------
-# 8. Jobs DB Context Server
-# --------------------------------------------------------------------------
-class JobsServer(BaseMCPServer):
-    server_name = "mcp-server-jobs"
-    required_permission = "read"
-
-    def store_job(self, user_id: int, arguments: Dict[str, Any], db: Session) -> Dict[str, Any]:
-        """Persists a discovered job listing to database."""
-        # Validate input params
-        title = arguments.get("title")
-        description = arguments.get("description", "")
-        skills = arguments.get("required_skills", "")
-        company_name = arguments.get("company_name", "Unknown")
-        location = arguments.get("location", "Remote")
-        
-        job = Job(
-            title=title,
-            description=description,
-            required_skills=skills,
-            experience_level=arguments.get("experience_level", "Junior"),
-            location=location,
-            department=company_name,
-            status="active"
-        )
-        db.add(job)
-        db.commit()
-        db.refresh(job)
-        return {"status": "success", "job_id": job.id}
-
-    def search_jobs(self, user_id: int, arguments: Dict[str, Any], db: Session) -> Dict[str, Any]:
-        """Standard keywords database query lookup."""
-        keyword = arguments.get("keyword", "")
-        jobs = db.query(Job).filter(
-            Job.title.ilike(f"%{keyword}%") | Job.description.ilike(f"%{keyword}%")
-        ).limit(10).all()
-        return {
-            "jobs": [
-                {
-                    "job_id": j.id,
-                    "title": j.title,
-                    "company": j.department,
-                    "location": j.location,
-                    "skills": j.required_skills
-                } for j in jobs
-            ]
-        }
-
-
 # Register all servers at import time
 register_server("mcp-server-feature-flags", FeatureFlagsServer())
 register_server("mcp-server-billing", BillingServer())
@@ -517,4 +415,3 @@ register_server("mcp-server-vector", VectorServer())
 register_server("mcp-server-llm", LLMServer())
 register_server("mcp-server-resume", ResumeServer())
 register_server("mcp-server-skilllab", SkillLabServer())
-register_server("mcp-server-jobs", JobsServer())

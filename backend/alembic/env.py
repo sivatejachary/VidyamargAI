@@ -24,8 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.core.config import settings
 from app.core.database import Base
 # Import all models so metadata is fully loaded
-from app.models.models import *
-from app.models.auto_apply_models import *
+from app.models import *
 
 target_metadata = Base.metadata
 

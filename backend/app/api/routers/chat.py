@@ -16,7 +16,6 @@ from app.schemas import schemas
 from app.models.models import *
 
 from app.api.helpers import *
-from app.api.helpers import _check_resume_upload_rate_limit, _LIVE_JOB_STORE, _RESUME_UPLOAD_TIMESTAMPS
 
 logger = logging.getLogger(__name__)
 
@@ -35,345 +34,48 @@ async def chat_copilot(
     if not cand:
         raise HTTPException(status_code=404, detail="Candidate profile not found")
 
-    # Check if the user is requesting auto-apply or single-job apply
     lower_message = payload.message.lower()
-    auto_apply_triggered = False
-    applied_jobs = []
-    response_text = ""
-    resumes = db.query(CandidateResume).filter(CandidateResume.candidate_id == cand.id).order_by(CandidateResume.uploaded_at.desc()).all()
-    
-    # 1. Check if "auto apply" or "apply automatically" is requested
-    if "auto apply" in lower_message or "apply automatically" in lower_message or "apply to matching jobs" in lower_message or "apply for matching jobs" in lower_message:
-        auto_apply_triggered = True
-        if resumes:
-            latest_resume = resumes[0]
-            
-            # Fetch dynamic live remote Indian jobs matching candidate skills
-            cand_skills = [s.strip().lower() for s in (cand.skills or "").split(",") if s.strip()]
-            if not cand_skills:
-                cand_skills = ["react", "python", "javascript", "typescript", "node", "sql"]
-                
-            exp_level = parse_candidate_experience_level(cand)
-            raw_jobs = fetch_live_internet_jobs(cand_skills)
-            generated_jobs = generate_live_indian_jobs(cand_skills, exp_level)
-            
-            matched_internet_jobs = []
-            for j in raw_jobs:
-                loc = j["location"].lower()
-                if "india" in loc:
-                    title_lower = j["title"].lower()
-                    desc_lower = j["description"].lower()
-                    tags_lower = [str(t).lower() for t in j["tags"] if t]
-                    
-                    has_skill = False
-                    matched_skills = []
-                    for s in cand_skills:
-                        if s in title_lower or s in desc_lower or any(s in t for t in tags_lower):
-                            has_skill = True
-                            matched_skills.append(s.title())
-                            
-                    if has_skill:
-                        matched_internet_jobs.append({
-                            "title": j["title"],
-                            "company": j["company"],
-                            "description": j["description"],
-                            "location": j["location"],
-                            "tags": matched_skills + [str(t).title() for t in j["tags"] if t and str(t).lower() not in cand_skills],
-                            "url": j["url"]
-                        })
-            
-            all_dynamic_jobs = []
-            seen = set()
-            for j in generated_jobs:
-                key = (j["title"].lower(), j["company"].lower())
-                if key not in seen:
-                    seen.add(key)
-                    all_dynamic_jobs.append(j)
-            for j in matched_internet_jobs:
-                key = (j["title"].lower(), j["company"].lower())
-                if key not in seen:
-                    seen.add(key)
-                    all_dynamic_jobs.append(j)
-                    
-            # Check already applied jobs to prevent duplicates
-            applied_jobs_db = db.query(Job).join(Application).filter(Application.candidate_id == cand.id).all()
-            applied_map = { (aj.title.lower(), aj.department.lower()): aj for aj in applied_jobs_db }
-            
-            import random
-            import re
-            import html
-            
-            for idx, j in enumerate(all_dynamic_jobs):
-                key = (j["title"].lower(), j["company"].lower())
-                if key in applied_map:
-                    continue # already applied
-                    
-                # Match jobs using database profile summary data directly (skills list)
-                job_skills = j["tags"]
-                
-                # Check match level (dynamic jobs are already pre-filtered to match candidate skills, so match_percent is high)
-                match_count = 0
-                for js in job_skills:
-                    js_lower = js.lower()
-                    if any(js_lower in cs or cs in js_lower for cs in cand_skills):
-                        match_count += 1
-                match_percent = (match_count / len(job_skills) * 100) if job_skills else 50
-                
-                if match_percent >= 40:
-                    # Persist this dynamic job to the DB first
-                    skills_str = ", ".join(j["tags"][:8])
-                    exp = "Senior" if any(k in j["title"].lower() for k in ["senior", "lead", "principal"]) else "Entry-Level" if any(k in j["title"].lower() for k in ["junior", "entry", "intern"]) else "Mid-Level"
-                    salary = f"${random.randint(50, 90)}k - ${random.randint(100, 150)}k"
-                    
-                    desc_clean = re.sub(r'<[^>]*>', '', j["description"])
-                    desc_clean = html.unescape(desc_clean).strip()
-                    
-                    # Persist the job details
-                    existing_job = db.query(Job).filter(
-                        Job.title == j["title"],
-                        Job.department == j["company"]
-                    ).first()
-                    
-                    if not existing_job:
-                        db_job = Job(
-                            title=j["title"],
-                            description=desc_clean,
-                            required_skills=skills_str,
-                            experience_level=exp,
-                            salary_range=salary,
-                            location=j["location"],
-                            department=j["company"],
-                            status="active"
-                        )
-                        db.add(db_job)
-                        db.commit()
-                        db.refresh(db_job)
-                    else:
-                        db_job = existing_job
-                        
-                    new_app = Application(
-                        candidate_id=cand.id,
-                        job_id=db_job.id,
-                        resume_id=latest_resume.id,
-                        status="screening"
-                    )
-                    db.add(new_app)
-                    db.commit()
-                    db.refresh(new_app)
-                    
-                    # Log the agent action
-                    await log_agent_action(db, new_app.id, "Auto Apply Agent", "success", f"Automatically matched and applied candidate to Job #{db_job.id} ({db_job.title}) using stored resume summary data.")
-                    
-                    # Trigger the Screening Agent
-                    await orchestrator.run_resume_screening_agent(db, new_app.id)
-                    applied_jobs.append(db_job)
-                    
-            if applied_jobs:
-                applied_str = "\n".join([f"- **{j.title}** ({j.location}) - Match Level: High" for j in applied_jobs])
-                response_text = (
-                    f"### Auto Apply Task Executed Successfully 🚀\n\n"
-                    f"I have successfully matched your structured profile against our open jobs and automatically applied you to the following roles:\n\n"
-                    f"{applied_str}\n\n"
-                    f"Your resume PDF file ({latest_resume.resume_url}) was attached to the applications for verification. "
-                    f"The screening process has started. You can track your progress under the **Jobs** tab!"
-                )
-            else:
-                response_text = (
-                    "I searched and matched your profile against all active jobs, but did not find any new matching roles where you meet the required skills. "
-                    "You have either already applied to all suitable openings or need to update your skills/profile to match other roles."
-                )
-        else:
-            response_text = (
-                "It looks like you haven't uploaded a resume yet. "
-                "Please navigate to the **Resume Builder** to upload your resume so I can extract your structured summary data and apply automatically!"
-            )
-            
-    # 2. Check if applying to a specific job ID (e.g. "apply to job 2" or "apply to job #2")
-    import re
-    match_job_request = re.search(r'apply to job (?:id )?#?(\d+)', lower_message)
-    if not auto_apply_triggered and match_job_request:
-        auto_apply_triggered = True
-        job_id = int(match_job_request.group(1))
-        
-        # Intercept dynamic live jobs (IDs >= 10000) and persist to database on apply
-        if job_id >= 10000:
-            if job_id not in LIVE_JOBS_CACHE:
-                response_text = "The job posting you requested has expired or could not be found. Please refresh the jobs board and try again."
-                job = None
-            else:
-                j_data = LIVE_JOBS_CACHE[job_id]
-                
-                # Check if already in DB
-                existing_job = db.query(Job).filter(
-                    Job.title == j_data["title"],
-                    Job.department == j_data["department"]
-                ).first()
-                
-                if not existing_job:
-                    import random
-                    job = Job(
-                        title=j_data["title"],
-                        description=j_data["description"],
-                        required_skills=j_data["required_skills"],
-                        experience_level=j_data["experience_level"],
-                        salary_range=j_data["salary_range"],
-                        location=j_data["location"],
-                        department=j_data["department"],
-                        status="active"
-                    )
-                    db.add(job)
-                    db.commit()
-                    db.refresh(job)
-                else:
-                    job = existing_job
-        else:
-            job = db.query(Job).filter(Job.id == job_id, Job.status == "active").first()
-        
-        if not job and not (auto_apply_triggered and "response_text" in locals() and response_text.startswith("The job posting")):
-            response_text = f"I couldn't find an active job with ID #{job_id}. Please check the job openings list and try again."
-        elif job:
-            if not resumes:
-                response_text = (
-                    "Please upload your resume in the **Resume Builder** first so I can use your structured profile data to apply."
-                )
-            else:
-                # Check if duplicate application
-                existing_app = db.query(Application).filter(Application.candidate_id == cand.id, Application.job_id == job.id).first()
-                if existing_app:
-                    response_text = f"You have already applied to Job #{job.id} ({job.title}). You can check its status in the Jobs board."
-                else:
-                    latest_resume = resumes[0]
-                    new_app = Application(
-                        candidate_id=cand.id,
-                        job_id=job.id,
-                        resume_id=latest_resume.id,
-                        status="screening"
-                    )
-                    db.add(new_app)
-                    db.commit()
-                    db.refresh(new_app)
-                    
-                    # Log agent action
-                    await log_agent_action(db, new_app.id, "Auto Apply Agent", "success", f"Automatically applied candidate to Job #{job.id} ({job.title}) on user copilot request.")
-                    
-                    # Trigger screening agent
-                    await orchestrator.run_resume_screening_agent(db, new_app.id)
-                    
-                    response_text = (
-                        f"I have successfully submitted your application for **{job.title}** (Job #{job.id}).\n\n"
-                        f"The Screening Agent has started reviewing your profile. You can track this under the **Jobs** tab!"
-                    )
-                
-    if auto_apply_triggered:
-        return schemas.ChatCopilotResponse(response=response_text, actions=[{"label": "Browse Job Board", "href": "/candidate/jobs"}])
 
-    # Fetch candidate applications
-    apps = db.query(Application).filter(Application.candidate_id == cand.id).all()
-    apps_str = ""
-    if apps:
-        apps_str = "\n".join([
-            f"- Job: {a.job.title} (Dept: {a.job.department}), Status: {a.status}, Applied: {a.created_at.strftime('%Y-%m-%d')}"
-            for a in apps
-        ])
-    else:
-        apps_str = "No active job applications."
+    # Intercept job-related inquiries
+    job_keywords = ["job", "apply", "application", "hiring", "vacancy", "internship", "employer", "recruiter", "offers"]
+    if any(kw in lower_message for kw in job_keywords):
+        response_text = (
+            "VidyaMarg AI has transitioned to a learning-first platform. "
+            "We have removed all job listings, job application tracking, and external job board connections. "
+            "Instead, we recommend using the **Skill Lab** to take courses, track your learning progress, and "
+            "work with the AI Mentor to build up your skills and profile. Let me know if you would like recommendations "
+            "for relevant courses or structured learning paths!"
+        )
+        actions = [
+            {"label": "Open Skill Lab", "href": "/candidate/skill-lab"},
+            {"label": "Build Resume", "href": "/candidate/resume"}
+        ]
+        return schemas.ChatCopilotResponse(response=response_text, actions=actions)
 
-    # Fetch active jobs on the platform (dynamically tailored to candidate's skills)
-    cand_skills = [s.strip().lower() for s in (cand.skills or "").split(",") if s.strip()]
-    if not cand_skills:
-        cand_skills = ["react", "python", "javascript", "typescript", "node", "sql"]
-        
-    raw_jobs = fetch_live_internet_jobs()
-    generated_jobs = generate_live_indian_jobs(cand_skills)
-    
-    # Filter internet jobs for India + skills
-    matched_internet_jobs = []
-    for j in raw_jobs:
-        loc = j["location"].lower()
-        if "india" in loc:
-            title_lower = j["title"].lower()
-            desc_lower = j["description"].lower()
-            tags_lower = [str(t).lower() for t in j["tags"] if t]
-            
-            has_skill = False
-            matched_skills = []
-            for s in cand_skills:
-                if s in title_lower or s in desc_lower or any(s in t for t in tags_lower):
-                    has_skill = True
-                    matched_skills.append(s.title())
-                    
-            if has_skill:
-                matched_internet_jobs.append({
-                    "title": j["title"],
-                    "company": j["company"],
-                    "description": j["description"],
-                    "location": j["location"],
-                    "tags": matched_skills + [str(t).title() for t in j["tags"] if t and str(t).lower() not in cand_skills],
-                    "url": j["url"]
-                })
-                
-    # Merge lists
-    all_dynamic_jobs = []
-    seen = set()
-    for j in generated_jobs:
-        key = (j["title"].lower(), j["company"].lower())
-        if key not in seen:
-            seen.add(key)
-            all_dynamic_jobs.append(j)
-    for j in matched_internet_jobs:
-        key = (j["title"].lower(), j["company"].lower())
-        if key not in seen:
-            seen.add(key)
-            all_dynamic_jobs.append(j)
-            
-    # Load candidate's applied jobs from DB to reuse real DB IDs, otherwise map to dynamic IDs
-    applied_jobs_db = db.query(Job).join(Application).filter(Application.candidate_id == cand.id).all()
-    applied_map = { (aj.title.lower(), aj.department.lower()): aj for aj in applied_jobs_db }
-    
-    jobs_str = ""
-    if all_dynamic_jobs:
-        jobs_list_str = []
-        for idx, j in enumerate(all_dynamic_jobs[:10]): # present first 10 for AI context to stay clean
-            key = (j["title"].lower(), j["company"].lower())
-            if key in applied_map:
-                jid = applied_map[key].id
-            else:
-                jid = 10000 + idx
-            skills_str = ", ".join(j["tags"][:8])
-            jobs_list_str.append(
-                f"- Job #{jid}: {j['title']} in {j['location']} (Company: {j['company']}), Required Skills: {skills_str}"
-            )
-        jobs_str = "\n".join(jobs_list_str)
-    else:
-        jobs_str = "No open job listings available at the moment."
-
-    # Construct System context prompt
+    # Construct System context prompt for general career guidance & learning
     system_prompt = (
-        "You are Baelyx, an autonomous AI Career Copilot on the HireAI platform. Your goal is to guide the candidate, {name}, in their career journey.\n\n"
-        "Here is the candidate's real-time profile data:\n"
+        "You are Baelyx, an autonomous AI Career and Learning Mentor on the VidyaMarg AI platform. "
+        "Your goal is to guide the candidate, {name}, in their educational and skill development journey.\n\n"
+        "Here is the candidate's profile data:\n"
         "- Name: {name}\n"
         "- Email: {email}\n"
         "- Phone: {phone}\n"
-        "- Skills: {skills}\n"
+        "- Current Skills: {skills}\n"
         "- Experience: {experience}\n"
         "- Education: {education}\n\n"
-        "Candidate's Active Applications:\n{apps_str}\n\n"
-        "Active Job Openings on the Platform:\n{jobs_str}\n\n"
         "INSTRUCTIONS:\n"
         "1. Be professional, encouraging, friendly, and helpful. Use markdown format.\n"
-        "2. If the candidate asks about their application status, look it up in the 'Candidate's Active Applications' section above and answer directly.\n"
-        "3. If they ask about job openings, suggest matching jobs from the 'Active Job Openings' list.\n"
-        "4. If they ask about skill gaps, analyze the skills required for active job openings vs their current skills and recommend areas to improve.\n"
-        "5. Keep responses concise, structured, and easy to read. Suggest actions the user can take."
+        "2. Help the candidate identify skill gaps and suggest areas to improve.\n"
+        "3. Provide guidance on learning paths, courses, and educational strategies.\n"
+        "4. Suggest relevant actions the user can take (e.g. taking courses, working in the Skill Lab, building their resume).\n"
+        "5. Keep responses concise, structured, and easy to read."
     ).format(
         name=current_user.full_name,
         email=current_user.email,
         phone=cand.phone or "Not provided yet",
         skills=cand.skills or "None listed yet",
         experience=cand.experience or "None listed yet",
-        education=cand.education or "None listed yet",
-        apps_str=apps_str,
-        jobs_str=jobs_str
+        education=cand.education or "None listed yet"
     )
 
     # Compile messages
@@ -399,39 +101,19 @@ async def chat_copilot(
 
     # Hardcoded fallback if both APIs fail or are unconfigured
     if not response_text:
-        lower_msg = payload.message.lower()
-        if "application" in lower_msg:
-            response_text = (
-                f"I checked your applications, {current_user.full_name}. Here is the status of your active application(s):\n\n"
-                f"{apps_str}\n\n"
-                "You can view more details on the jobs board!"
-            )
-        elif "job" in lower_msg or "openings" in lower_msg:
-            response_text = (
-                f"Here are the active job openings matching your interest:\n\n"
-                f"{jobs_str[:400]}...\n\n"
-                "Navigate to the Jobs section to view and apply."
-            )
-        else:
-            response_text = (
-                f"Hello {current_user.full_name}! I'm Baelyx, your AI Career Copilot. "
-                f"Currently, our cloud AI connection is offline, but I can still tell you that you have {len(apps)} active application(s) "
-                f"and your listed skills are: {cand.skills or 'none listed yet'}. How can I assist you with these?"
-            )
+        response_text = (
+            f"Hello {current_user.full_name}! I'm Baelyx, your AI Career Copilot. "
+            f"Currently, our cloud AI connection is offline. However, I can see that your listed skills are: {cand.skills or 'none listed yet'}. "
+            f"Please check out the Skill Lab to continue your learning journey!"
+        )
 
     # Attach dynamic actions based on keywords in the reply
     actions = []
     response_lower = response_text.lower()
-    if "resume builder" in response_lower or "resume score" in response_lower:
+    if "resume" in response_lower:
         actions.append({"label": "Open Resume Builder", "href": "/candidate/resume"})
-    if "job" in response_lower or "jobs" in response_lower or "openings" in response_lower:
-        actions.append({"label": "Browse Job Board", "href": "/candidate/jobs"})
-    if "skill" in response_lower or "skill lab" in response_lower or "gap" in response_lower:
+    if "skill" in response_lower or "course" in response_lower or "learning" in response_lower:
         actions.append({"label": "Open Skill Lab", "href": "/candidate/skill-lab"})
-    if "application" in response_lower or "status" in response_lower:
-        # Prevent duplicate buttons if Browse Jobs already added
-        if not any(a["label"] == "Browse Job Board" for a in actions):
-            actions.append({"label": "View Applications", "href": "/candidate/jobs"})
 
     return schemas.ChatCopilotResponse(response=response_text, actions=actions if actions else None)
 

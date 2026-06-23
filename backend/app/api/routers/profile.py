@@ -16,7 +16,6 @@ from app.schemas import schemas
 from app.models.models import *
 
 from app.api.helpers import *
-from app.api.helpers import _check_resume_upload_rate_limit, _LIVE_JOB_STORE, _RESUME_UPLOAD_TIMESTAMPS
 
 logger = logging.getLogger(__name__)
 
@@ -62,31 +61,7 @@ async def update_candidate_profile(
         await orchestrator.rebuild_candidate_profile_data(db, candidate)
     except Exception as e:
         logger.error(f"Failed to rebuild profile after update: {e}")
-        
-    # Clear existing matches and trigger async recalculation of matches to prevent stale scores
-    try:
-        from app.models.pool_models import JobPoolMatch
-        db.query(JobPoolMatch).filter(JobPoolMatch.candidate_id == candidate.id).delete()
-        db.commit()
-
-        async def run_matching_bg(cand_id: int):
-            from app.core.database import SessionLocal
-            from app.workers.discovery_worker import match_pool_jobs_for_candidate
-            db_session = SessionLocal()
-            try:
-                cand = db_session.query(Candidate).filter(Candidate.id == cand_id).first()
-                if cand:
-                    skills_list = [s.strip() for s in (cand.skills or "").split(",") if s.strip()]
-                    await match_pool_jobs_for_candidate(cand, db_session, skills_list)
-            except Exception as bg_match_err:
-                logger.error(f"Background profile match recalculation failed: {bg_match_err}")
-            finally:
-                db_session.close()
-
-        background_tasks.add_task(run_matching_bg, candidate.id)
-        logger.info(f"Enqueued background match recalculation for candidate {candidate.id}")
-    except Exception as match_err:
-        logger.error(f"Failed to trigger matching recalculation after profile update: {match_err}")
+    
 
     from app.services.resume_cache import invalidate_resume_analysis
     invalidate_resume_analysis(candidate.id)

@@ -60,28 +60,7 @@ class SkillLabMCPServer(BaseMCPServer):
             logger.error(f"get_course_progress error: {e}")
             return {"error": str(e)}
 
-    def get_skill_gaps(self, candidate_id: int, db: Session) -> list:
-        """Returns skill gaps by analyzing job matches vs candidate skills."""
-        self._log_call("get_skill_gaps", candidate_id)
-        try:
-            from app.models.models import JobMatch
-            from app.agents.skill_gap import SkillGapAgent
-            matches = db.query(JobMatch).filter(
-                JobMatch.candidate_id == candidate_id,
-                JobMatch.match_score < 80
-            ).order_by(JobMatch.match_score.asc()).limit(10).all()
-            job_data = []
-            for m in matches:
-                if m.skills_gap:
-                    skills = [s.strip() for s in m.skills_gap.split(",") if s.strip()]
-                    job_data.append({"missing_skills": skills, "match_score": m.match_score})
-            if job_data:
-                agent = SkillGapAgent(job_data)
-                return agent.analyze_gaps()
-            return []
-        except Exception as e:
-            logger.error(f"get_skill_gaps error: {e}")
-            return []
+
 
     def get_learning_health(self, user_id: int, db: Session) -> dict:
         """Returns a learning health summary."""

@@ -1,4 +1,4 @@
-import uuid
+﻿import uuid
 from datetime import datetime
 from sqlalchemy import (
     Column, Integer, String, Text, Boolean, DateTime, Float, ForeignKey, Index, JSON, CheckConstraint, UniqueConstraint
@@ -52,13 +52,13 @@ class Candidate(Base):
     portfolio = Column(String, nullable=True)
     
     # Resume ingestion tracking
-    resume_status = Column(String, default="pending")  # pending, uploading, extracting_text, parsing_resume, building_profile, generating_embeddings, completed, failed
+    resume_status = Column(String, default="pending")
     resume_progress = Column(Integer, default=0)
     resume_step = Column(String(100), nullable=True)
     resume_last_processed_at = Column(DateTime, nullable=True)
     resume_processing_error = Column(Text, nullable=True)
     
-    status = Column(String, default="Registered") # Registered, Complete, Applied, Offer, etc.
+    status = Column(String, default="Registered")
     current_step = Column(String, default="Profile")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -75,7 +75,6 @@ class Candidate(Base):
     user = relationship("User", back_populates="candidate")
     profiles = relationship("CandidateProfile", back_populates="candidate")
     resumes = relationship("CandidateResume", back_populates="candidate")
-    applications = relationship("Application", back_populates="candidate")
 
 class CandidateProfile(Base):
     __tablename__ = "candidate_profiles"
@@ -109,184 +108,6 @@ class CandidateResume(Base):
     is_active = Column(Boolean, default=False)
     
     candidate = relationship("Candidate", back_populates="resumes")
-    applications = relationship("Application", back_populates="resume")
-
-class Job(Base):
-    __tablename__ = "jobs"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(String, nullable=False)
-    description = Column(Text, nullable=False)
-    required_skills = Column(String, nullable=False) # Comma separated
-    experience_level = Column(String, nullable=False)
-    salary_range = Column(String, nullable=True)
-    location = Column(String, nullable=False)
-    department = Column(String, nullable=False)
-    status = Column(String, default="active")  # active, archived
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
-    recruiter_id = Column(Integer, ForeignKey("recruiters.id"), nullable=True)
-    
-    applications = relationship("Application", back_populates="job")
-    assessments = relationship("Assessment", back_populates="job")
-    company = relationship("Company", back_populates="jobs")
-    recruiter = relationship("Recruiter", back_populates="jobs")
-    sources = relationship("JobSource", back_populates="job")
-    matches = relationship("JobMatch", back_populates="job")
-    saved_by = relationship("SavedJob", back_populates="job")
-
-    domain = Column(String, nullable=True)
-    job_type = Column(String, default="Full-time")
-    career_level = Column(String, default="Mid-level")
-
-    @property
-    def company_logo(self):
-        return self.company.logo_url if self.company else None
-
-class Application(Base):
-    __tablename__ = "applications"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    candidate_id = Column(Integer, ForeignKey("candidates.id"), nullable=False)
-    job_id = Column(Integer, ForeignKey("jobs.id"), nullable=False)
-    resume_id = Column(Integer, ForeignKey("candidate_resumes.id"), nullable=True)
-    status = Column(String, default="applied") # applied, screening, assessment, interview, ranking, recommendation, offer, onboarding, hired, rejected
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    candidate = relationship("Candidate", back_populates="applications")
-    job = relationship("Job", back_populates="applications")
-    resume = relationship("CandidateResume", back_populates="applications")
-    
-    screening_results = relationship("ScreeningResult", back_populates="application")
-    assessment_attempts = relationship("AssessmentAttempt", back_populates="application")
-    interviews = relationship("Interview", back_populates="application")
-    rankings = relationship("CandidateRanking", back_populates="application")
-    offers = relationship("Offer", back_populates="application")
-
-class ScreeningResult(Base):
-    __tablename__ = "screening_results"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    application_id = Column(Integer, ForeignKey("applications.id"), nullable=False)
-    skill_match = Column(Float, default=0.0)
-    experience_match = Column(Float, default=0.0)
-    education_match = Column(Float, default=0.0)
-    project_match = Column(Float, default=0.0)
-    overall_score = Column(Float, default=0.0)
-    decision = Column(String, nullable=False) # shortlist, reject
-    raw_reasoning = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
-    application = relationship("Application", back_populates="screening_results")
-
-class Assessment(Base):
-    __tablename__ = "assessments"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    job_id = Column(Integer, ForeignKey("jobs.id"), nullable=False)
-    title = Column(String, nullable=False)
-    mcqs = Column(Text, nullable=False) # JSON String
-    coding_challenges = Column(Text, nullable=False) # JSON String
-    english_test = Column(Text, nullable=False) # JSON String
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
-    job = relationship("Job", back_populates="assessments")
-    attempts = relationship("AssessmentAttempt", back_populates="assessment")
-
-class AssessmentAttempt(Base):
-    __tablename__ = "assessment_attempts"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    application_id = Column(Integer, ForeignKey("applications.id"), nullable=False)
-    assessment_id = Column(Integer, ForeignKey("assessments.id"), nullable=False)
-    status = Column(String, default="started") # started, completed
-    answers = Column(Text, nullable=True) # JSON String
-    score = Column(Float, default=0.0)
-    passed = Column(Boolean, default=False)
-    proctoring_violations = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    completed_at = Column(DateTime, nullable=True)
-    
-    application = relationship("Application", back_populates="assessment_attempts")
-    assessment = relationship("Assessment", back_populates="attempts")
-    fraud_logs = relationship("FraudLog", back_populates="attempt")
-
-class FraudLog(Base):
-    __tablename__ = "fraud_logs"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    attempt_id = Column(Integer, ForeignKey("assessment_attempts.id"), nullable=False)
-    event_type = Column(String, nullable=False) # tab_switch, face_missing, multiple_faces, eye_away, copy_paste
-    screenshot_url = Column(String, nullable=True)
-    fraud_score = Column(Float, default=0.0)
-    details = Column(Text, nullable=True)
-    timestamp = Column(DateTime, default=datetime.utcnow)
-    
-    attempt = relationship("AssessmentAttempt", back_populates="fraud_logs")
-
-class Interview(Base):
-    __tablename__ = "interviews"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    application_id = Column(Integer, ForeignKey("applications.id"), nullable=False)
-    scheduled_at = Column(DateTime, default=datetime.utcnow)
-    status = Column(String, default="scheduled") # scheduled, active, completed
-    recording_url = Column(String, nullable=True)
-    transcript = Column(Text, nullable=True) # JSON String list of dialogue
-    questions = Column(Text, nullable=True) # JSON String list of generated questions
-    current_question_index = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
-    application = relationship("Application", back_populates="interviews")
-    results = relationship("InterviewResult", back_populates="interview")
-
-class InterviewResult(Base):
-    __tablename__ = "interview_results"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    interview_id = Column(Integer, ForeignKey("interviews.id"), nullable=False)
-    technical_score = Column(Float, default=0.0)
-    communication_score = Column(Float, default=0.0)
-    confidence_score = Column(Float, default=0.0)
-    thinking_score = Column(Float, default=0.0)
-    problem_solving_score = Column(Float, default=0.0)
-    fraud_score = Column(Float, default=0.0)
-    final_score = Column(Float, default=0.0)
-    report_summary = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
-    interview = relationship("Interview", back_populates="results")
-
-class CandidateRanking(Base):
-    __tablename__ = "candidate_rankings"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    application_id = Column(Integer, ForeignKey("applications.id"), nullable=False)
-    resume_score = Column(Float, default=0.0)
-    assessment_score = Column(Float, default=0.0)
-    interview_score = Column(Float, default=0.0)
-    fraud_penalty = Column(Float, default=0.0)
-    final_score = Column(Float, default=0.0)
-    rank = Column(Integer, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
-    application = relationship("Application", back_populates="rankings")
-
-class Offer(Base):
-    __tablename__ = "offers"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    application_id = Column(Integer, ForeignKey("applications.id"), nullable=False)
-    offer_url = Column(String, nullable=True)
-    salary_offered = Column(Float, nullable=False)
-    status = Column(String, default="pending") # pending, accepted, rejected
-    sent_at = Column(DateTime, default=datetime.utcnow)
-    responded_at = Column(DateTime, nullable=True)
-    
-    application = relationship("Application", back_populates="offers")
 
 class Notification(Base):
     __tablename__ = "notifications"
@@ -331,8 +152,8 @@ class Message(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     candidate_id = Column(Integer, ForeignKey("candidates.id"), nullable=False)
-    chat_id = Column(String, nullable=False) # recruiter_sophia, hiring_team, mentor_srinivasan, team_alpha, support
-    sender = Column(String, nullable=False) # user, recruiter, mentor, other, support
+    chat_id = Column(String, nullable=False)
+    sender = Column(String, nullable=False)
     sender_name = Column(String, nullable=False)
     text = Column(Text, nullable=False)
     sent_at = Column(DateTime, default=datetime.utcnow)
@@ -341,166 +162,12 @@ class Message(Base):
     candidate = relationship("Candidate")
 
 
-class Company(Base):
-    __tablename__ = "companies"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True, nullable=False)
-    logo_url = Column(String, nullable=True)
-    website = Column(String, nullable=True)
-    description = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
-    jobs = relationship("Job", back_populates="company")
-    recruiters = relationship("Recruiter", back_populates="company")
-
-
-class Recruiter(Base):
-    __tablename__ = "recruiters"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False)
-    profile_url = Column(String, nullable=True)
-    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
-    company = relationship("Company", back_populates="recruiters")
-    jobs = relationship("Job", back_populates="recruiter")
-    linkedin_posts = relationship("LinkedInHiringPost", back_populates="recruiter")
-
-
-class LinkedInHiringPost(Base):
-    __tablename__ = "linkedin_hiring_posts"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    post_url = Column(String, unique=True, index=True, nullable=False)
-    posted_date = Column(DateTime, default=datetime.utcnow)
-    raw_text = Column(Text, nullable=False)
-    extracted_title = Column(String, nullable=True)
-    extracted_company = Column(String, nullable=True)
-    extracted_location = Column(String, nullable=True)
-    extracted_skills = Column(String, nullable=True)
-    extracted_experience = Column(String, nullable=True)
-    extracted_salary = Column(String, nullable=True)
-    extracted_contact_email = Column(String, nullable=True)
-    extracted_apply_link = Column(String, nullable=True)
-    recruiter_id = Column(Integer, ForeignKey("recruiters.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
-    recruiter = relationship("Recruiter", back_populates="linkedin_posts")
-
-
-class JobSource(Base):
-    __tablename__ = "job_sources"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    job_id = Column(Integer, ForeignKey("jobs.id"), nullable=False)
-    source_platform = Column(String, nullable=False) # e.g. LinkedIn, Indeed, Naukri, Swiggy Careers
-    source_url = Column(String, nullable=False)
-    posted_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    job = relationship("Job", back_populates="sources")
-
-
-class JobMatch(Base):
-    __tablename__ = "job_matches"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    candidate_id = Column(Integer, ForeignKey("candidates.id"), nullable=False)
-    job_id = Column(Integer, ForeignKey("jobs.id"), nullable=False)
-    skill_match = Column(Float, default=0.0)
-    experience_match = Column(Float, default=0.0)
-    education_match = Column(Float, default=0.0)
-    project_match = Column(Float, default=0.0)
-    certification_match = Column(Float, default=0.0)
-    location_match = Column(Float, default=0.0)
-    match_score = Column(Float, default=0.0)
-    skills_gap = Column(Text, nullable=True) # comma separated skills missing
-    reasons_json = Column(JSON, nullable=True)
-    apply_status = Column(String(50), default="NEW") # NEW, SAVED, APPLIED, INTERVIEW, REJECTED, OFFER
-    resume_version = Column(String(100), nullable=True)
-    interaction_status = Column(String(50), default="VIEWED") # VIEWED, CLICKED, SAVED, APPLIED, INTERVIEW, REJECTED, OFFER
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    job = relationship("Job", back_populates="matches")
-    candidate = relationship("Candidate")
-
-
-class SearchHistory(Base):
-    __tablename__ = "search_history"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    candidate_id = Column(Integer, ForeignKey("candidates.id"), nullable=False)
-    query = Column(String, nullable=False)
-    searched_at = Column(DateTime, default=datetime.utcnow)
-    
-    candidate = relationship("Candidate")
-
-
-class SavedJob(Base):
-    __tablename__ = "saved_jobs"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    candidate_id = Column(Integer, ForeignKey("candidates.id"), nullable=False, index=True)
-    job_id = Column(Integer, ForeignKey("jobs.id"), nullable=False, index=True)
-    saved_at = Column(DateTime, default=datetime.utcnow)
-    
-    job = relationship("Job", back_populates="saved_by")
-    candidate = relationship("Candidate")
-
-
-class JobAgentRun(Base):
-    __tablename__ = "job_agent_runs"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    candidate_id = Column(Integer, ForeignKey("candidates.id"), nullable=False, index=True)
-    status = Column(String, default="running")  # running, completed, failed
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
-    completed_at = Column(DateTime, nullable=True)
-    stats = Column(JSON, nullable=True)
-    
-    candidate = relationship("Candidate")
-    logs = relationship("JobAgentLog", back_populates="run", cascade="all, delete-orphan")
-
-
-class JobAgentLog(Base):
-    __tablename__ = "job_agent_logs"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    run_id = Column(Integer, ForeignKey("job_agent_runs.id"), nullable=False, index=True)
-    message = Column(Text, nullable=False)
-    status = Column(String, default="info")  # info, success, warning, error
-    timestamp = Column(DateTime, default=datetime.utcnow)
-    
-    run = relationship("JobAgentRun", back_populates="logs")
-
-
-class TelegramSource(Base):
-    __tablename__ = "telegram_sources"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    channel_name = Column(String, unique=True, index=True, nullable=False)
-    active = Column(Boolean, default=True)
-    last_checked = Column(DateTime, nullable=True)
-
-
 class UserPreference(Base):
     __tablename__ = "user_preferences"
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
     theme = Column(String, default="light")  # light, dark, system
-    
-    auto_apply_enabled = Column(Boolean, default=False)
-    auto_apply_approval_mode = Column(String(20), default="always")  # auto | always | new_company
-    auto_apply_min_score = Column(Float, default=80.0)
-    auto_apply_min_skill_match = Column(Float, default=70.0)
-    auto_apply_daily_cap = Column(Integer, default=50)
-    auto_apply_remote_only = Column(Boolean, default=False)
-    auto_apply_max_job_age_days = Column(Integer, default=2)
-    auto_apply_locations = Column(Text, default="[]")   # JSON list
-    auto_apply_domains = Column(Text, default="[]")     # JSON list
     
     user = relationship("User", back_populates="preferences")
 
@@ -519,7 +186,6 @@ class CourseProgress(Base):
     last_activity = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     __table_args__ = (
-        # Compound index for efficient per-user curriculum progress lookups
         Index("ix_course_progress_user_course", "user_id", "course_id"),
         UniqueConstraint("user_id", "course_id", name="uq_course_progress_user_course"),
     )
@@ -687,14 +353,14 @@ class UserConsent(Base):
     
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    consent_type = Column(String, nullable=False)  # "account_access", "app_submission", "resume_upload", "data_storage", "credential_storage", "auto_apply", "cover_letter_generation", "screening_answer_generation"
+    consent_type = Column(String, nullable=False)
     granted = Column(Boolean, default=False, nullable=False)
     granted_at = Column(DateTime, nullable=True)
     ip_address = Column(String, nullable=True)
     user_agent = Column(String, nullable=True)
     consent_ref = Column(String, nullable=False, default=lambda: str(uuid.uuid4()))
-    revoked_at = Column(DateTime, nullable=True)                         # NULL = still active
-    metadata_json = Column(JSON, default=dict)                           # platform, purpose, etc.
+    revoked_at = Column(DateTime, nullable=True)
+    metadata_json = Column(JSON, default=dict)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -757,38 +423,3 @@ class CandidateEmbedding(Base):
     embedding_model = Column(String(100), nullable=False)
     embedding_vector = Column(Text, nullable=False)  # JSON-serialized floats
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-
-class CompanyProfile(Base):
-    __tablename__ = "company_profiles"
-    
-    company_name = Column(String(255), primary_key=True, index=True)
-    industry = Column(String(255), nullable=True)
-    size = Column(String(50), nullable=True)
-    career_page = Column(String(500), nullable=True)
-    hiring_score = Column(Float, default=0.0)
-    response_rate = Column(Float, default=0.0)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-
-class JobSourceTracking(Base):
-    __tablename__ = "job_source_tracking"
-    
-    source_name = Column(String(100), primary_key=True)
-    last_crawl = Column(DateTime, default=datetime.utcnow)
-    success_count = Column(Integer, default=0)
-    failure_count = Column(Integer, default=0)
-    avg_response_time = Column(Float, default=0.0)
-    status = Column(String(50), default="healthy")
-
-
-class RecommendationMemory(Base):
-    __tablename__ = "recommendation_memories"
-    
-    candidate_id = Column(Integer, ForeignKey("candidates.id", ondelete="CASCADE"), primary_key=True)
-    preferred_roles = Column(Text, nullable=True)  # JSON string array
-    preferred_locations = Column(Text, nullable=True)  # JSON string array
-    preferred_companies = Column(Text, nullable=True)  # JSON string array
-    ignored_roles = Column(Text, nullable=True)  # JSON string array
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-

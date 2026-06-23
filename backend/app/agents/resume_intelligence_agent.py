@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
 from app.models.models import (
-    Candidate, CandidateResume, CandidateProfile, CandidateEmbedding, RecommendationMemory
+    Candidate, CandidateResume, CandidateProfile, CandidateEmbedding
 )
 from app.services.orchestrator import call_nvidia
 from app.services.embedding_service import embedding_service
@@ -388,29 +388,6 @@ Candidate Profile:
             )
         except Exception as e:
             logger.error(f"Failed to upsert candidate vector: {e}")
-            
-        # 5. Initialize RecommendationMemory
-        rec_mem = self.db.query(RecommendationMemory).filter(RecommendationMemory.candidate_id == candidate_id).first()
-        if not rec_mem:
-            rec_mem = RecommendationMemory(
-                candidate_id=candidate_id,
-                preferred_roles=json.dumps(roles[:5]),
-                preferred_locations=json.dumps([profile_data.get("location")] if profile_data.get("location") else []),
-                preferred_companies=json.dumps([]),
-                ignored_roles=json.dumps([])
-            )
-            self.db.add(rec_mem)
-            self.db.commit()
-            
-        # Invalidate caches
-        try:
-            import app.services.job_cache as job_cache
-            await job_cache.invalidate_candidate_profile(candidate_id)
-            await job_cache.invalidate_generated_roles(candidate_id)
-            await job_cache.invalidate_search_strategy(candidate_id)
-            await job_cache.invalidate_jobs_pool(candidate_id)
-        except Exception as cache_err:
-            logger.warning(f"Failed to invalidate cache: {cache_err}")
             
         return {}
 
