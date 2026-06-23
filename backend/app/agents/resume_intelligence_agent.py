@@ -139,7 +139,7 @@ class ResumeIntelligenceAgent:
             
         return {"resume_hash": resume_hash, "skip_processing": False}
 
-    def extract_candidate_intelligence(self, state: ResumeState) -> Dict[str, Any]:
+    async def extract_candidate_intelligence(self, state: ResumeState) -> Dict[str, Any]:
         if state.get("skip_processing"):
             return {}
             
@@ -172,7 +172,7 @@ Keys:
 Resume Text:
 {state["resume_text"]}
 """
-        res = call_nvidia(prompt)
+        res = await asyncio.to_thread(call_nvidia, prompt)
         profile_data = {}
         try:
             profile_data = self._clean_and_parse_json(res)
@@ -203,7 +203,7 @@ Resume Text:
             
         return {"profile_data": profile_data}
 
-    def generate_roles(self, state: ResumeState) -> Dict[str, Any]:
+    async def generate_roles(self, state: ResumeState) -> Dict[str, Any]:
         if state.get("skip_processing"):
             return {}
             
@@ -225,7 +225,7 @@ Candidate Profile:
 - Technologies: {profile.get("technologies")}
 - Tools: {profile.get("tools")}
 """
-        res = call_nvidia(prompt)
+        res = await asyncio.to_thread(call_nvidia, prompt)
         roles = []
         try:
             roles = self._clean_and_parse_json(res)

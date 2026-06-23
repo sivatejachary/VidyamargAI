@@ -106,10 +106,6 @@ class CandidateHackathonUpdate(BaseModel):
     hackathon_problem: Optional[str] = None
     hackathon_members: Optional[str] = None
 
-class ATSAnalysisRequest(BaseModel):
-    job_id: Optional[int] = None
-    job_description: Optional[str] = None
-
 class AdminMessageCreate(BaseModel):
     candidate_id: int
     chat_id: str

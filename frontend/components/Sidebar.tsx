@@ -8,7 +8,7 @@ import { apiService } from "@/services/api";
 import { 
   Sparkles, Briefcase, FileText, Compass, Trophy, MessageSquare, 
   Bell, Moon, Sun, LogOut, LayoutDashboard, Users, 
-  GitFork, Cpu, PanelLeftClose, PanelLeftOpen, Menu, X, BookOpen
+  GitFork, Cpu, PanelLeftClose, PanelLeftOpen, Menu, X, BookOpen, Bot
 } from "lucide-react";
 
 interface SidebarProps {
@@ -123,6 +123,7 @@ export default function Sidebar({ portal }: SidebarProps) {
   };
 
   const candidateLinks = [
+    { name: "AI Job Agent", href: "/candidate/job-agent", icon: Bot, highlight: true },
     { name: "Ask Tush AI", href: "/candidate/chat", icon: Sparkles },
     { name: "Resume Builder", href: "/candidate/resume", icon: FileText },
     { name: "Skill Lab", href: "/candidate/skill-lab", icon: Compass },

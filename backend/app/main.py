@@ -204,7 +204,43 @@ def init_db_safely():
                     questions_json TEXT NOT NULL
                 )
             """))
-            # [ARCHIVED] written_assessments and ai_interviews tables moved to archive schema
+            # Re-introduce assessments and mock interviews tables for curriculum flow
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS written_assessments (
+                    id VARCHAR PRIMARY KEY,
+                    moduleid VARCHAR NOT NULL,
+                    title VARCHAR NOT NULL,
+                    passpercentage INTEGER,
+                    questions_json TEXT NOT NULL
+                )
+            """))
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS ai_interviews (
+                    id VARCHAR PRIMARY KEY,
+                    moduleid VARCHAR NOT NULL,
+                    title VARCHAR NOT NULL,
+                    passpercentage INTEGER,
+                    questions_json TEXT NOT NULL
+                )
+            """))
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS final_assessments (
+                    id VARCHAR PRIMARY KEY,
+                    courseid VARCHAR NOT NULL,
+                    title VARCHAR NOT NULL,
+                    passpercentage INTEGER,
+                    questions_json TEXT NOT NULL
+                )
+            """))
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS final_ai_interviews (
+                    id VARCHAR PRIMARY KEY,
+                    courseid VARCHAR NOT NULL,
+                    title VARCHAR NOT NULL,
+                    passpercentage INTEGER,
+                    questions_json TEXT NOT NULL
+                )
+            """))
             # user_progress table
             conn.execute(text(f"""
                 CREATE TABLE IF NOT EXISTS user_progress (
@@ -388,16 +424,8 @@ def init_db_safely():
                     conn.execute(text("CREATE INDEX IF NOT EXISTS idx_ai_mentor_studyplans_search ON ai_mentor_study_plans USING GIN (to_tsvector('english', content))"))
                     conn.execute(text("CREATE INDEX IF NOT EXISTS idx_ai_mentor_artifacts_search ON ai_mentor_artifacts USING GIN (to_tsvector('english', content)) WHERE is_archived = FALSE"))
                     
-                    # pg_trgm and search optimizations for jobs_pool
+                    # pg_trgm and search optimizations
                     conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
-                    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_job_title_trgm ON jobs_pool USING gin(title gin_trgm_ops)"))
-                    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_job_description_trgm ON jobs_pool USING gin(description gin_trgm_ops)"))
-                    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_jobs_created_at ON jobs_pool(created_at DESC)"))
-                    
-                    # Create explicit indexes requested
-                    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_jobpool_domain ON jobs_pool(domain)"))
-                    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_match_candidate ON job_pool_matches(candidate_id)"))
-                    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_match_candidate_job ON job_pool_matches(candidate_id, job_pool_id)"))
                 except Exception as e:
                     print(f"GIN/Trigram Index creation warning: {e}")
 
@@ -485,6 +513,13 @@ app = FastAPI(
     default_response_class=ORJSONResponse
 )
 
+from app.core.limiter import limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # Sentry initialization (Phase 0)
 try:
     import sentry_sdk
@@ -509,34 +544,9 @@ except ImportError:
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-async def seed_external_jobs_bg():
-    """Background task to seed jobs from external Remotive API without blocking startup."""
-    try:
-        from app.core.database import SessionLocal
-        from app.models.models import Job
-        from app.api.endpoints import extract_and_seed_external_jobs
-        
-        def _seed():
-            db_session = SessionLocal()
-            try:
-                active_jobs_count = db_session.query(Job).filter(Job.status == "active").count()
-                if active_jobs_count < 5:
-                    logger.info("Database has few jobs. Initializing background external job extraction from Remotive API...")
-                    added = extract_and_seed_external_jobs(db_session, limit=20)
-                    logger.info(f"External job extraction seeded {added} jobs successfully in background.")
-            except Exception as e:
-                logger.error(f"Background auto-seed warning: {e}")
-            finally:
-                db_session.close()
-
-        await asyncio.to_thread(_seed)
-    except Exception as e:
-        logger.error(f"Background job seeding execution failed: {e}")
-
 @app.on_event("startup")
 async def startup_event():
     init_db_safely()
-    asyncio.create_task(seed_external_jobs_bg())
     
     # Initialize Qdrant Collections
     try:
@@ -556,24 +566,16 @@ async def startup_event():
     except Exception as e:
         logger.error(f"Failed to connect Event Bus: {e}")
 
-    # Initialize Workflow Recovery
-    try:
-        from app.core.workflow_engine import workflow_engine
-        await workflow_engine.recover_on_startup()
-        logger.info("Interrupted workflows recovery triggered successfully.")
-    except Exception as e:
-        logger.error(f"Failed to run workflow recovery: {e}")
+
     
 
 
     try:
         from app.services.mcp_audit import audit_logger_worker
-        from app.services.alerting import start_alert_coordinator
         asyncio.create_task(audit_logger_worker())
-        asyncio.create_task(start_alert_coordinator())
-        logger.info("Background operational workers (Audit & Alerting) started.")
+        logger.info("Background operational audit worker started.")
     except Exception as e:
-        logger.error(f"Failed to launch background workers: {e}")
+        logger.error(f"Failed to launch background audit worker: {e}")
 
     try:
         import app.mcp.servers

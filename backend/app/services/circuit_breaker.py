@@ -3,9 +3,20 @@ import logging
 from datetime import datetime, timedelta
 from app.core.database import SessionLocal
 from app.models.mcp_models import CircuitBreakerState
-from app.core.queue import redis_conn
-
 logger = logging.getLogger("app.services.circuit_breaker")
+
+try:
+    import redis
+    from app.core.config import settings
+    redis_conn = redis.Redis.from_url(
+        settings.REDIS_URL,
+        socket_connect_timeout=5,
+        socket_timeout=5,
+        decode_responses=False,
+    )
+except Exception as exc:
+    logger.warning(f"Redis not available for circuit breaker caching ({exc}); local memory caching will be used.")
+    redis_conn = None
 
 _LOCAL_CB_CACHE = {}  # {tool_name: (state_data, expires_at)}
 CB_CACHE_TTL = 60  # seconds

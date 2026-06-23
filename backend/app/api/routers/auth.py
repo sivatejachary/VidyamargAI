@@ -22,6 +22,7 @@ from app.schemas import schemas
 from app.models.models import *
 
 from app.api.helpers import *
+from app.core.limiter import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +82,8 @@ def test_resend_directly():
 # ----------------- AUTHENTICATION -----------------
 
 @router.post("/auth/signup", response_model=schemas.UserResponse)
-def signup(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def signup(request: Request, user_in: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user_in.email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -106,7 +108,8 @@ def signup(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
     return user
 
 @router.post("/auth/login", response_model=schemas.Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == form_data.username).first()
     if not user or not verify_password(form_data.password, user.password_hash):
         raise HTTPException(

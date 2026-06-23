@@ -26,7 +26,7 @@ def call_gemini(prompt: str, json_mode: bool = False) -> str:
     if not settings.GEMINI_API_KEY:
         return ""
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={settings.GEMINI_API_KEY}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={settings.GEMINI_API_KEY}"
         headers = {"Content-Type": "application/json"}
         payload = {
             "contents": [{"parts": [{"text": prompt}]}]
@@ -368,11 +368,11 @@ class AgentOrchestrator:
             
             ai_response = None
             if settings.GEMINI_API_KEY:
-                ai_response = call_gemini(prompt, json_mode=True)
+                ai_response = await asyncio.to_thread(call_gemini, prompt, json_mode=True)
             
             if not ai_response and settings.NVIDIA_API_KEY:
                 messages = [{"role": "user", "content": prompt + "\nRemember: Return ONLY valid JSON, do not include any other text."}]
-                ai_response = call_nvidia(messages)
+                ai_response = await asyncio.to_thread(call_nvidia, messages)
                 
             data = {}
             if ai_response:

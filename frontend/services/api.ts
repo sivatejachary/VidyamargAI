@@ -203,18 +203,7 @@ export const apiService = {
     return res.json();
   },
 
-  async analyzeResumeATS(jobId?: number, jobDescription?: string) {
-    const body: any = {};
-    if (jobId) body.job_id = jobId;
-    if (jobDescription) body.job_description = jobDescription;
-    const res = await customFetch(`${getBaseUrl()}/candidates/resume/ats`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...getHeaders() },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) return null;
-    return res.json();
-  },
+
 
 
 
@@ -967,33 +956,7 @@ export const apiService = {
     return res.json();
   },
 
-  // ── Human Action Queue (HAQ) ─────────────────────────────────────────────
-  async getHAQPending() {
-    const res = await customFetch(`${getBaseUrl()}/haq/pending`, {
-      headers: getHeaders(),
-    });
-    if (!res.ok) return [];
-    return res.json();
-  },
 
-  async completeHAQItem(callbackKey: string, data: Record<string, unknown> = {}) {
-    const res = await customFetch(`${getBaseUrl()}/haq/${callbackKey}/complete`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...getHeaders() },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error("Failed to complete HAQ item");
-    return res.json();
-  },
-
-  async dismissHAQItem(callbackKey: string) {
-    const res = await customFetch(`${getBaseUrl()}/haq/${callbackKey}/dismiss`, {
-      method: "POST",
-      headers: getHeaders(),
-    });
-    if (!res.ok) throw new Error("Failed to dismiss HAQ item");
-    return res.json();
-  },
 
 
 
@@ -1033,5 +996,213 @@ export const apiService = {
     if (!res.ok) return null;
     return res.json();
   },
+
+  // ── AI Job Agent ─────────────────────────────────────────────────────────
+  async initializeJobAgent() {
+    const res = await customFetch(`${getBaseUrl()}/job-agent/initialize`, {
+      method: "POST",
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || "Failed to initialize agent");
+    return res.json();
+  },
+
+  async triggerAgentRun(runType: string = "full") {
+    const res = await customFetch(`${getBaseUrl()}/job-agent/run`, {
+      method: "POST",
+      headers: { ...getHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ run_type: runType }),
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || "Failed to trigger run");
+    return res.json();
+  },
+
+  async getAgentStatus() {
+    const res = await customFetch(`${getBaseUrl()}/job-agent/status`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) return null;
+    return res.json();
+  },
+
+  async getJobAgentDashboard() {
+    const res = await customFetch(`${getBaseUrl()}/job-agent/dashboard`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to load dashboard");
+    return res.json();
+  },
+
+  async getJobFeed(params?: {
+    page?: number;
+    page_size?: number;
+    min_score?: number;
+    seniority?: string;
+    is_remote?: boolean;
+    status_filter?: string;
+  }) {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.set("page", String(params.page));
+    if (params?.page_size) queryParams.set("page_size", String(params.page_size));
+    if (params?.min_score !== undefined) queryParams.set("min_score", String(params.min_score));
+    if (params?.seniority) queryParams.set("seniority", params.seniority);
+    if (params?.is_remote !== undefined) queryParams.set("is_remote", String(params.is_remote));
+    if (params?.status_filter) queryParams.set("status_filter", params.status_filter);
+
+    const res = await customFetch(`${getBaseUrl()}/job-agent/jobs?${queryParams}`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to load jobs");
+    return res.json();
+  },
+
+  async getJobDetail(jobId: number) {
+    const res = await customFetch(`${getBaseUrl()}/job-agent/jobs/${jobId}`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Job not found");
+    return res.json();
+  },
+
+  async reactToJob(jobId: number, reaction: string) {
+    const res = await customFetch(`${getBaseUrl()}/job-agent/jobs/${jobId}/react`, {
+      method: "POST",
+      headers: { ...getHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ reaction }),
+    });
+    if (!res.ok) throw new Error("Failed to record reaction");
+    return res.json();
+  },
+
+  async getApplications(statusFilter?: string) {
+    const url = statusFilter
+      ? `${getBaseUrl()}/job-agent/applications?status_filter=${statusFilter}`
+      : `${getBaseUrl()}/job-agent/applications`;
+    const res = await customFetch(url, { headers: getHeaders() });
+    if (!res.ok) throw new Error("Failed to load applications");
+    return res.json();
+  },
+
+  async createApplication(data: {
+    job_id: number;
+    status?: string;
+    notes?: string;
+    cover_letter?: string;
+    applied_via?: string;
+  }) {
+    const res = await customFetch(`${getBaseUrl()}/job-agent/applications`, {
+      method: "POST",
+      headers: { ...getHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || "Failed to create application");
+    return res.json();
+  },
+
+  async updateApplication(appId: number, data: {
+    status?: string;
+    notes?: string;
+    interview_notes?: string;
+    offer_salary?: number;
+    rejection_reason?: string;
+  }) {
+    const res = await customFetch(`${getBaseUrl()}/job-agent/applications/${appId}`, {
+      method: "PATCH",
+      headers: { ...getHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Failed to update application");
+    return res.json();
+  },
+
+  async getJobAgentCareerPaths() {
+    const res = await customFetch(`${getBaseUrl()}/job-agent/career-paths`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) return null;
+    return res.json();
+  },
+
+  async getSkillGaps() {
+    const res = await customFetch(`${getBaseUrl()}/job-agent/skill-gaps`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) return null;
+    return res.json();
+  },
+
+  async getInterviewPrep(jobId: number) {
+    const res = await customFetch(`${getBaseUrl()}/job-agent/interview-prep/${jobId}`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to load interview prep");
+    return res.json();
+  },
+
+  async getMarketIntelligence() {
+    const res = await customFetch(`${getBaseUrl()}/job-agent/market-intelligence`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) return null;
+    return res.json();
+  },
+
+  async getCareerInsights() {
+    const res = await customFetch(`${getBaseUrl()}/job-agent/career-insights`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) return null;
+    return res.json();
+  },
+
+  async getAgentNotifications(unreadOnly?: boolean) {
+    const url = unreadOnly
+      ? `${getBaseUrl()}/job-agent/notifications?unread_only=true`
+      : `${getBaseUrl()}/job-agent/notifications`;
+    const res = await customFetch(url, { headers: getHeaders() });
+    if (!res.ok) return null;
+    return res.json();
+  },
+
+  async markNotificationRead(notificationId: number) {
+    const res = await customFetch(`${getBaseUrl()}/job-agent/notifications/${notificationId}/read`, {
+      method: "POST",
+      headers: getHeaders(),
+    });
+    return res.ok;
+  },
+
+  async markAllNotificationsRead() {
+    const res = await customFetch(`${getBaseUrl()}/job-agent/notifications/read-all`, {
+      method: "POST",
+      headers: getHeaders(),
+    });
+    return res.ok;
+  },
+
+  async updateAgentPreferences(prefs: Record<string, any>) {
+    const res = await customFetch(`${getBaseUrl()}/job-agent/preferences`, {
+      method: "PUT",
+      headers: { ...getHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify(prefs),
+    });
+    if (!res.ok) throw new Error("Failed to update preferences");
+    return res.json();
+  },
+
+  async trackAgentEvent(eventType: string, entityType?: string, entityId?: number, properties?: Record<string, any>) {
+    try {
+      await customFetch(`${getBaseUrl()}/job-agent/analytics/event`, {
+        method: "POST",
+        headers: { ...getHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ event_type: eventType, entity_type: entityType, entity_id: entityId, properties }),
+      });
+    } catch {
+      // Non-blocking
+    }
+  },
 };
+
+export const apiClient = apiService;
+
 

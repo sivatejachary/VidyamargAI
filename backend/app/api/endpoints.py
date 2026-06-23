@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from app.api.routers import (
     auth, profile, resume, learning, mentor,
-    chat, notifications, admin
+    chat, notifications, admin, job_agent
 )
 
 # Backward compatibility exports
@@ -19,3 +19,4 @@ router.include_router(mentor.router)
 router.include_router(chat.router)
 router.include_router(notifications.router)
 router.include_router(admin.router)
+router.include_router(job_agent.router)

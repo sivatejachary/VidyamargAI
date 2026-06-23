@@ -194,7 +194,7 @@ export class OfflineSyncManager {
           };
           
           if (typeof window !== "undefined") {
-            const token = localStorage.getItem("auth_token");
+            const token = localStorage.getItem("token");
             if (token) {
               headers["Authorization"] = `Bearer ${token}`;
             }

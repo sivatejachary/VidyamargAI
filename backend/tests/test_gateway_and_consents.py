@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.core.database import Base
-from app.models.models import User, UserConsent
+from app.models.models import User, UserConsent, Candidate
 from app.models.mcp_models import ToolPermission, CircuitBreakerState
 import app.mcp.servers
 from app.mcp.gateway import gateway, _get_breaker_state, _record_breaker_failure, _record_breaker_success
@@ -59,12 +59,17 @@ class TestGatewayAndConsents(unittest.IsolatedAsyncioTestCase):
         self.db.add(perm)
         self.db.commit()
 
-        # Test tool store_job (does not require consent)
+        # Seed Candidate for user
+        cand = Candidate(user_id=user.id, skills="react, node")
+        self.db.add(cand)
+        self.db.commit()
+
+        # Test tool get_resume (does not require consent)
         res = await gateway.call_tool(
             user_id=user.id,
-            server_name="mcp-server-jobs",
-            tool_name="store_job",
-            arguments={"title": "React Engineer"},
+            server_name="mcp-server-resume",
+            tool_name="get_resume",
+            arguments={},
             db=self.db
         )
         self.assertEqual(res.get("status"), "success")

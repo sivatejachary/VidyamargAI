@@ -12,7 +12,6 @@ import {
   PanelLeftClose, PanelLeftOpen, Search, Download, FileUp, MoreVertical
 } from "lucide-react";
 import Link from "next/link";
-import HumanActionQueue from "@/components/HumanActionQueue";
 import AIActionCard from "@/components/AIActionCard";
 
 interface Message {
@@ -1224,7 +1223,6 @@ export default function TushAIChat() {
           </div>
         )}
       </div>
-      <HumanActionQueue />
     </div>
   );
 }

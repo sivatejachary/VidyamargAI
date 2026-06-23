@@ -123,9 +123,6 @@ def delete_candidate_resume(resume_id: int, current_user: User = Depends(get_cur
         
         is_deleting_latest = len(resumes) > 0 and resumes[0].id == resume_id
         
-        # Nullify applications referencing this resume
-        db.query(Application).filter(Application.resume_id == resume_id).update({Application.resume_id: None})
-        
         # Delete profile record(s) matching this resume_id
         db.query(CandidateProfile).filter(
             CandidateProfile.candidate_id == candidate.id,
@@ -463,123 +460,6 @@ Summary: {summary or 'None'}"""
     set_cached_resume_analysis(candidate.id, result)
     return result
 
-
-
-@router.post("/candidates/resume/ats")
-async def analyze_resume_ats(
-    ats_req: schemas.ATSAnalysisRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Job-specific ATS analysis — requires a job_id or job_description."""
-    candidate = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
-    if not candidate:
-        raise HTTPException(status_code=404, detail="Candidate profile not found")
-
-    job_title = ""
-    job_required_skills = ""
-    job_description_text = ""
-
-    if ats_req.job_id:
-        job = db.query(Job).filter(Job.id == ats_req.job_id).first()
-        if not job:
-            raise HTTPException(status_code=404, detail="Job not found")
-        job_title = job.title
-        job_required_skills = job.required_skills or ""
-        job_description_text = job.description or ""
-    elif ats_req.job_description:
-        job_description_text = ats_req.job_description
-        job_title = "Custom Job Description"
-    else:
-        raise HTTPException(status_code=400, detail="Provide either job_id or job_description")
-
-    # ── Candidate skills ──
-    cand_skills = [s.strip().lower() for s in (candidate.skills or "").split(",") if s.strip()]
-    
-    # ── Job skills from required_skills field or from description ──
-    job_skills = [s.strip().lower() for s in job_required_skills.split(",") if s.strip()]
-    
-    # If job_skills is empty but we have a description, extract keywords
-    if not job_skills and job_description_text:
-        common_tech = ["python", "java", "javascript", "react", "angular", "vue", "node", "typescript",
-                       "sql", "nosql", "mongodb", "postgresql", "mysql", "redis", "docker", "kubernetes",
-                       "aws", "azure", "gcp", "git", "ci/cd", "agile", "scrum", "fastapi", "django",
-                       "flask", "spring", "html", "css", "rest", "graphql", "microservices", "linux",
-                       "c++", "c#", ".net", "go", "rust", "scala", "kotlin", "swift", "flutter",
-                       "tensorflow", "pytorch", "machine learning", "deep learning", "nlp", "ai",
-                       "data science", "pandas", "numpy", "tableau", "power bi", "excel"]
-        desc_lower = job_description_text.lower()
-        job_skills = [sk for sk in common_tech if sk in desc_lower]
-
-    # ── Compute matches ──
-    matching = []
-    missing = []
-    
-    for js in job_skills:
-        matched = any(js in cs or cs in js for cs in cand_skills)
-        if matched:
-            matching.append(js)
-        else:
-            missing.append(js)
-
-    # ── Scores ──
-    skill_match = int((len(matching) / len(job_skills) * 100)) if job_skills else 0
-    
-    # Experience match — check if experience text mentions relevant terms
-    exp_text = (candidate.experience or "").lower()
-    exp_match = 0
-    if exp_text and exp_text not in ("", "[]"):
-        exp_match = 50  # base score for having experience
-        if any(js in exp_text for js in job_skills[:5]):
-            exp_match = 75
-        try:
-            exp_items = safe_loads(candidate.experience or "[]", [])
-            if isinstance(exp_items, list) and len(exp_items) >= 2:
-                exp_match = min(exp_match + 15, 100)
-        except Exception:
-            pass
-
-    # Education match
-    edu_text = (candidate.education or "").lower()
-    edu_match = 0
-    if edu_text and edu_text not in ("", "[]"):
-        edu_match = 60
-        try:
-            edu_items = safe_loads(candidate.education or "[]", [])
-            if isinstance(edu_items, list) and len(edu_items) >= 1:
-                edu_match = 75
-            if isinstance(edu_items, list) and len(edu_items) >= 2:
-                edu_match = 90
-        except Exception:
-            pass
-
-    # Overall ATS score
-    ats_score = int(skill_match * 0.5 + exp_match * 0.3 + edu_match * 0.2)
-
-    # Job match score (weighted composite)
-    job_match_score = int(skill_match * 0.4 + exp_match * 0.3 + edu_match * 0.2 + (10 if candidate.certifications else 0) * 0.1)
-
-    # ── Suggestions ──
-    suggestions = []
-    if missing:
-        for kw in missing[:5]:
-            suggestions.append(f"Add '{kw}' to your skills or experience section")
-    if not candidate.certifications:
-        suggestions.append("Add relevant certifications to boost your ATS score")
-    if exp_match < 50:
-        suggestions.append("Expand your work experience descriptions with relevant keywords")
-
-    return {
-        "ats_score": ats_score,
-        "job_match_score": job_match_score,
-        "job_title": job_title,
-        "matching_keywords": [kw.title() for kw in matching],
-        "missing_keywords": [kw.title() for kw in missing],
-        "skill_match": skill_match,
-        "experience_match": exp_match,
-        "education_match": edu_match,
-        "suggestions": suggestions if suggestions else ["Your profile is well-aligned with this role!"],
-    }
 
 
 @router.post("/candidates/resume/{resume_id}/activate")

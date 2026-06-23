@@ -21,6 +21,33 @@ def safe_loads(val, default=None):
             pass
     return default if default is not None else {}
 
+def calculate_years_from_experience(exp_json_or_str: str) -> float:
+    """Calculates total experience years from experience JSON string or raw text."""
+    if not exp_json_or_str:
+        return 0.0
+    try:
+        data = json.loads(exp_json_or_str)
+        if isinstance(data, list):
+            total_years = 0.0
+            for item in data:
+                if isinstance(item, dict):
+                    years_val = item.get("years", 0)
+                    try:
+                        total_years += float(years_val)
+                    except (ValueError, TypeError):
+                        pass
+            return total_years
+    except Exception:
+        pass
+    
+    # Fallback: try parsing number if it is a simple string
+    try:
+        return float(exp_json_or_str)
+    except ValueError:
+        pass
+    
+    return 0.0
+
 class CandidateProfileData(BaseModel):
     skills: List[str]
     experience_years: float
@@ -84,7 +111,6 @@ class ResumeIntelligenceAgent:
                     # Calculate experience years if not present or 0
                     exp_years = meta.get("experience_years")
                     if exp_years is None or exp_years == 0.0:
-                        from app.api.endpoints import calculate_years_from_experience
                         exp_years = calculate_years_from_experience(meta.get("experience") or candidate.experience)
                         
                     domain = meta.get("domain")
@@ -130,7 +156,6 @@ class ResumeIntelligenceAgent:
         if candidate.certifications:
             certs_list = [c.strip() for c in candidate.certifications.split(",") if c.strip()]
 
-        from app.api.endpoints import calculate_years_from_experience
         exp_years = calculate_years_from_experience(candidate.experience)
 
         from app.services.orchestrator import classify_candidate_domain
