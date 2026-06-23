@@ -499,5 +499,352 @@ async def activate_resume(
     return {"message": "Resume activated successfully", "resume_id": resume.id}
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# NEW RESUME INTELLIGENCE ROUTER ENDPOINTS
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.post("/resume/upload")
+async def upload_resume_new(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    fast: bool = Query(False),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Alias for /candidates/resume to support /resume/upload"""
+    return await upload_resume(background_tasks, file, fast, current_user, db)
+
+
+@router.get("/resume/profile")
+def get_resume_profile(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    candidate = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    
+    profile = db.query(CandidateProfile).filter(CandidateProfile.candidate_id == candidate.id).order_by(CandidateProfile.created_at.desc()).first()
+    matrix = db.query(CareerEligibilityMatrix).filter(CareerEligibilityMatrix.candidate_id == candidate.id).first()
+    
+    metadata = safe_loads(profile.parsed_metadata) if profile else {}
+    
+    return {
+        "personal_info": {
+            "name": candidate.parsed_name or current_user.full_name,
+            "email": candidate.parsed_email or current_user.email,
+            "phone": candidate.phone or "",
+            "location": candidate.address or "Remote",
+            "summary": candidate.summary or ""
+        },
+        "career_classification": {
+            "career_family": matrix.career_family if matrix else (profile.industry if profile else "Engineering"),
+            "experience_level": metadata.get("career_level") or (parse_candidate_experience_level(candidate) if candidate else "Mid-Level"),
+            "employability_score": metadata.get("employability_score", 80),
+            "profile_strength": metadata.get("profile_strength", 75)
+        }
+    }
+
+
+@router.get("/resume/career-dna")
+def get_resume_career_dna(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    candidate = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    
+    dna = db.query(CandidateCareerDNA).filter(CandidateCareerDNA.candidate_id == candidate.id).first()
+    if not dna:
+        return {
+            "personality": "Builder",
+            "traits": {
+                "working_style": "Highly Autonomous & Solution-Oriented",
+                "growth_potential": "Strong",
+                "leadership_potential": "Developing"
+            }
+        }
+    return {
+        "personality": dna.personality or "Builder",
+        "traits": dna.traits or {}
+    }
+
+
+@router.get("/resume/skills")
+def get_resume_skills(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    candidate = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    
+    skill_graph = db.query(CandidateSkillGraph).filter(CandidateSkillGraph.candidate_id == candidate.id).first()
+    if not skill_graph:
+        return {"skills": [], "edges": []}
+    return {
+        "skills": skill_graph.skills or [],
+        "edges": skill_graph.edges or []
+    }
+
+
+@router.get("/resume/roles")
+def get_resume_roles(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    candidate = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    
+    profile = db.query(CandidateProfile).filter(CandidateProfile.candidate_id == candidate.id).order_by(CandidateProfile.created_at.desc()).first()
+    if not profile or not profile.generated_roles:
+        return {
+            "core": [{"role": "Software Engineer", "confidence": 95}],
+            "related": [],
+            "adjacent": [],
+            "transferable": [],
+            "future": [],
+            "leadership": []
+        }
+    
+    roles_data = safe_loads(profile.generated_roles)
+    if isinstance(roles_data, list):
+        return {
+            "core": [{"role": r, "confidence": 90 - idx * 2} for idx, r in enumerate(roles_data[:3])],
+            "related": [{"role": r, "confidence": 80 - idx * 2} for idx, r in enumerate(roles_data[3:6])],
+            "adjacent": [{"role": r, "confidence": 75} for r in roles_data[6:10]],
+            "transferable": [],
+            "future": [],
+            "leadership": []
+        }
+    return roles_data
+
+
+@router.get("/resume/career-paths")
+def get_resume_career_paths(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    candidate = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    
+    paths = db.query(CareerPath).filter(CareerPath.candidate_id == candidate.id).all()
+    if not paths:
+        return []
+    return [
+        {
+            "path_name": p.path_name,
+            "steps": p.steps,
+            "milestones": p.milestones
+        }
+        for p in paths
+    ]
+
+
+@router.get("/resume/skill-gaps")
+def get_resume_skill_gaps(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    candidate = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    
+    gaps = db.query(SkillGapAnalysis).filter(SkillGapAnalysis.candidate_id == candidate.id).order_by(SkillGapAnalysis.created_at.desc()).first()
+    if not gaps:
+        return {
+            "current_skills": (candidate.skills or "").split(", "),
+            "required_skills": ["AWS", "Docker", "Kubernetes"],
+            "missing_skills": ["AWS", "Docker", "Kubernetes"],
+            "skill_scores": {},
+            "learning_roadmap": [
+                {"skill": "Docker", "priority": "high", "resources": ["Vite LMS Docker Course"], "est_hours": 10, "career_impact": "+15% job opportunities"},
+                {"skill": "Kubernetes", "priority": "medium", "resources": ["K8s for Developers"], "est_hours": 20, "career_impact": "+20% job opportunities"}
+            ],
+            "overall_gap_score": 45.0,
+            "estimated_upskill_months": 2.0
+        }
+    return {
+        "current_skills": gaps.current_skills,
+        "required_skills": gaps.required_skills,
+        "missing_skills": gaps.missing_skills,
+        "skill_scores": gaps.skill_scores,
+        "learning_roadmap": gaps.learning_roadmap,
+        "overall_gap_score": gaps.overall_gap_score,
+        "estimated_upskill_months": gaps.estimated_upskill_months
+    }
+
+
+@router.get("/resume/opportunities")
+def get_resume_opportunities(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    candidate = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    
+    matrix = db.query(CareerEligibilityMatrix).filter(CareerEligibilityMatrix.candidate_id == candidate.id).first()
+    opportunities = db.query(CareerOpportunity).filter(CareerOpportunity.candidate_id == candidate.id).all()
+    
+    if not matrix:
+        return {
+            "eligible_exams": [],
+            "eligible_gov_jobs": [],
+            "eligible_psu_jobs": [],
+            "eligible_banking_jobs": [],
+            "eligible_defence_jobs": [],
+            "eligible_private_roles": [],
+            "eligible_international_roles": [],
+            "opportunity_scores": {
+                "government_score": 50,
+                "private_score": 50,
+                "remote_score": 50,
+                "international_score": 50,
+                "leadership_potential_score": 50
+            },
+            "risk_analysis": {
+                "demand_risk": "Medium",
+                "automation_risk": "Medium",
+                "market_competition": "High",
+                "future_demand": "High",
+                "salary_growth": "Stable"
+            },
+            "top_opportunities": []
+        }
+        
+    return {
+        "eligible_exams": matrix.eligible_exams or [],
+        "eligible_gov_jobs": matrix.eligible_gov_jobs or [],
+        "eligible_psu_jobs": matrix.eligible_psu_jobs or [],
+        "eligible_banking_jobs": matrix.eligible_banking_jobs or [],
+        "eligible_defence_jobs": matrix.eligible_defence_jobs or [],
+        "eligible_private_roles": matrix.eligible_private_roles or [],
+        "eligible_international_roles": matrix.eligible_international_roles or [],
+        "opportunity_scores": matrix.opportunity_scores or {},
+        "risk_analysis": matrix.risk_analysis or {},
+        "top_opportunities": [
+            {
+                "id": o.id,
+                "role_title": o.role_title,
+                "category": o.category,
+                "confidence_score": o.confidence_score,
+                "growth_score": o.growth_score,
+                "salary_potential": o.salary_potential,
+                "remote_potential": o.remote_potential,
+                "government_potential": o.government_potential,
+                "international_potential": o.international_potential
+            }
+            for o in opportunities
+        ]
+    }
+
+
+@router.get("/resume/market-intelligence")
+def get_resume_market_intelligence(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    candidate = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    
+    profile = db.query(CandidateProfile).filter(CandidateProfile.candidate_id == candidate.id).order_by(CandidateProfile.created_at.desc()).first()
+    industry = (profile.industry if profile else "Software") or "Software"
+    
+    market = db.query(MarketIntelligence).filter(MarketIntelligence.industry == industry).first()
+    if not market:
+        return {
+            "demand_score": 0.85,
+            "salary_range": {"min": 1000000, "max": 2500000, "currency": "INR"},
+            "competition_level": "high",
+            "top_hiring_industries": ["Fintech", "Healthtech", "E-commerce"],
+            "top_hiring_locations": ["Bengaluru", "Hyderabad", "Noida", "Remote"],
+            "emerging_skills": ["Docker", "Kubernetes", "AWS", "FastAPI"]
+        }
+    return {
+        "demand_score": market.demand_score,
+        "salary_range": {"min": market.avg_salary_min, "max": market.avg_salary_max, "currency": market.salary_currency},
+        "competition_level": "medium" if market.competition_score < 0.6 else "high",
+        "top_hiring_industries": market.top_companies_hiring or [],
+        "top_hiring_locations": [market.city] if market.city else [],
+        "emerging_skills": market.emerging_skills or []
+    }
+
+
+@router.post("/resume/create-agent")
+async def create_resume_agent(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    candidate = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate profile not found")
+        
+    # Check if agent already exists
+    agent = db.query(CandidateAgent).filter(CandidateAgent.candidate_id == candidate.id).first()
+    if not agent:
+        agent = CandidateAgent(
+            candidate_id=candidate.id,
+            status="active",
+            career_dna={},
+            skill_graph={},
+            career_graph={},
+            industry_dna={},
+            target_roles=[]
+        )
+        db.add(agent)
+        db.commit()
+        db.refresh(agent)
+        
+    # Check if preferences already exist
+    prefs = db.query(CandidateAgentPreferences).filter(CandidateAgentPreferences.candidate_id == candidate.id).first()
+    if not prefs:
+        prefs = CandidateAgentPreferences(
+            candidate_id=candidate.id,
+            auto_discover=True,
+            discovery_frequency_hours=6,
+            notify_new_matches=True
+        )
+        db.add(prefs)
+        db.commit()
+        
+    return {"message": "AI Job Agent created successfully", "agent_id": agent.id}
+
+
+@router.get("/resume/improvements")
+def get_resume_improvements(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    candidate = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+        
+    improvements = db.query(ResumeImprovement).filter(ResumeImprovement.candidate_id == candidate.id).first()
+    if not improvements:
+        return {
+            "ats_score": 70,
+            "formatting_score": 75,
+            "content_score": 68,
+            "keyword_score": 70,
+            "improvement_suggestions": ["Upload a resume to get feedback"],
+            "resume_rewrite_suggestions": [],
+            "achievement_suggestions": []
+        }
+    return {
+        "ats_score": improvements.ats_score,
+        "formatting_score": improvements.formatting_score,
+        "content_score": improvements.content_score,
+        "keyword_score": improvements.keyword_score,
+        "improvement_suggestions": improvements.improvement_suggestions or [],
+        "resume_rewrite_suggestions": improvements.resume_rewrite_suggestions or [],
+        "achievement_suggestions": improvements.achievement_suggestions or []
+    }
+
+
 
 

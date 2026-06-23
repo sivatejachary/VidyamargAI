@@ -1,368 +1,270 @@
 "use client";
- 
+
 import { useEffect, useState, useRef } from "react";
 import { apiService, getBackendBaseUrl } from "@/services/api";
 import { useAuthStore } from "@/store/authStore";
 import { useWebSockets } from "@/hooks/useWebSockets";
 import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
-  Download, Trash2, Edit, Eye, RotateCcw, Upload, Plus, 
-  Sparkles, CheckCircle2, Loader2, FileText, ChevronRight, 
-  X, Check, AlertCircle, ShieldCheck, TrendingUp, Zap, 
-  AlertTriangle, Award, Link2, ExternalLink, GraduationCap, 
-  Briefcase, MapPin, Mail, Phone, Camera, Code, Folder, Trophy,
-  Globe, Languages, User
+  Download, Trash2, Eye, Upload, Sparkles, CheckCircle2, 
+  Loader2, FileText, ChevronRight, Check, AlertCircle, 
+  ShieldCheck, TrendingUp, Zap, AlertTriangle, Award, 
+  Link2, GraduationCap, Briefcase, MapPin, Mail, Phone, 
+  Code, Folder, Trophy, Globe, Languages, User, LayoutDashboard,
+  Dna, Route, Compass, FileCheck, X, ExternalLink
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { Drawer } from "@/components/ui/Drawer";
 import { Modal } from "@/components/ui/Modal";
 import { Alert } from "@/components/ui/Alert";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { ProgressBar, ProgressRing } from "@/components/ui/Progress";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { ProgressBar } from "@/components/ui/Progress";
 
-interface ResumeVersion {
-  id: number;
-  url: string;
-  date: string;
-  version: string;
-  isLatest: boolean;
-}
+const profileSections = [
+  { id: "personal", name: "Personal Info", icon: User },
+  { id: "summary", name: "Summary", icon: FileText },
+  { id: "skills", name: "Skills", icon: Code },
+  { id: "experience", name: "Experience", icon: Briefcase },
+  { id: "education", name: "Education", icon: GraduationCap },
+  { id: "projects", name: "Projects", icon: Folder },
+  { id: "certifications", name: "Certifications", icon: Award },
+  { id: "achievements", name: "Achievements", icon: Trophy },
+  { id: "languages", name: "Languages", icon: Languages },
+  { id: "socials", name: "Social Links", icon: Globe }
+];
 
-interface ProfileSectionItem {
-  id: string;
-  name: string;
-  desc: string;
-  icon: any;
-  completed: boolean;
-}
-
-export default function ResumeBuilder() {
-  // Caching helper functions
-  const getCachedValue = (key: string, fallback: any) => {
-    if (typeof window !== "undefined") {
-      const cached = sessionStorage.getItem(key);
-      if (cached) {
-        try { return JSON.parse(cached); } catch { return fallback; }
-      }
-    }
-    return fallback;
-  };
-
-  const setCachedValue = (key: string, val: any) => {
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem(key, JSON.stringify(val));
-    }
-  };
-
+export default function ResumeIntelligenceDashboard() {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const { fullName, email, updateUser } = useAuthStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const clearCache = (newProfile?: any) => {
-    if (typeof window !== "undefined") {
-      // Clear Resume cache
-      sessionStorage.removeItem("resume_profile");
-      sessionStorage.removeItem("resume_versions");
-      sessionStorage.removeItem("resume_analysis");
-      
-      // Clear Jobs cache
-      sessionStorage.removeItem("jobs_list");
-      sessionStorage.removeItem("jobs_skill_gaps");
-      sessionStorage.removeItem("jobs_recommendations");
-      sessionStorage.removeItem("jobs_run_id");
-
-      // Clear Skill Lab cache
-      sessionStorage.removeItem("skill_lab_profile");
-      sessionStorage.removeItem("skill_lab_streak");
-      sessionStorage.removeItem("skill_lab_hoursLearned");
-      sessionStorage.removeItem("skill_lab_completedCoursesCount");
-      sessionStorage.removeItem("skill_lab_earnedCertsCount");
-      sessionStorage.removeItem("skill_lab_readinessScore");
-      sessionStorage.removeItem("skill_lab_xp");
-      sessionStorage.removeItem("skill_lab_level");
-
-      // Clear LMS Explorer cache
-      sessionStorage.removeItem("lms_courses");
-      sessionStorage.removeItem("lms_enrollments");
-    }
-
-    if (newProfile) {
-      const newName = newProfile.parsed_name || newProfile.user?.full_name;
-      const newEmail = newProfile.parsed_email || newProfile.user?.email;
-      if (newName && (newName !== fullName || newEmail !== email)) {
-        updateUser(newName, newEmail);
-      }
-    }
-
-    // Invalidate React Query caches
-    queryClient.invalidateQueries();
-  };
-  const [profile, setProfile] = useState<any>(() => getCachedValue("resume_profile", null));
-  const [resumeVersions, setResumeVersions] = useState<ResumeVersion[]>(() => getCachedValue("resume_versions", []));
-  const [analysisData, setAnalysisData] = useState<any>(() => getCachedValue("resume_analysis", null));
-  const [loading, setLoading] = useState(() => {
-    if (typeof window !== "undefined") {
-      return !sessionStorage.getItem("resume_profile");
-    }
-    return true;
-  });
+  // Layout and Tab States
+  const [activeTab, setActiveTab] = useState<string>("overview");
+  const [activeDrawerTab, setActiveDrawerTab] = useState<string>("personal");
+  const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadStep, setUploadStep] = useState(0);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [analysisLoading, setAnalysisLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [fastMode, setFastMode] = useState(true);
 
-  // Edit Drawer State
+  // Slide-over & Preview States
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>("personal");
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+
+  // Career Intelligence Data States
+  const [profile, setProfile] = useState<any>(null);
+  const [versions, setVersions] = useState<any[]>([]);
+  const [careerDna, setCareerDna] = useState<any>(null);
+  const [skillsGraph, setSkillsGraph] = useState<any>(null);
+  const [roles, setRoles] = useState<any>(null);
+  const [careerPaths, setCareerPaths] = useState<any[]>([]);
+  const [skillGaps, setSkillGaps] = useState<any>(null);
+  const [opportunities, setOpportunities] = useState<any>(null);
+  const [marketIntel, setMarketIntel] = useState<any>(null);
+  const [improvements, setImprovements] = useState<any>(null);
+
+  // Loading Job Agent
+  const [agentCreating, setAgentCreating] = useState(false);
+
+  // Read-only Drawer Form State
   const [editForm, setEditForm] = useState<any>({
     name: "",
     email: "",
     phone: "",
     address: "",
     summary: "",
-    skills: "",
+    experienceList: [],
+    projectList: [],
+    educationList: [],
     certifications: "",
+    achievementsList: [],
     languages: "",
     linkedin: "",
     github: "",
-    portfolio: "",
-    educationList: [],
-    experienceList: [],
-    projectList: [],
-    achievementsList: [],
+    portfolio: ""
   });
 
-  // Preview Modal State
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-
-  const [fastMode, setFastMode] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Load all dashboard data
-  const loadDashboardData = async (forceRefresh = false) => {
-    const hasCache = typeof window !== "undefined" && 
-                     sessionStorage.getItem("resume_profile") && 
-                     sessionStorage.getItem("resume_versions") && 
-                     sessionStorage.getItem("resume_analysis");
-
-    if (!hasCache || forceRefresh) {
-      setLoading(true);
-    }
-
+  // Load intelligence details from backend
+  const loadIntelligence = async () => {
+    setLoading(true);
+    setErrorMsg("");
     try {
-      const prof = await apiService.getProfile();
-      setProfile(prof);
-      setCachedValue("resume_profile", prof);
-      if (forceRefresh) {
-        clearCache(prof);
-      } else {
-        const newName = prof.parsed_name || prof.user?.full_name;
-        const newEmail = prof.parsed_email || prof.user?.email;
-        if (newName && (newName !== fullName || newEmail !== email)) {
-          updateUser(newName, newEmail);
+      const resumeList = await apiService.getResumes();
+      setVersions(resumeList || []);
+
+      if (resumeList && resumeList.length > 0) {
+        const [
+          profData,
+          dnaData,
+          skillsData,
+          rolesData,
+          pathsData,
+          gapsData,
+          oppsData,
+          marketData,
+          impData
+        ] = await Promise.all([
+          apiService.getResumeProfile(),
+          apiService.getResumeCareerDna(),
+          apiService.getResumeSkills(),
+          apiService.getResumeRoles(),
+          apiService.getResumeCareerPaths(),
+          apiService.getResumeSkillGaps(),
+          apiService.getResumeOpportunities(),
+          apiService.getResumeMarketIntelligence(),
+          apiService.getResumeImprovements()
+        ]);
+
+        setProfile(profData);
+        setCareerDna(dnaData);
+        setSkillsGraph(skillsData);
+        setRoles(rolesData);
+        setCareerPaths(pathsData || []);
+        setSkillGaps(gapsData);
+        setOpportunities(oppsData);
+        setMarketIntel(marketData);
+        setImprovements(impData);
+
+        if (profData?.personal_info?.name && profData.personal_info.name !== fullName) {
+          updateUser(profData.personal_info.name, profData.personal_info.email || email);
         }
       }
-
-      // Initialize Edit Form values
-      let parsedEdu = [];
-      try { parsedEdu = prof.education ? JSON.parse(prof.education) : []; } catch { parsedEdu = []; }
-      
-      let parsedExp = [];
-      try { parsedExp = prof.experience ? JSON.parse(prof.experience) : []; } catch { parsedExp = []; }
-      
-      let parsedProj = [];
-      try { parsedProj = prof.projects ? JSON.parse(prof.projects) : []; } catch { parsedProj = []; }
-
-      let parsedAch = [];
-      try { parsedAch = prof.achievements ? JSON.parse(prof.achievements) : []; } catch { parsedAch = []; }
-
-      setEditForm({
-        name: prof.parsed_name || "",
-        email: prof.parsed_email || "",
-        phone: prof.phone || "",
-        address: prof.address || "",
-        summary: prof.summary || "",
-        skills: prof.skills || "",
-        certifications: prof.certifications || "",
-        languages: prof.languages || "",
-        linkedin: prof.linkedin || "",
-        github: prof.github || "",
-        portfolio: prof.portfolio || "",
-        educationList: parsedEdu,
-        experienceList: parsedExp,
-        projectList: parsedProj,
-        achievementsList: parsedAch,
-      });
-
-      // Load resume versions
-      let formattedResumes: ResumeVersion[] = [];
-      try {
-        const resumes = await apiService.getResumes();
-        if (resumes && Array.isArray(resumes)) {
-          formattedResumes = resumes.map((res: any, idx: number) => {
-            const rawDate = typeof res.uploaded_at === "string" ? res.uploaded_at.replace(" ", "T") : res.uploaded_at;
-            const dateObj = new Date(rawDate);
-            const dateStr = isNaN(dateObj.getTime())
-              ? "Unknown Date"
-              : dateObj.toLocaleString("en-US", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: true,
-                });
-            return {
-              id: res.id,
-              url: res.resume_url,
-              date: dateStr,
-              version: `v${resumes.length - idx}.0`,
-              isLatest: idx === 0,
-            };
-          });
-          setResumeVersions(formattedResumes);
-          setCachedValue("resume_versions", formattedResumes);
-        }
-      } catch (err) {
-        console.error("Failed to load resume versions:", err);
-      }
-
-      // Load AI analysis
-      if (!hasCache || forceRefresh) {
-        setAnalysisLoading(true);
-      }
-      try {
-        const analysis = await apiService.analyzeResume();
-        if (analysis) {
-          setAnalysisData(analysis);
-          setCachedValue("resume_analysis", analysis);
-        }
-      } catch (err) {
-        console.error("Failed to load AI analysis:", err);
-      } finally {
-        setAnalysisLoading(false);
-      }
-
-    } catch (err) {
-      console.error("Failed to load profile data:", err);
-      setErrorMsg("Failed to load profile data. Please try again.");
+    } catch (err: any) {
+      console.error("Failed to load Career Intelligence:", err);
+      setErrorMsg("Failed to load Career Intelligence. Please upload a resume to start.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Connect WebSocket for real-time progress updates
+  // WebSockets for real-time progress
   const clientId = profile?.id ? `candidate_${profile.id}` : "";
   const { addMessageListener } = useWebSockets(clientId);
 
   useEffect(() => {
     if (!clientId) return;
-    
     const removeListener = addMessageListener((event: any) => {
-      console.log("WebSocket event in ResumeBuilder:", event);
       if (event.type === "resume_processing") {
         setUploading(true);
-        // Translate state status to our step indicator
         let stepNum = 1;
         if (event.status === "uploading") stepNum = 1;
         else if (event.status === "extracting_text") stepNum = 2;
         else if (event.status === "parsing_resume") stepNum = 3;
         else if (event.status === "building_profile") stepNum = 4;
         else if (event.status === "generating_embeddings") stepNum = 5;
-        
         setUploadStep(stepNum);
         setUploadProgress(event.progress || 0);
       } else if (event.type === "resume_processed") {
-        setUploadStep(5);
         setUploadProgress(100);
-        setSuccessMsg("Resume uploaded and parsed successfully! AI profile is ready.");
+        setSuccessMsg("Resume uploaded and parsed successfully! Career DNA active.");
         setUploading(false);
         setTimeout(() => setSuccessMsg(""), 5000);
-        loadDashboardData(true);
-      } else if (event.type === "resume_failed") {
-        setErrorMsg(`Failed to parse resume: ${event.error || "Unknown error"}`);
-        setUploading(false);
-        setTimeout(() => setErrorMsg(""), 5000);
-        loadDashboardData(true);
+        loadIntelligence();
       }
     });
-    
-    return () => {
-      removeListener();
-    };
+    return () => removeListener();
   }, [clientId, addMessageListener]);
 
-  // Adaptive Polling Fallback
   useEffect(() => {
-    if (!profile) return;
-    
-    const isProcessing = ["uploading", "extracting_text", "parsing_resume", "building_profile", "generating_embeddings"].includes(profile.resume_status);
-    if (!isProcessing) return;
-
-    setUploading(true);
-    let stepNum = 1;
-    if (profile.resume_status === "uploading") stepNum = 1;
-    else if (profile.resume_status === "extracting_text") stepNum = 2;
-    else if (profile.resume_status === "parsing_resume") stepNum = 3;
-    else if (profile.resume_status === "building_profile") stepNum = 4;
-    else if (profile.resume_status === "generating_embeddings") stepNum = 5;
-    setUploadStep(stepNum);
-    setUploadProgress(profile.resume_progress || 0);
-
-    let pollInterval = 2000; // start with 2 seconds
-    let elapsed = 0;
-    let timer: NodeJS.Timeout;
-
-    const poll = async () => {
-      try {
-        const prof = await apiService.getProfile();
-        setProfile(prof);
-        setCachedValue("resume_profile", prof);
-        
-        const nextIsProcessing = ["uploading", "extracting_text", "parsing_resume", "building_profile", "generating_embeddings"].includes(prof.resume_status);
-        if (!nextIsProcessing) {
-          setUploading(false);
-          loadDashboardData(true);
-          return;
-        }
-
-        let nextStep = 1;
-        if (prof.resume_status === "uploading") nextStep = 1;
-        else if (prof.resume_status === "extracting_text") nextStep = 2;
-        else if (prof.resume_status === "parsing_resume") nextStep = 3;
-        else if (prof.resume_status === "building_profile") nextStep = 4;
-        else if (prof.resume_status === "generating_embeddings") nextStep = 5;
-        setUploadStep(nextStep);
-        setUploadProgress(prof.resume_progress || 0);
-
-      } catch (err) {
-        console.error("Error in fallback poll:", err);
-      }
-
-      elapsed += pollInterval;
-      if (elapsed >= 60000) {
-        pollInterval = 10000; // throttle to 10 seconds after 1 minute
-      }
-      timer = setTimeout(poll, pollInterval);
-    };
-
-    timer = setTimeout(poll, pollInterval);
-
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [profile?.resume_status]);
-
-  useEffect(() => {
-    loadDashboardData();
+    loadIntelligence();
   }, []);
 
+  // Update Drawer form state whenever profile changes
+  useEffect(() => {
+    if (profile) {
+      let expList = [];
+      try {
+        expList = typeof profile.experience === "string" ? JSON.parse(profile.experience) : (profile.experience || []);
+      } catch(e) {
+        expList = [];
+      }
+      
+      let projList = [];
+      try {
+        projList = typeof profile.projects === "string" ? JSON.parse(profile.projects) : (profile.projects || []);
+      } catch(e) {
+        projList = [];
+      }
+
+      let eduList = [];
+      try {
+        eduList = typeof profile.education === "string" ? JSON.parse(profile.education) : (profile.education || []);
+      } catch(e) {
+        eduList = [];
+      }
+
+      let achList = [];
+      try {
+        achList = typeof profile.achievements === "string" ? JSON.parse(profile.achievements) : (profile.achievements || []);
+      } catch(e) {
+        achList = typeof profile.achievements === "string" ? profile.achievements.split("\n") : (profile.achievements || []);
+      }
+
+      setEditForm({
+        name: profile.personal_info?.name || fullName || "",
+        email: profile.personal_info?.email || email || "",
+        phone: profile.personal_info?.phone || "",
+        address: profile.personal_info?.location || "",
+        summary: profile.personal_info?.summary || "",
+        experienceList: expList,
+        projectList: projList,
+        educationList: eduList,
+        certifications: profile.certifications || "",
+        achievementsList: achList,
+        languages: profile.languages || "",
+        linkedin: profile.linkedin || "",
+        github: profile.github || "",
+        portfolio: profile.portfolio || ""
+      });
+    }
+  }, [profile]);
+
+  // Derived / Computed Properties
+  const skillsList = skillsGraph?.skills 
+    ? skillsGraph.skills.map((s: any) => typeof s === "string" ? s : s.name) 
+    : (profile?.skills ? String(profile.skills).split(", ") : []);
+
+  const keywordsList = improvements?.keyword_matching?.matched_keywords || (skillsList.slice(0, 8));
+  const missingSkills = skillGaps?.missing_skills || [];
+  const recommendedCourses = skillGaps?.learning_roadmap 
+    ? skillGaps.learning_roadmap.map((item: any) => ({
+        title: item.resources?.[0] || `Master ${item.skill}`,
+        skills: [item.skill]
+      }))
+    : [];
+
+  const strongestSkill = skillsList[0] || "Software Engineering";
+  const improvementArea = improvements?.improvement_suggestions?.[0] || "Add quantifiable achievements in current role";
+  const profileStrength = `${profile?.career_classification?.profile_strength || 75}%`;
+  const recommendedStep = "Create your AI Job Agent to begin auto-discovery";
+
+  const aiQualityScore = improvements ? Math.round((improvements.ats_score || 70) / 10) : 7;
+  const aiQualityBreakdown = {
+    grammar: improvements ? Math.round((improvements.content_score || 70) / 10) : 7,
+    formatting: improvements ? Math.round((improvements.formatting_score || 75) / 10) : 8,
+    readability: improvements ? Math.round((improvements.content_score || 68) / 10) : 7,
+    project_quality: improvements ? Math.round((improvements.content_score || 72) / 10) : 7,
+    achievement_quality: improvements ? Math.round((improvements.content_score || 65) / 10) : 6,
+    structure: improvements ? Math.round((improvements.formatting_score || 78) / 10) : 8
+  };
+
+  const resumeVersions = versions.map((v: any, idx: number) => ({
+    id: v.id,
+    version: v.resume_url?.split("/").pop() || `Resume_v${versions.length - idx}`,
+    date: new Date(v.uploaded_at).toLocaleDateString() + " " + new Date(v.uploaded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    url: v.resume_url,
+    isLatest: idx === 0
+  }));
+
+  // Actions
   const triggerUpload = () => {
     fileInputRef.current?.click();
   };
@@ -370,73 +272,77 @@ export default function ResumeBuilder() {
   const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const selectedFile = e.target.files[0];
-    if (selectedFile.type !== "application/pdf") {
-      setErrorMsg("Please upload a PDF file only.");
-      setTimeout(() => setErrorMsg(""), 4000);
+    if (selectedFile.type !== "application/pdf" && !selectedFile.name.endsWith(".docx")) {
+      setErrorMsg("Please upload a PDF or DOCX file only.");
       return;
     }
 
     setUploading(true);
     setUploadStep(1);
-    setUploadProgress(5);
+    setUploadProgress(10);
     setErrorMsg("");
     setSuccessMsg("");
 
     try {
       await apiService.uploadResume(selectedFile, fastMode);
-      // Immediately fetch candidate profile to trigger adaptive polling status loop
-      const prof = await apiService.getProfile();
-      setProfile(prof);
-      setCachedValue("resume_profile", prof);
+      setSuccessMsg("Resume uploaded successfully! Ingesting...");
+      setTimeout(() => setSuccessMsg(""), 3000);
+      
+      setTimeout(async () => {
+        await loadIntelligence();
+        setUploading(false);
+      }, 1500);
     } catch (err: any) {
       setErrorMsg(err.message || "Resume upload failed.");
       setUploading(false);
-      setUploadProgress(0);
-      setUploadStep(0);
-      setTimeout(() => setErrorMsg(""), 5000);
+    }
+  };
+
+  const handleActivateVersion = async (id: number) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${getBackendBaseUrl()}/api/v1/candidates/resume/${id}/activate`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("token") || ""}`
+        }
+      });
+      if (res.ok) {
+        setSuccessMsg("Resume version activated.");
+        setTimeout(() => setSuccessMsg(""), 3000);
+        await loadIntelligence();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDeleteResumeVersion = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this resume version?")) return;
+    if (!confirm("Delete this resume version?")) return;
     try {
       await apiService.deleteResumeVersion(id);
-      setSuccessMsg("Resume version deleted successfully.");
+      setSuccessMsg("Resume version deleted.");
       setTimeout(() => setSuccessMsg(""), 3000);
-      
-      // Clear cache and reset state ("if delete remove everything")
-      clearCache();
-      setProfile(null);
-      setResumeVersions([]);
-      setAnalysisData(null);
-      
-      await loadDashboardData(true);
+      await loadIntelligence();
     } catch (err: any) {
-      setErrorMsg(err.message || "Failed to delete resume version.");
-      setTimeout(() => setErrorMsg(""), 3000);
+      setErrorMsg(err.message || "Failed to delete.");
     }
   };
 
-  const handleDownloadLatestResume = () => {
-    if (resumeVersions.length === 0) {
-      setErrorMsg("No resume uploaded yet.");
-      setTimeout(() => setErrorMsg(""), 3000);
-      return;
+  const handleCreateAgent = async () => {
+    setAgentCreating(true);
+    try {
+      await apiService.createResumeAgent();
+      setSuccessMsg("⚡ AI Job Agent successfully initialized for your profile! Re-routing to Job Agent...");
+      setTimeout(() => {
+        router.push("/candidate/job-agent");
+      }, 2000);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to initialize agent.");
+      setAgentCreating(false);
     }
-    const latest = resumeVersions[0];
-    handleDownloadResumeUrl(latest.url, latest.version);
-  };
-
-  const handleDownloadResumeUrl = (url: string, version: string) => {
-    const backendUrl = getBackendBaseUrl();
-    
-    const downloadLink = document.createElement("a");
-    downloadLink.href = `${backendUrl}${url}`;
-    downloadLink.target = "_blank";
-    downloadLink.download = `Resume_${fullName || "Candidate"}_${version}.pdf`;
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
   };
 
   const handlePreviewResume = (url: string) => {
@@ -444,1368 +350,897 @@ export default function ResumeBuilder() {
     setShowPreviewModal(true);
   };
 
+  const handleDownloadResumeUrl = (url: string, filename: string) => {
+    const link = document.createElement("a");
+    link.href = `${getBackendBaseUrl()}${url}`;
+    link.download = filename;
+    link.target = "_blank";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const runAIAnalysis = async () => {
     setAnalysisLoading(true);
-    setErrorMsg("");
     try {
-      const analysis = await apiService.analyzeResume();
-      if (analysis) {
-        setAnalysisData(analysis);
-        setSuccessMsg("Analysis refreshed successfully!");
-        setTimeout(() => setSuccessMsg(""), 3000);
-      }
-    } catch (err) {
-      console.error("AI analysis failed:", err);
-      setErrorMsg("AI analysis refresh failed.");
-      setTimeout(() => setErrorMsg(""), 3000);
+      await apiService.analyzeResume();
+      await loadIntelligence();
+      setSuccessMsg("AI Analysis refreshed successfully!");
+      setTimeout(() => setSuccessMsg(""), 3000);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to analyze resume.");
     } finally {
       setAnalysisLoading(false);
     }
   };
 
-  // Profile Drawer Form Helper Methods
-  const handleAddEducation = () => {
-    setEditForm((prev: any) => ({
-      ...prev,
-      educationList: [...prev.educationList, { degree: "", school: "", year: "" }],
-    }));
-  };
-
-  const handleRemoveEducation = (index: number) => {
-    setEditForm((prev: any) => ({
-      ...prev,
-      educationList: prev.educationList.filter((_: any, i: number) => i !== index),
-    }));
-  };
-
-  const handleEducationChange = (index: number, field: string, val: string) => {
-    const updated = [...editForm.educationList];
-    updated[index] = { ...updated[index], [field]: val };
-    setEditForm((prev: any) => ({ ...prev, educationList: updated }));
-  };
-
-  const handleAddExperience = () => {
-    setEditForm((prev: any) => ({
-      ...prev,
-      experienceList: [...prev.experienceList, { role: "", company: "", years: 1, description: "" }],
-    }));
-  };
-
-  const handleRemoveExperience = (index: number) => {
-    setEditForm((prev: any) => ({
-      ...prev,
-      experienceList: prev.experienceList.filter((_: any, i: number) => i !== index),
-    }));
-  };
-
-  const handleExperienceChange = (index: number, field: string, val: any) => {
-    const updated = [...editForm.experienceList];
-    updated[index] = { ...updated[index], [field]: val };
-    setEditForm((prev: any) => ({ ...prev, experienceList: updated }));
-  };
-
-  const handleAddProject = () => {
-    setEditForm((prev: any) => ({
-      ...prev,
-      projectList: [...prev.projectList, { name: "", description: "", link: "" }],
-    }));
-  };
-
-  const handleRemoveProject = (index: number) => {
-    setEditForm((prev: any) => ({
-      ...prev,
-      projectList: prev.projectList.filter((_: any, i: number) => i !== index),
-    }));
-  };
-
-  const handleProjectChange = (index: number, field: string, val: string) => {
-    const updated = [...editForm.projectList];
-    updated[index] = { ...updated[index], [field]: val };
-    setEditForm((prev: any) => ({ ...prev, projectList: updated }));
-  };
-
-  const handleAddAchievement = () => {
-    setEditForm((prev: any) => ({
-      ...prev,
-      achievementsList: [...prev.achievementsList, ""],
-    }));
-  };
-
-  const handleRemoveAchievement = (index: number) => {
-    setEditForm((prev: any) => ({
-      ...prev,
-      achievementsList: prev.achievementsList.filter((_: any, i: number) => i !== index),
-    }));
-  };
-
-  const handleAchievementChange = (index: number, val: string) => {
-    const updated = [...editForm.achievementsList];
-    updated[index] = val;
-    setEditForm((prev: any) => ({ ...prev, achievementsList: updated }));
-  };
-
-  const handleSaveProfile = async () => {
-    try {
-      setLoading(true);
-      
-      const payload = {
-        phone: editForm.phone,
-        address: editForm.address,
-        skills: editForm.skills,
-        certifications: editForm.certifications,
-        summary: editForm.summary,
-        languages: editForm.languages,
-        linkedin: editForm.linkedin,
-        github: editForm.github,
-        portfolio: editForm.portfolio,
-        education: JSON.stringify(editForm.educationList),
-        experience: JSON.stringify(editForm.experienceList),
-        projects: JSON.stringify(editForm.projectList),
-        achievements: JSON.stringify(editForm.achievementsList),
-      };
-
-      await apiService.updateProfile(payload);
-      setSuccessMsg("Profile saved and updated successfully!");
-      setIsEditOpen(false);
-      setTimeout(() => setSuccessMsg(""), 3000);
-      await loadDashboardData(true);
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to update profile.");
-      setTimeout(() => setErrorMsg(""), 3000);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSectionClick = (sectionId: string) => {
-    setActiveTab(sectionId);
-    setIsEditOpen(true);
-  };
-
-  const handleCompleteNow = () => {
-    // Find first incomplete section
-    const firstIncomplete = profileSections.find(s => !s.completed);
-    if (firstIncomplete) {
-      setActiveTab(firstIncomplete.id);
-    } else {
-      setActiveTab("personal");
-    }
-    setIsEditOpen(true);
-  };
-
   const handleImproveWithAI = () => {
-    alert("AI optimization tips: Ensure your experience description uses strong action verbs like 'Engineered', 'Optimized', and 'Scaled' with specific metrics (e.g. 'boosted performance by 25%'). Run a new resume upload to re-parse with Gemini!");
+    setActiveTab("improvements");
   };
 
-  // Computations
-  const displayName = profile?.parsed_name || fullName || "Not specified";
-  const displayEmail = profile?.parsed_email || email || "Not specified";
-  const avatarLetter = profile?.parsed_name ? profile.parsed_name[0].toUpperCase() : (fullName ? fullName[0].toUpperCase() : "?");
-  const completionScore = analysisData?.profile_completion?.score ?? 0;
-  const aiQualityScore = analysisData?.ai_quality?.score ?? 0;
-  const aiQualityBreakdown = analysisData?.ai_quality?.breakdown ?? {
-    grammar: 0,
-    formatting: 0,
-    readability: 0,
-    project_quality: 0,
-    achievement_quality: 0,
-    structure: 0,
-  };
-
-  // Skills List
-  const skillsList = profile?.skills 
-    ? profile.skills.split(",").map((s: string) => s.trim()).filter((s: string) => s.length > 0)
-    : [];
-
-  // Keywords found
-  const keywordsList = skillsList.slice(0, 10);
-
-  // High-demand skills list for comparison
-  const highDemandSkills = ["React", "Next.js", "TypeScript", "Node.js", "Python", "FastAPI", "Docker", "AWS", "SQL", "System Design", "Git", "Flutter"];
-  const missingSkills = highDemandSkills.filter(s => !skillsList.some((cs: string) => cs.toLowerCase().includes(s.toLowerCase())));
-
-  const courseMappings = [
-    { title: "React & Next.js App Router", skills: ["React", "Next.js", "TypeScript"], id: "react-nextjs-app-router" },
-    { title: "FastAPI Backend Development", skills: ["FastAPI", "Node.js"], id: "fastapi-backend-development" },
-    { title: "Python Complete Bootcamp", skills: ["Python"], id: "python-complete-bootcamp" },
-    { title: "SQL Masterclass", skills: ["SQL"], id: "sql-masterclass" },
-    { title: "System Design & Scalability", skills: ["System Design"], id: "system-design-scalability" },
-    { title: "AWS Cloud Practitioner", skills: ["AWS", "Docker"], id: "aws-cloud-practitioner" },
-    { title: "Flutter Development Masterclass", skills: ["Flutter"], id: "flutter-development-masterclass" },
-    { title: "Machine Learning Fundamentals", skills: ["Machine Learning", "Data Science"], id: "machine-learning-fundamentals" },
-  ];
-
-  const recommendedCourses = courseMappings.filter(course => 
-    course.skills.some(skill => missingSkills.includes(skill))
-  ).slice(0, 3);
-
-  // Dynamic missing fields based on empty candidate fields
-  const missingItems: string[] = [];
-  if (!profile?.certifications) missingItems.push("Certifications");
-  if (!profile?.achievements || profile?.achievements === "[]") missingItems.push("Achievements");
-  if (!profile?.linkedin) missingItems.push("LinkedIn Profile");
-  if (!profile?.portfolio) missingItems.push("Portfolio Link");
-
-  // Summaries
-  let educationCount = 0;
-  try { educationCount = profile?.education ? JSON.parse(profile.education).length : 0; } catch { educationCount = 0; }
-
-  let experienceCount = 0;
-  try { experienceCount = profile?.experience ? JSON.parse(profile.experience).length : 0; } catch { experienceCount = 0; }
-
-  let experienceYears = 0;
-  if (profile?.experience_years !== undefined && profile?.experience_years !== null) {
-    experienceYears = profile.experience_years;
-  } else {
-    try {
-      const expArr = profile?.experience ? JSON.parse(profile.experience) : [];
-      experienceYears = expArr.reduce((sum: number, exp: any) => sum + (Number(exp.years) || 0), 0);
-    } catch {
-      experienceYears = 0;
-    }
-  }
-
-  const getFirstRole = () => {
-    if (!profile?.experience) return "Not specified";
-    try {
-      const parsed = JSON.parse(profile.experience);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed[0]?.role || "Not specified";
-      }
-    } catch {
-      // safe fallback
-    }
-    return "Not specified";
-  };
-
-  let projectsCount = 0;
-  try { projectsCount = profile?.projects ? JSON.parse(profile.projects).length : 0; } catch { projectsCount = 0; }
-
-  let certificationsCount = 0;
-  if (profile?.certifications) {
-    certificationsCount = profile.certifications.split(",").filter((c: string) => c.trim().length > 0).length;
-  }
-
-  let achievementsCount = 0;
-  try { achievementsCount = profile?.achievements ? JSON.parse(profile.achievements).length : 0; } catch { achievementsCount = 0; }
-
-  // Profile Sections checklist
-  const profileSections: ProfileSectionItem[] = [
-    { 
-      id: "personal", 
-      name: "Personal Information", 
-      desc: "Name, contact details, location", 
-      icon: MapPin, 
-      completed: !!(profile?.phone || profile?.address) 
-    },
-    { 
-      id: "summary", 
-      name: "Summary", 
-      desc: "Professional summary about you", 
-      icon: FileText, 
-      completed: !!profile?.summary 
-    },
-    { 
-      id: "skills", 
-      name: "Skills", 
-      desc: "Your technical and soft skills", 
-      icon: Code, 
-      completed: skillsList.length > 0 
-    },
-    { 
-      id: "experience", 
-      name: "Experience", 
-      desc: "Your work experience details", 
-      icon: Briefcase, 
-      completed: experienceCount > 0 
-    },
-    { 
-      id: "education", 
-      name: "Education", 
-      desc: "Schools, degrees, graduation", 
-      icon: GraduationCap, 
-      completed: educationCount > 0 
-    },
-    { 
-      id: "projects", 
-      name: "Projects", 
-      desc: "Academic or professional creations", 
-      icon: Folder, 
-      completed: projectsCount > 0 
-    },
-    { 
-      id: "certifications", 
-      name: "Certifications", 
-      desc: "Professional training & credentials", 
-      icon: Award, 
-      completed: certificationsCount > 0 
-    },
-    { 
-      id: "achievements", 
-      name: "Achievements", 
-      desc: "Honors, accomplishments, rewards", 
-      icon: Trophy, 
-      completed: achievementsCount > 0 
-    },
-    { 
-      id: "languages", 
-      name: "Languages", 
-      desc: "Tongues you speak or write", 
-      icon: Languages, 
-      completed: !!profile?.languages 
-    },
-    { 
-      id: "socials", 
-      name: "Social Links", 
-      desc: "LinkedIn, GitHub, Portfolios", 
-      icon: Globe, 
-      completed: !!(profile?.linkedin || profile?.github || profile?.portfolio) 
-    },
-  ];
-
-  // AI Insights
-  const strongestSkill = skillsList[0] || "Not specified";
-  const improvementArea = skillsList.length === 0 ? "Upload resume to determine" : (projectsCount < 3 ? "Add more projects" : "Include certifications");
-  const profileStrength = skillsList.length === 0 ? "N/A" : (completionScore >= 80 ? "Strong" : (completionScore >= 60 ? "Good" : "Needs Work"));
-  const recommendedStep = skillsList.length === 0 ? "Upload resume to get insights" : (!profile?.certifications ? "Add certifications" : (!profile?.achievements ? "Add achievements" : "Optimize summary"));
-
-  if (loading) {
+  if (loading && !uploading) {
     return (
-      <div className="flex-1 min-h-screen bg-background text-foreground p-6 md:p-8 font-sans">
-        {/* Skeleton Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-          <div>
-            <div className="h-8 w-56 bg-muted rounded-xl animate-pulse" />
-            <div className="h-4 w-80 bg-muted rounded-lg animate-pulse mt-2" />
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-28 bg-muted rounded-xl animate-pulse" />
-            <div className="h-9 w-36 bg-muted rounded-xl animate-pulse" />
-          </div>
-        </div>
-        {/* Skeleton Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="bg-card border border-border rounded-2xl p-6 animate-pulse">
-              <div className="h-4 w-24 bg-muted rounded mb-4" />
-              <div className="h-10 w-16 bg-muted rounded-xl mb-2" />
-              <div className="h-3 w-32 bg-muted rounded" />
-            </div>
-          ))}
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-card border border-border rounded-2xl p-6 h-64 animate-pulse">
-            <div className="h-4 w-36 bg-muted rounded mb-4" />
-            <div className="space-y-3">
-              {[1, 2, 3, 4].map(i => <div key={i} className="h-3 bg-muted rounded" />)}
-            </div>
-          </div>
-          <div className="bg-card border border-border rounded-2xl p-6 h-64 animate-pulse">
-            <div className="h-4 w-36 bg-muted rounded mb-4" />
-            <div className="space-y-3">
-              {[1, 2, 3, 4].map(i => <div key={i} className="h-3 bg-muted rounded" />)}
-            </div>
-          </div>
+      <div className="flex-1 min-h-screen bg-slate-950 text-slate-100 p-6 md:p-8 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="animate-spin text-violet-500 mx-auto" size={40} />
+          <p className="text-sm font-semibold text-slate-400">Loading Career Intelligence Operating System...</p>
         </div>
       </div>
     );
   }
 
-  if (resumeVersions.length === 0) {
+  if (versions.length === 0) {
     return (
-      <div className="flex-1 min-h-screen bg-background text-foreground p-6 md:p-8 font-sans flex items-center justify-center">
+      <div className="flex-1 min-h-screen bg-slate-950 text-slate-100 p-6 md:p-8 flex items-center justify-center font-sans">
         <div className="max-w-md w-full space-y-4">
-          {successMsg && <Alert variant="success">{successMsg}</Alert>}
           {errorMsg && <Alert variant="error">{errorMsg}</Alert>}
-
-          {/* Hidden file input */}
           <input
             type="file"
             ref={fileInputRef}
             onChange={handleResumeUpload}
-            accept="application/pdf"
+            accept=".pdf,.docx"
             className="hidden"
           />
-
           <EmptyState
             title="No Resume Uploaded"
-            description="Upload your resume to extract profile details, analyze skills, and get personalized course recommendations."
-            icon={<FileText size={36} />}
+            description="Your resume is the entry point into the Career Intelligence Operating System. Upload it to analyze skills, generate career DNA, and map opportunities."
+            icon={<FileText size={36} className="text-violet-500" />}
             action={
               <div className="flex flex-col items-center gap-3 w-full">
-                <Button 
-                  onClick={triggerUpload}
-                  disabled={uploading}
-                  className="w-full sm:w-auto mt-4 shrink-0"
-                >
-                  {uploading ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin mr-2 shrink-0" />
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <Upload size={16} className="mr-2 shrink-0" />
-                      Upload Resume
-                    </>
-                  )}
+                <Button onClick={triggerUpload} className="w-full sm:w-auto mt-4 bg-violet-650 hover:bg-violet-750 text-white">
+                  <Upload size={16} className="mr-2" />
+                  Upload Resume / CV
                 </Button>
-                <label className="flex items-center gap-2 text-xs select-none cursor-pointer mt-2 bg-white/5 border border-white/10 rounded-lg py-1.5 px-3 hover:bg-white/10 transition-colors">
+                <label className="flex items-center gap-2 text-xs cursor-pointer mt-2 bg-white/5 border border-white/10 rounded-lg py-1.5 px-3 hover:bg-white/10 transition-colors">
                   <input
                     type="checkbox"
                     checked={fastMode}
                     onChange={(e) => setFastMode(e.target.checked)}
                     className="rounded border-slate-700 bg-slate-900 text-violet-600 focus:ring-violet-500"
                   />
-                  <span className="font-medium text-slate-300">⚡ Instant Mode (milliseconds)</span>
+                  <span className="font-medium text-slate-350">⚡ Instant Mode (milliseconds fallback)</span>
                 </label>
               </div>
             }
           />
-
-          {/* Upload Stepper Modal */}
-          {uploading && (
-            <Modal
-              isOpen={uploading}
-              onClose={() => {}}
-              title="Processing Resume"
-              className="max-w-md"
-            >
-              <div className="flex flex-col gap-6 py-2">
-                <div className="space-y-1.5 text-center">
-                  <span className="text-11 font-bold text-muted-foreground uppercase tracking-wider">
-                    Ingestion Pipeline
-                  </span>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Tush AI is analyzing your CV and extracting structural data.
-                  </p>
-                </div>
-
-                {/* Stepper Steps */}
-                <div className="space-y-4 my-2">
-                  {[
-                    { step: 1, label: "Uploading Document" },
-                    { step: 2, label: "Extracting Bio & Location" },
-                    { step: 3, label: "Parsing Skills & Experience" },
-                    { step: 4, label: "Analyzing Quality Metrics" },
-                    { step: 5, label: "Syncing Profile Data" }
-                  ].map((s) => {
-                    const isCompleted = uploadStep > s.step;
-                    const isActive = uploadStep === s.step;
-                    return (
-                      <div key={s.step} className="flex items-center gap-3.5">
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 border transition-all ${
-                          isCompleted 
-                            ? "bg-success border-success text-success-foreground"
-                            : isActive
-                              ? "bg-primary border-primary text-primary-foreground animate-pulse"
-                              : "border-border text-muted-foreground"
-                        }`}>
-                          {isCompleted ? <Check size={12} strokeWidth={3} /> : s.step}
-                        </div>
-                        <span className={`text-xs font-semibold ${
-                          isActive 
-                            ? "text-foreground font-bold" 
-                            : isCompleted 
-                              ? "text-muted-foreground line-through opacity-75"
-                              : "text-muted-foreground"
-                        }`}>
-                          {s.label}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Progress Bar */}
-                <div className="space-y-2 mt-2">
-                  <div className="flex justify-between items-center text-xs font-semibold">
-                    <span className="text-muted-foreground">Overall progress</span>
-                    <span className="text-foreground">{uploadProgress}%</span>
-                  </div>
-                  <ProgressBar value={uploadProgress} />
-                </div>
-              </div>
-            </Modal>
-          )}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 min-h-screen bg-background text-foreground p-6 md:p-8 font-sans transition-colors duration-300">
-      
-      {/* Hidden file input */}
+    <div className="flex-1 min-h-screen bg-slate-950 text-slate-100 p-6 md:p-8 font-sans transition-all duration-300">
       <input
         type="file"
         ref={fileInputRef}
         onChange={handleResumeUpload}
-        accept="application/pdf"
+        accept=".pdf,.docx"
         className="hidden"
       />
 
-      {/* Upload Stepper Modal */}
+      {/* Uploading Progress Modal */}
       {uploading && (
-        <Modal
-          isOpen={uploading}
-          onClose={() => {}}
-          title="Processing Resume"
-          className="max-w-md"
-        >
-          <div className="flex flex-col gap-6 py-2">
-            <div className="space-y-1.5 text-center">
-              <span className="text-11 font-bold text-muted-foreground uppercase tracking-wider">
-                Ingestion Pipeline
-              </span>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Tush AI is analyzing your CV and extracting structural data.
-              </p>
+        <Modal isOpen={uploading} onClose={() => {}} title="Analyzing Resume with AI Ingestion" className="max-w-md bg-slate-900 border border-slate-800">
+          <div className="flex flex-col gap-6 py-2 text-slate-200">
+            <div className="space-y-1 text-center">
+              <span className="text-[10px] font-bold text-violet-400 uppercase tracking-wider">Career Intelligence Ingestion</span>
+              <p className="text-xs text-slate-400 leading-relaxed">Extracting skills, career stage, opportunity tracks and resume improvements.</p>
             </div>
-
-            {/* Stepper Steps */}
-            <div className="space-y-4 my-2">
+            <div className="space-y-3">
               {[
                 { step: 1, label: "Uploading Document" },
-                { step: 2, label: "Extracting Bio & Location" },
-                { step: 3, label: "Parsing Skills & Experience" },
-                { step: 4, label: "Analyzing Quality Metrics" },
-                { step: 5, label: "Syncing Profile Data" }
-              ].map((s) => {
-                const isCompleted = uploadStep > s.step;
-                const isActive = uploadStep === s.step;
-                return (
-                  <div key={s.step} className="flex items-center gap-3.5">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 border transition-all ${
-                      isCompleted 
-                        ? "bg-success border-success text-success-foreground"
-                        : isActive
-                          ? "bg-primary border-primary text-primary-foreground animate-pulse"
-                          : "border-border text-muted-foreground"
-                    }`}>
-                      {isCompleted ? <Check size={12} strokeWidth={3} /> : s.step}
-                    </div>
-                    <span className={`text-xs font-semibold ${
-                      isActive 
-                        ? "text-foreground font-bold" 
-                        : isCompleted 
-                          ? "text-muted-foreground line-through opacity-75"
-                          : "text-muted-foreground"
-                    }`}>
-                      {s.label}
-                    </span>
+                { step: 2, label: "Classifying Career Family (Gov vs Private)" },
+                { step: 3, label: "Calculating Employability & DNA" },
+                { step: 4, label: "Mapping Skill Graphs & Career Paths" },
+                { step: 5, label: "Syncing Opportunity Matrix & ATS suggestions" }
+              ].map((s) => (
+                <div key={s.step} className="flex items-center gap-3.5">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border transition-all ${
+                    uploadStep > s.step ? "bg-emerald-500 border-emerald-500 text-white" : uploadStep === s.step ? "bg-violet-600 border-violet-600 text-white animate-pulse" : "border-slate-800 text-slate-500"
+                  }`}>
+                    {uploadStep > s.step ? <Check size={12} strokeWidth={3} /> : s.step}
                   </div>
-                );
-              })}
+                  <span className={`text-xs font-semibold ${uploadStep === s.step ? "text-slate-100" : uploadStep > s.step ? "text-slate-400 line-through opacity-70" : "text-slate-500"}`}>{s.label}</span>
+                </div>
+              ))}
             </div>
-
-            {/* Progress Bar */}
             <div className="space-y-2 mt-2">
               <div className="flex justify-between items-center text-xs font-semibold">
-                <span className="text-muted-foreground">Overall progress</span>
-                <span className="text-foreground">{uploadProgress}%</span>
+                <span className="text-slate-400">Pipeline Ingestion</span>
+                <span className="text-slate-100">{uploadProgress}%</span>
               </div>
-              <ProgressBar value={uploadProgress} />
+              <div className="w-full bg-slate-850 h-2 rounded-full overflow-hidden">
+                <div className="bg-violet-500 h-full transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+              </div>
             </div>
           </div>
         </Modal>
       )}
 
-      <div className="max-w-1440 mx-auto space-y-6">
-        
-        {/* Status Alerts */}
-        {successMsg && (
-          <Alert variant="success">
-            {successMsg}
-          </Alert>
-        )}
+      {/* Main Container */}
+      <div className="max-w-7xl mx-auto space-y-6">
+        {successMsg && <Alert variant="success" className="bg-emerald-950/40 border border-emerald-800 text-emerald-300">{successMsg}</Alert>}
+        {errorMsg && <Alert variant="error" className="bg-red-950/40 border border-red-800 text-red-300">{errorMsg}</Alert>}
 
-        {errorMsg && (
-          <Alert variant="error">
-            {errorMsg}
-          </Alert>
-        )}
-
-        {/* 1. Header Area */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-black tracking-tight text-foreground dark:text-white">My Resume Profile</h1>
-            <p className="text-slate-500 dark:text-slate-455 mt-1.5 text-sm leading-relaxed max-w-2xl font-medium">
-              Your resume has been parsed and your profile is ready. Keep it updated for better opportunities.
-            </p>
+        {/* Header Banner */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-slate-900/60 backdrop-blur-md border border-slate-850 rounded-3xl p-6 shadow-xl">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-650 flex items-center justify-center text-white shadow-lg">
+              <Sparkles size={22} className="animate-pulse" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+                Career Intelligence OS
+                <Badge className="bg-violet-500/20 text-violet-400 border border-violet-800/50 py-0.5 text-[9px] font-black uppercase tracking-wider">v2.0 Active</Badge>
+              </h1>
+              <p className="text-slate-400 mt-1 text-xs font-medium">Everything starts from Resume Intelligence. Managed by principal systems architects.</p>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="outline"
-              size="sm"
-              onClick={handleDownloadLatestResume}
-              className="shrink-0"
-            >
-              <Download size={14} />
-              <span>Download Resume</span>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="outline" size="sm" onClick={triggerUpload} className="bg-slate-850 border-slate-750 text-slate-205 hover:bg-slate-800 text-xs">
+              <Upload size={14} className="mr-1.5" />
+              Upload New Version
             </Button>
-            <Button 
-              variant="outline"
-              size="sm"
-              onClick={() => setIsEditOpen(true)}
-              className="shrink-0"
-            >
-              <Eye size={14} />
-              <span>View Profile Details</span>
+            <Button onClick={handleCreateAgent} disabled={agentCreating} className="bg-gradient-to-r from-violet-600 to-indigo-650 hover:from-violet-750 hover:to-indigo-750 text-white font-bold text-xs shadow-lg shadow-violet-500/20">
+              {agentCreating ? <Loader2 size={14} className="animate-spin mr-1.5" /> : <Zap size={14} className="mr-1.5 fill-current" />}
+              Create AI Job Agent
             </Button>
           </div>
         </div>
 
-        {/* 2. Main content 3-column Grid layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Stats Row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card className="bg-slate-900/40 border-slate-850 p-4">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Career Family</span>
+            <span className="text-lg font-black text-slate-100 mt-1 block">
+              {profile?.career_classification?.career_family || "Engineering"}
+            </span>
+          </Card>
+          <Card className="bg-slate-900/40 border-slate-850 p-4">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Profile Strength</span>
+            <div className="flex items-center gap-2 mt-1">
+              <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                <div className="bg-violet-500 h-full" style={{ width: `${profile?.career_classification?.profile_strength || 75}%` }} />
+              </div>
+              <span className="text-sm font-black text-slate-100">{profile?.career_classification?.profile_strength || 75}%</span>
+            </div>
+          </Card>
+          <Card className="bg-slate-900/40 border-slate-850 p-4">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Employability Score</span>
+            <div className="flex items-center gap-2 mt-1">
+              <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                <div className="bg-emerald-500 h-full" style={{ width: `${profile?.career_classification?.employability_score || 80}%` }} />
+              </div>
+              <span className="text-sm font-black text-slate-100">{profile?.career_classification?.employability_score || 80}%</span>
+            </div>
+          </Card>
+          <Card className="bg-slate-900/40 border-slate-850 p-4">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Experience Level</span>
+            <span className="text-lg font-black text-slate-100 mt-1 block">
+              {profile?.career_classification?.experience_level || "Mid-Level"}
+            </span>
+          </Card>
+        </div>
+
+        {/* Main Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           
-          {/* LEFT 2 COLUMNS */}
+          {/* Column 1: Left Sidebar (1 col) */}
+          <div className="lg:col-span-1 space-y-4">
+            <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-3 shadow-xl">
+              <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider px-3 py-2 block">Intelligence Tabs</span>
+              <div className="space-y-1">
+                {[
+                  { id: "overview", label: "Candidate Profile", icon: LayoutDashboard },
+                  { id: "dna", label: "Career DNA", icon: Dna },
+                  { id: "skills", label: "Skill Graph Mapping", icon: Code },
+                  { id: "roles", label: "Role Intelligence", icon: Compass },
+                  { id: "paths", label: "Career Progress Graph", icon: Route },
+                  { id: "opportunities", label: "Opportunity Engine", icon: ShieldCheck },
+                  { id: "improvements", label: "Resume improvements", icon: FileCheck }
+                ].map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${
+                        isActive 
+                          ? "bg-violet-600/20 text-violet-300 border-l-4 border-violet-500" 
+                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
+                      }`}
+                    >
+                      <Icon size={16} />
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="border-t border-slate-800/60 mt-3 pt-3 px-1">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setIsEditOpen(true)} 
+                  className="w-full text-[11px] h-8 bg-slate-900 border-slate-800 hover:bg-slate-800 text-slate-350"
+                >
+                  <Eye size={12} className="mr-1" />
+                  View Parsed Raw Profile
+                </Button>
+              </div>
+            </Card>
+
+            <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-4 shadow-xl space-y-4">
+              <div>
+                <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2.5 block">Top Skills</h3>
+                <div className="flex flex-wrap gap-1.5">
+                  {skillsList.slice(0, 10).map((skill: string, idx: number) => (
+                    <span key={idx} className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-800 border border-slate-750 text-slate-300">
+                      {skill}
+                    </span>
+                  ))}
+                  {skillsList.length === 0 && (
+                    <span className="text-xs text-slate-500 italic">No skills extracted.</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t border-slate-850 pt-3">
+                <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2.5 block">Key Keywords</h3>
+                <div className="grid grid-cols-2 gap-2 text-[10px] font-bold text-slate-400">
+                  {keywordsList.slice(0, 6).map((kw: string, idx: number) => (
+                    <div key={idx} className="flex items-center gap-1.5">
+                      <Check size={10} className="text-emerald-500 shrink-0" />
+                      <span className="truncate">{kw}</span>
+                    </div>
+                  ))}
+                  {keywordsList.length === 0 && (
+                    <span className="col-span-2 text-xs text-slate-500 italic">No keywords.</span>
+                  )}
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Column 2 & 3: Middle Workspace (2 cols) */}
           <div className="lg:col-span-2 space-y-6">
             
-            {/* MOBILE ONLY VERSION OF THE PROFILE CARD (Shown on screens < md) */}
-            <Card className="block md:hidden border border-border bg-card p-4 shadow-sm space-y-4">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="relative shrink-0">
-                    <div className="w-14 h-14 rounded-full overflow-hidden border border-border bg-muted flex items-center justify-center text-foreground text-xl font-black shadow-sm">
-                      {avatarLetter}
+            {/* OVERVIEW TAB */}
+            {activeTab === "overview" && (
+              <div className="space-y-6">
+                <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-6">
+                  <div className="flex items-center gap-3 border-b border-slate-850 pb-4">
+                    <div className="w-10 h-10 rounded-2xl bg-violet-500/10 text-violet-400 flex items-center justify-center shrink-0 border border-violet-500/20">
+                      <User size={20} />
                     </div>
-                    <button 
-                      onClick={triggerUpload}
-                      disabled={uploading}
-                      className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-background border border-border text-muted-foreground flex items-center justify-center hover:bg-muted transition-all shadow-sm cursor-pointer"
-                      title="Upload Resume to Update Profile"
-                    >
-                      {uploading ? <Loader2 size={10} className="animate-spin" /> : <Upload size={10} />}
-                    </button>
-                  </div>
-                  
-                  <div className="min-w-0">
-                    <div className="flex flex-col items-start gap-1">
-                      <h2 className="text-sm font-black text-foreground truncate max-w-120" title={displayName || undefined}>
-                        {displayName}
-                      </h2>
-                      <Badge variant="success">Verified</Badge>
+                    <div>
+                      <h3 className="text-lg font-black text-white">Candidate Profile</h3>
+                      <p className="text-xs text-slate-400">Personal information and professional background details.</p>
                     </div>
                   </div>
-                </div>
 
-                <ProgressRing 
-                  value={completionScore} 
-                  size={72} 
-                  strokeWidth={5} 
-                />
-              </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Name</span>
+                      <p className="text-xs font-semibold text-slate-200 bg-slate-950/40 p-3 rounded-xl border border-slate-850">{profile?.personal_info?.name || fullName || "Not specified"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Email</span>
+                      <p className="text-xs font-semibold text-slate-200 bg-slate-950/40 p-3 rounded-xl border border-slate-850">{profile?.personal_info?.email || email || "Not specified"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Phone</span>
+                      <p className="text-xs font-semibold text-slate-200 bg-slate-950/40 p-3 rounded-xl border border-slate-850">{profile?.personal_info?.phone || "Not specified"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Location</span>
+                      <p className="text-xs font-semibold text-slate-200 bg-slate-950/40 p-3 rounded-xl border border-slate-850">{profile?.personal_info?.location || "Remote"}</p>
+                    </div>
+                  </div>
 
-              <div className="space-y-1 text-xs font-semibold text-muted-foreground pt-2 border-t border-border">
-                <div className="flex items-center gap-2">
-                  <User size={12} className="text-muted-foreground shrink-0" />
-                  <span className="truncate">{getFirstRole() || "Not specified"}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <MapPin size={12} className="text-muted-foreground shrink-0" />
-                  <span className="truncate">{profile?.address || "Not specified"}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Mail size={12} className="text-muted-foreground shrink-0" />
-                  <span className="truncate" title={displayEmail}>{displayEmail}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Phone size={12} className="text-muted-foreground shrink-0" />
-                  <span className="truncate">{profile?.phone || "Not specified"}</span>
-                </div>
-              </div>
+                  {profile?.personal_info?.summary && (
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Professional Summary</span>
+                      <p className="text-xs font-medium text-slate-300 leading-relaxed bg-slate-950/40 p-4 rounded-xl border border-slate-850 whitespace-pre-wrap">{profile.personal_info.summary}</p>
+                    </div>
+                  )}
+                </Card>
 
-              {/* Horizontal Divider Line */}
-              <div className="border-t border-border my-4" />
+                {/* AI Skills Gap Card */}
+                <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-4">
+                  <div className="flex items-center gap-3 border-b border-slate-850 pb-3">
+                    <div className="w-9 h-9 rounded-xl bg-violet-600/10 text-violet-400 flex items-center justify-center shrink-0 border border-violet-650/20">
+                      <Sparkles size={18} className="animate-pulse" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-black text-white">AI Skill Gap & Recommendations</h3>
+                      <p className="text-xs text-slate-400">Target roles upskilling priority index.</p>
+                    </div>
+                  </div>
 
-              {/* Missing Section */}
-              <div className="space-y-3">
-                <span className="text-xs font-black text-muted-foreground uppercase tracking-wider block">
-                  Missing ({100 - completionScore}%)
-                </span>
-                
-                {/* Mobile Missing Cards */}
-                <div className="space-y-2">
-                  {missingItems.length > 0 ? (
-                    missingItems.map((item, idx) => {
-                      let IconComponent = Award;
-                      if (item === "Achievements") IconComponent = Trophy;
-                      else if (item.includes("LinkedIn")) IconComponent = Link2;
-                      else if (item.includes("Portfolio")) IconComponent = Globe;
-                      
-                      return (
-                        <div 
-                          key={idx} 
-                          onClick={handleCompleteNow} 
-                          className="flex items-center justify-between p-3 rounded-xl border border-border bg-background shadow-xs cursor-pointer hover:bg-muted transition-colors"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <div className="p-1.5 rounded-lg bg-success/10 text-success border border-success/20 shrink-0">
-                              <IconComponent size={14} />
-                            </div>
-                            <span className="text-xs font-semibold text-foreground">{item}</span>
-                          </div>
-                          
-                          <div className="flex items-center gap-1.5">
-                            <Badge variant="destructive">Missing</Badge>
-                            <ChevronRight size={14} className="text-muted-foreground" />
-                          </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Identified Missing Skills</span>
+                      {missingSkills.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {missingSkills.map((skill: any, idx: number) => (
+                            <span key={idx} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-bold">
+                              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse mr-1" />
+                              {skill}
+                            </span>
+                          ))}
                         </div>
-                      );
-                    })
+                      ) : (
+                        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 font-bold flex items-center gap-2">
+                          <CheckCircle2 size={14} />
+                          No critical missing skills.
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-3">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Recommended Upskill Actions</span>
+                      <div className="space-y-2">
+                        {recommendedCourses.length > 0 ? (
+                          recommendedCourses.slice(0, 3).map((course: any, idx: number) => (
+                            <div key={idx} className="p-2.5 rounded-xl border border-slate-800 bg-slate-950/20 flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <span className="text-[11px] font-bold text-slate-200 block truncate">{course.title}</span>
+                                <span className="text-[9px] text-slate-400 mt-0.5 block font-semibold">Focus: {course.skills.join(", ")}</span>
+                              </div>
+                              <Link href="/candidate/skill-lab">
+                                <Button size="xs" variant="outline" className="text-[9px] py-1 h-auto font-bold bg-slate-900 border-slate-800 hover:bg-slate-850">
+                                  Learn
+                                </Button>
+                              </Link>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-xs text-slate-500 italic">No upskilling courses suggested.</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            {/* CAREER DNA TAB */}
+            {activeTab === "dna" && (
+              <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-6">
+                <div className="flex items-center gap-3 border-b border-slate-850 pb-4">
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-500/20">
+                    <Dna size={20} className="animate-pulse" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-white">Career DNA Analysis</h3>
+                    <p className="text-xs text-slate-400">Archetype, behavioral traits, and leadership dynamics.</p>
+                  </div>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-gradient-to-r from-violet-650/25 to-indigo-650/25 border border-violet-850/40 space-y-3">
+                  <span className="text-[10px] font-bold text-violet-400 uppercase tracking-wider block">Career Archetype</span>
+                  <div className="flex items-center justify-between gap-4">
+                    <h4 className="text-xl font-black text-white">{careerDna?.personality || "Builder"}</h4>
+                    <Badge className="bg-violet-500/25 text-violet-300 border border-violet-550/40 font-bold text-[10px] px-2 py-0.5">High Potential</Badge>
+                  </div>
+                  <p className="text-xs text-slate-350 leading-relaxed font-medium">
+                    This archetype describes candidates who focus on execution, engineering architecture, and scaling robust services. They excel in solving logical constraints and building systems.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Core Career Traits</span>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 rounded-xl border border-slate-850 bg-slate-950/20 space-y-2">
+                      <span className="text-[10px] font-bold text-slate-400 block">Working Style</span>
+                      <p className="text-xs text-slate-300 font-semibold leading-relaxed">{careerDna?.traits?.working_style || "Autonomous / Direct Execution"}</p>
+                    </div>
+                    <div className="p-4 rounded-xl border border-slate-850 bg-slate-950/20 space-y-2">
+                      <span className="text-[10px] font-bold text-slate-400 block">Growth Speed</span>
+                      <p className="text-xs text-slate-300 font-semibold leading-relaxed">{careerDna?.traits?.growth_potential || "Fast / Adaptive Learner"}</p>
+                    </div>
+                    <div className="p-4 rounded-xl border border-slate-850 bg-slate-950/20 space-y-2">
+                      <span className="text-[10px] font-bold text-slate-400 block">Leadership Archetype</span>
+                      <p className="text-xs text-slate-300 font-semibold leading-relaxed">{careerDna?.traits?.leadership_potential || "System Thinker & Lead Mentor"}</p>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* SKILLS TAB */}
+            {activeTab === "skills" && (
+              <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-6">
+                <div className="flex items-center gap-3 border-b border-slate-850 pb-4">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/20">
+                    <Code size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-white">Skill Graph Mapping</h3>
+                    <p className="text-xs text-slate-400">Structured layout of technology node associations.</p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/50 border border-slate-850 rounded-2xl p-6 min-h-[300px] flex flex-col justify-center items-center relative overflow-hidden">
+                  {skillsGraph?.skills && skillsGraph.skills.length > 0 ? (
+                    <div className="w-full space-y-6">
+                      <div className="h-44 w-full relative flex items-center justify-center bg-slate-950 border border-slate-850/60 rounded-xl p-4">
+                        <svg className="absolute inset-0 w-full h-full">
+                          <line x1="20%" y1="50%" x2="50%" y2="25%" stroke="#6366f1" strokeWidth="2" strokeDasharray="3,3" className="opacity-60" />
+                          <line x1="20%" y1="50%" x2="50%" y2="75%" stroke="#6366f1" strokeWidth="2" strokeDasharray="3,3" className="opacity-60" />
+                          <line x1="50%" y1="25%" x2="80%" y2="50%" stroke="#4f46e5" strokeWidth="2" className="opacity-80" />
+                          <line x1="50%" y1="75%" x2="80%" y2="50%" stroke="#4f46e5" strokeWidth="2" className="opacity-80" />
+                        </svg>
+                        
+                        <div className="absolute left-[10%] top-[40%] bg-violet-600/30 text-violet-300 border border-violet-500 px-3 py-1.5 rounded-lg text-xs font-black shadow-md">
+                          Core Experience
+                        </div>
+                        <div className="absolute left-[40%] top-[15%] bg-indigo-650/30 text-indigo-300 border border-indigo-500 px-3 py-1.5 rounded-lg text-xs font-black shadow-md">
+                          {skillsGraph.skills[0]?.name || skillsList[0] || "Python"}
+                        </div>
+                        <div className="absolute left-[40%] top-[65%] bg-teal-650/30 text-teal-300 border border-teal-500 px-3 py-1.5 rounded-lg text-xs font-black shadow-md">
+                          {skillsGraph.skills[1]?.name || skillsList[1] || "Database"}
+                        </div>
+                        <div className="absolute right-[10%] top-[40%] bg-blue-650/30 text-blue-300 border border-blue-500 px-3 py-1.5 rounded-lg text-xs font-black shadow-md">
+                          Fullstack OS
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {skillsGraph.skills.map((skill: any, idx: number) => {
+                          const name = typeof skill === "string" ? skill : skill.name;
+                          const score = typeof skill === "string" ? (85 - idx * 5) : (skill.confidence || 80);
+                          return (
+                            <div key={idx} className="p-3.5 rounded-xl bg-slate-900 border border-slate-850 space-y-2">
+                              <div className="flex justify-between items-center text-xs font-bold">
+                                <span className="text-slate-200">{name}</span>
+                                <span className="text-violet-400">{score}% Confidence</span>
+                              </div>
+                              <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
+                                <div className="bg-gradient-to-r from-violet-500 to-indigo-500 h-full" style={{ width: `${score}%` }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   ) : (
-                    <div className="p-3 rounded-xl border border-border bg-background text-center text-xs text-success font-bold">
-                      All sections complete! ✓
+                    <div className="text-center space-y-2">
+                      <Code size={36} className="text-slate-600 mx-auto" />
+                      <p className="text-xs text-slate-500 font-semibold">No structured skills graph found. Upload your resume to map taxonomy.</p>
                     </div>
                   )}
                 </div>
+              </Card>
+            )}
 
-                {/* Complete your profile box */}
-                <div className="p-4 rounded-2xl bg-success/5 border border-success/20 flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 text-left w-full sm:w-auto">
-                    <div className="w-10 h-10 rounded-xl bg-background border border-success/30 flex items-center justify-center shrink-0 shadow-xs text-success">
-                      <FileText size={18} />
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="text-xs font-black text-foreground">Complete your profile</h4>
-                      <p className="text-10 text-muted-foreground mt-0.5 leading-relaxed">
-                        Add missing details to get better job matches.
-                      </p>
-                    </div>
+            {/* ROLE INTELLIGENCE TAB */}
+            {activeTab === "roles" && (
+              <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-6">
+                <div className="flex items-center gap-3 border-b border-slate-850 pb-4">
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-500/20">
+                    <Compass size={20} />
                   </div>
-                  
-                  <Button 
-                    onClick={handleCompleteNow}
-                    size="sm"
-                    className="w-full sm:w-auto text-xs py-2 h-auto"
-                  >
-                    Update Profile
-                  </Button>
-                </div>
-                
-              </div>
-            </Card>
-
-            {/* DESKTOP ONLY VERSION OF THE PROFILE CARD (Shown on screens >= md) */}
-            <Card className="hidden md:grid grid-cols-1 md:grid-cols-2 gap-6">
-              
-              {/* Bio Column */}
-              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 md:border-r border-slate-155 dark:border-slate-800/80 md:pr-6">
-                <div className="relative shrink-0">
-                  <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-slate-100 dark:border-slate-800 shadow-sm bg-blue-600 flex items-center justify-center text-white text-3xl font-black">
-                    {avatarLetter}
-                  </div>
-                  <button 
-                    onClick={triggerUpload}
-                    disabled={uploading}
-                    className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-slate-950 dark:bg-slate-800 text-white flex items-center justify-center border border-white dark:border-slate-900 hover:bg-slate-900 transition-all animate-pulse cursor-pointer"
-                    title="Upload Resume to Update Profile"
-                  >
-                    {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
-                  </button>
-                </div>
-                
-                <div className="space-y-2 text-center sm:text-left min-w-0">
-                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                    <h2 className="text-xl font-black text-foreground dark:text-white truncate max-w-150" title={displayName || undefined}>
-                      {displayName}
-                    </h2>
-                    <span className="inline-flex px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-9 font-bold text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800/50">
-                      Verified Profile
-                    </span>
-                  </div>
-                  <p className="text-xs font-bold text-slate-505 dark:text-slate-400">
-                    {getFirstRole()}
-                  </p>
-                  
-                  <div className="space-y-1.5 pt-1 text-xs font-semibold text-slate-455 dark:text-slate-450">
-                    <div className="flex items-center gap-2 justify-center sm:justify-start">
-                      <MapPin size={12} className="text-slate-400 shrink-0" />
-                      <span className="truncate">{profile?.address || "Not specified"}</span>
-                    </div>
-                    <div className="flex items-center gap-2 justify-center sm:justify-start">
-                      <Mail size={12} className="text-slate-400 shrink-0" />
-                      <span className="truncate">{displayEmail}</span>
-                    </div>
-                    <div className="flex items-center gap-2 justify-center sm:justify-start">
-                      <Phone size={12} className="text-slate-400 shrink-0" />
-                      <span>{profile?.phone || "Not specified"}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Completion Column */}
-              <div className="flex flex-col sm:flex-row items-center gap-6 pl-0 md:pl-2 justify-between">
-                <div className="flex flex-col items-center gap-1 shrink-0">
-                  <span className="text-10 font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Profile Completion</span>
-                  
-                  <div className="relative flex items-center justify-center my-1.5">
-                    <svg width="86" height="86" className="transform -rotate-90">
-                      <circle cx="43" cy="43" r="37" fill="none" strokeWidth="6" className="text-slate-100 dark:text-slate-800" stroke="currentColor" />
-                      <circle cx="43" cy="43" r="37" fill="none" strokeWidth="6" strokeDasharray={2 * Math.PI * 37} strokeDashoffset={2 * Math.PI * 37 - (completionScore / 100) * (2 * Math.PI * 37)} strokeLinecap="round" stroke="#0ea5e9" className="transition-all duration-700 ease-out" />
-                    </svg>
-                    <div className="absolute text-lg font-black text-foreground dark:text-white">{completionScore}%</div>
-                  </div>
-                  <span className="text-10 font-bold text-emerald-500 dark:text-emerald-400">
-                    {completionScore >= 75 ? "Good Progress!" : (completionScore > 0 ? "Started" : (resumeVersions.length > 0 ? "Resume Uploaded" : "No Resume Uploaded"))}
-                  </span>
-                </div>
-
-                <div className="flex-1 flex flex-col justify-between h-full gap-3 w-full text-center sm:text-left min-w-0">
                   <div>
-                    <span className="text-10 font-bold text-slate-450 dark:text-slate-400 uppercase tracking-wider block">Missing ({100 - completionScore}%)</span>
-                    <div className="mt-1.5 space-y-1 inline-block text-left">
-                      {missingItems.length > 0 ? (
-                        missingItems.map((item, idx) => (
-                          <div key={idx} className="flex items-center gap-1.5 text-xs text-slate-505 dark:text-slate-400 font-bold">
-                            <span className="w-1.5 h-1.5 rounded-full bg-teal-505 shrink-0" />
-                            <span>{item}</span>
-                          </div>
-                        ))
-                      ) : (
-                        <span className="text-xs text-emerald-500 font-black">All sections complete! ✓</span>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <button 
-                    onClick={handleCompleteNow}
-                    className="w-full py-2 rounded-xl bg-teal-505 hover:bg-teal-600 text-xs font-extrabold text-white transition-all shadow-sm shadow-teal-500/10 cursor-pointer"
-                  >
-                    View Profile Gaps
-                  </button>
-                </div>
-              </div>
-
-            </Card>
-
-            {/* Row 2: Profile Summary Grid (6 widgets) */}
-            <Card className="space-y-4">
-              <h3 className="text-base font-black text-foreground dark:text-white">Profile Summary</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                
-                {/* Skills */}
-                <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-muted/20 dark:bg-card/40 flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-550 flex items-center justify-center shrink-0 border border-blue-100/50 dark:border-blue-800/30">
-                    <Code size={18} />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-9 font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Skills</span>
-                    <div className="flex items-baseline gap-1 mt-0.5">
-                      <span className="text-lg font-black text-slate-955 dark:text-slate-100">{skillsList.length}</span>
-                      <span className="text-9 font-bold text-slate-400">Extracted</span>
-                    </div>
+                    <h3 className="text-lg font-black text-white">Role Discovery Engine</h3>
+                    <p className="text-xs text-slate-400">AI generated roles matching your Career DNA.</p>
                   </div>
                 </div>
 
-                {/* Experience */}
-                <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-muted/20 dark:bg-card/40 flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-555 flex items-center justify-center shrink-0 border border-emerald-100/50 dark:border-emerald-800/30">
-                    <Briefcase size={18} />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-9 font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Experience</span>
-                    <div className="flex items-baseline gap-1 mt-0.5">
-                      <span className="text-lg font-black text-slate-955 dark:text-slate-100">{experienceYears.toFixed(1)}</span>
-                      <span className="text-9 font-bold text-slate-400">Years</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Education */}
-                <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-muted/20 dark:bg-card/40 flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-555 flex items-center justify-center shrink-0 border border-purple-100/50 dark:border-purple-800/30">
-                    <GraduationCap size={18} />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-9 font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Education</span>
-                    <div className="flex items-baseline gap-1 mt-0.5">
-                      <span className="text-lg font-black text-slate-955 dark:text-slate-100">{educationCount}</span>
-                      <span className="text-9 font-bold text-slate-400">{educationCount === 1 ? "Degree" : "Degrees"}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Projects */}
-                <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-muted/20 dark:bg-card/40 flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-955/40 text-amber-555 flex items-center justify-center shrink-0 border border-amber-100/50 dark:border-amber-800/30">
-                    <Folder size={18} />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-9 font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Projects</span>
-                    <div className="flex items-baseline gap-1 mt-0.5">
-                      <span className="text-lg font-black text-slate-955 dark:text-slate-100">{projectsCount}</span>
-                      <span className="text-9 font-bold text-slate-400">Added</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Certifications */}
-                <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-muted/20 dark:bg-card/40 flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-555 flex items-center justify-center shrink-0 border border-rose-100/50 dark:border-rose-800/30">
-                    <Award size={18} />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-9 font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Certifications</span>
-                    <div className="flex items-baseline gap-1 mt-0.5">
-                      <span className="text-lg font-black text-slate-955 dark:text-slate-100">{certificationsCount}</span>
-                      <span className="text-9 font-bold text-slate-400">Added</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Achievements */}
-                <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-muted/20 dark:bg-card/40 flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-555 flex items-center justify-center shrink-0 border border-indigo-100/50 dark:border-indigo-800/30">
-                    <Trophy size={18} />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-9 font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Achievements</span>
-                    <div className="flex items-baseline gap-1 mt-0.5">
-                      <span className="text-lg font-black text-slate-955 dark:text-slate-100">{achievementsCount}</span>
-                      <span className="text-9 font-bold text-slate-400">Added</span>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-            </Card>
-
-            {/* Row 3: Detailed Profile Overview + Top Skills side-by-side */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
-              {/* Detailed Profile Overview */}
-              <Card className="flex flex-col">
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-4 shrink-0">
-                  <h3 className="text-base font-black text-foreground dark:text-white">Detailed Profile Overview</h3>
-                  <button 
-                    onClick={() => setIsEditOpen(true)}
-                    className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-                  >
-                    View Extracted Details
-                  </button>
-                </div>
-                
-                <div className="space-y-2 max-h-300 overflow-y-auto pr-1 flex-1">
-                  {profileSections.map((sec, idx) => {
-                    const SecIcon = sec.icon;
+                <div className="space-y-6">
+                  {[
+                    { title: "Core Focus Roles", key: "core", desc: "Highest match confidence based on direct experiences." },
+                    { title: "Related Roles", key: "related", desc: "Strong match based on transferable engineering skills." },
+                    { title: "Adjacent / Future Roles", key: "adjacent", desc: "Long-term career pathway suggestions." }
+                  ].map((group) => {
+                    const groupRoles = roles?.[group.key] || [];
                     return (
-                      <div 
-                        key={idx} 
-                        onClick={() => handleSectionClick(sec.id)}
-                        className="p-2.5 rounded-2xl border border-slate-100 dark:border-slate-800 bg-muted/10 dark:bg-card/40 hover:bg-muted/50 dark:hover:bg-slate-800/60 hover:border-slate-200 dark:hover:border-slate-700 flex items-center justify-between cursor-pointer transition-all"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 shrink-0">
-                            <SecIcon size={15} />
-                          </div>
-                          <div>
-                            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">{sec.name}</span>
-                            <span className="text-10 text-slate-400 dark:text-muted-foreground font-semibold block">{sec.desc}</span>
-                          </div>
+                      <div key={group.key} className="space-y-3">
+                        <div>
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">{group.title}</h4>
+                          <p className="text-[10px] text-slate-500 mt-0.5">{group.desc}</p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`text-9 font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
-                            sec.completed 
-                              ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-450 border border-emerald-100 dark:border-emerald-800/40" 
-                              : "bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-455 border border-amber-100 dark:border-amber-800/40"
-                          }`}>
-                            {sec.completed ? <Check size={8} /> : <AlertCircle size={8} />}
-                            <span>{sec.completed ? "Complete" : "Incomplete"}</span>
-                          </span>
-                          <ChevronRight size={13} className="text-slate-400" />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {groupRoles.length > 0 ? (
+                            groupRoles.map((r: any, idx: number) => (
+                              <div key={idx} className="p-3.5 rounded-xl bg-slate-950/40 border border-slate-850 flex items-center justify-between gap-4">
+                                <span className="text-xs font-bold text-slate-205">{r.role}</span>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span className="text-[10px] font-bold text-violet-400">{r.confidence}% Match</span>
+                                  <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center border border-violet-550/20">
+                                    <TrendingUp size={12} className="text-violet-400" />
+                                  </div>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="col-span-2 p-4 text-center rounded-xl border border-dashed border-slate-800 text-[11px] text-slate-500 font-medium">
+                              No roles discovered in this category.
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
                   })}
                 </div>
               </Card>
+            )}
 
-              {/* Top Skills & Keywords */}
-              <Card className="flex flex-col gap-6">
-                <div>
-                  <h3 className="text-10 font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 block">Top Skills</h3>
-                  <div className="flex flex-wrap gap-1.5">
-                    {skillsList.map((skill: string, idx: number) => (
-                      <span key={idx} className="text-11 font-semibold px-2.5 py-1 rounded-xl bg-muted dark:bg-slate-800 border border-border dark:border-border text-foreground dark:text-slate-300">
-                        {skill}
-                      </span>
-                    ))}
-                    {skillsList.length === 0 && (
-                      <span className="text-xs text-slate-400 italic">No skills extracted.</span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="border-t border-slate-100 dark:border-slate-800 pt-4 flex-1">
-                  <h3 className="text-10 font-bold text-slate-400 dark:text-muted-foreground uppercase tracking-wider mb-3 block">Top Keywords Found</h3>
-                  <div className="grid grid-cols-2 gap-2 text-xs font-bold text-slate-650 dark:text-slate-400">
-                    {keywordsList.map((kw: string, idx: number) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <Check size={12} className="text-emerald-500 shrink-0" />
-                        <span>{kw}</span>
-                      </div>
-                    ))}
-                    {keywordsList.length === 0 && (
-                      <span className="col-span-2 text-xs text-slate-400 italic">No keywords extracted.</span>
-                    )}
-                  </div>
-                </div>
-              </Card>
-
-              {/* AI Skills Gap & Course Recommendations */}
-              <Card className="space-y-4">
-                <div className="flex items-center gap-3 border-b border-border pb-3 mb-4 shrink-0">
-                  <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
-                    <Sparkles size={18} className="animate-pulse" />
+            {/* CAREER PATHS TAB */}
+            {activeTab === "paths" && (
+              <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-6">
+                <div className="flex items-center gap-3 border-b border-slate-850 pb-4">
+                  <div className="w-10 h-10 rounded-2xl bg-violet-500/10 text-violet-400 flex items-center justify-center shrink-0 border border-violet-500/20">
+                    <Route size={20} />
                   </div>
                   <div>
-                    <h3 className="text-base font-black text-foreground">AI Skill Gap & Recommendations</h3>
-                    <p className="text-xs text-muted-foreground">Personalized upskilling insights based on your resume profile</p>
+                    <h3 className="text-lg font-black text-white">Career Path Progression</h3>
+                    <p className="text-xs text-slate-400">AI generated career roadmaps and promotion milestones.</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Left Column: Missing Skills */}
-                  <div className="space-y-3">
-                    <span className="text-10 font-bold text-muted-foreground uppercase tracking-wider block">Identified Missing Skills</span>
-                    {skillsList.length === 0 ? (
-                      <p className="text-xs text-muted-foreground italic">Upload your resume to analyze missing skills.</p>
-                    ) : missingSkills.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {missingSkills.map((skill, idx) => (
-                          <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-destructive/10 dark:bg-destructive/20 border border-destructive/20 text-destructive text-11 font-bold">
-                            <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
-                            {skill}
-                          </span>
+                <div className="space-y-6">
+                  {careerPaths && careerPaths.length > 0 ? (
+                    careerPaths.map((path, idx) => (
+                      <div key={idx} className="p-5 rounded-2xl border border-slate-850 bg-slate-950/20 space-y-4">
+                        <div className="flex items-center justify-between gap-4">
+                          <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">{path.path_name} Roadmap</h4>
+                          <Badge className="bg-indigo-500/20 text-indigo-400 border border-indigo-850/40 text-[9px] font-black uppercase">Suggested Path</Badge>
+                        </div>
+
+                        <div className="relative border-l border-slate-800 ml-2.5 pl-6 space-y-6 py-2">
+                          {path.steps?.map((step: string, sIdx: number) => (
+                            <div key={sIdx} className="relative">
+                              <span className="absolute left-[-29px] top-1 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-violet-500 border border-violet-500 shadow-sm" />
+                              <div className="space-y-1">
+                                <h5 className="text-xs font-bold text-slate-202">{step}</h5>
+                                <p className="text-[10px] text-slate-500 font-semibold">
+                                  Milestone: {path.milestones?.[sIdx] || "Acquire leadership duties and scale service frameworks"}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-10 space-y-2 border border-dashed border-slate-800 rounded-2xl">
+                      <Route size={36} className="text-slate-600 mx-auto" />
+                      <p className="text-xs text-slate-500 font-semibold">No career path projections loaded. Upload resume to generate.</p>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
+
+            {/* OPPORTUNITIES TAB */}
+            {activeTab === "opportunities" && (
+              <div className="space-y-6">
+                
+                {/* Score Dials Card */}
+                <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-6">
+                  <div className="flex items-center gap-3 border-b border-slate-850 pb-4">
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-500/20">
+                      <ShieldCheck size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-black text-white">Opportunity Intelligence</h3>
+                      <p className="text-xs text-slate-400">Match score matrices across government, remote, and private opportunities.</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    {[
+                      { label: "Government", score: opportunities?.opportunity_scores?.government_score || 45, color: "stroke-amber-500", text: "text-amber-400" },
+                      { label: "Private Core", score: opportunities?.opportunity_scores?.private_score || 85, color: "stroke-violet-500", text: "text-violet-400" },
+                      { label: "Remote Fit", score: opportunities?.opportunity_scores?.remote_score || 80, color: "stroke-emerald-500", text: "text-emerald-400" },
+                      { label: "International", score: opportunities?.opportunity_scores?.international_score || 65, color: "stroke-blue-500", text: "text-blue-400" },
+                      { label: "Leadership", score: opportunities?.opportunity_scores?.leadership_potential_score || 70, color: "stroke-purple-500", text: "text-purple-400" }
+                    ].map((dial, idx) => (
+                      <div key={idx} className="flex flex-col items-center p-3 rounded-xl bg-slate-950/40 border border-slate-850/60">
+                        <div className="relative w-16 h-16 flex items-center justify-center">
+                          <svg className="w-full h-full transform -rotate-90">
+                            <circle cx="32" cy="32" r="26" fill="none" strokeWidth="4" className="text-slate-800" stroke="currentColor" />
+                            <circle cx="32" cy="32" r="26" fill="none" strokeWidth="4" strokeDasharray={2*Math.PI*26} strokeDashoffset={2*Math.PI*26 - (dial.score / 100) * (2*Math.PI*26)} strokeLinecap="round" className={dial.color} />
+                          </svg>
+                          <span className="absolute text-xs font-black text-white">{dial.score}%</span>
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-400 mt-2 block">{dial.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+
+                {/* Exam Eligibility Card */}
+                <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-6">
+                  <div className="border-b border-slate-850 pb-3 flex justify-between items-center">
+                    <div>
+                      <h4 className="text-base font-black text-white">Government Exam Eligibility & Age Matrix</h4>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Eligibility check matching your age, education and attempt logs.</p>
+                    </div>
+                    <Badge className="bg-amber-500/10 text-amber-400 border border-amber-850/40 text-[9px] font-bold">Government Pipeline</Badge>
+                  </div>
+
+                  <div className="space-y-4">
+                    {opportunities?.eligible_exams && opportunities.eligible_exams.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {opportunities.eligible_exams.map((exam: any, idx: number) => (
+                          <div key={idx} className="p-4 rounded-xl border border-slate-850 bg-slate-950/30 space-y-2">
+                            <div className="flex justify-between items-start">
+                              <span className="text-xs font-black text-slate-200">{exam.exam_name || exam.name || "Exam Title"}</span>
+                              <Badge className={`text-[9px] font-black px-2 py-0.5 ${
+                                String(exam.status).toLowerCase().includes("ineligible") ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                              } border`}>
+                                {exam.status || "Eligible"}
+                              </Badge>
+                            </div>
+                            <div className="space-y-1 text-[10px] text-slate-400 font-semibold">
+                              <p>Age Criteria: {exam.age_status || "Pass"}</p>
+                              <p>Edu Criteria: {exam.education_status || "Pass"}</p>
+                              <p>Remaining Attempts: {exam.attempts_left ?? "N/A"}</p>
+                              {exam.promotion_path && <p className="text-violet-400 mt-1 block">Promotion: {exam.promotion_path}</p>}
+                            </div>
+                          </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="p-3 rounded-xl bg-success/10 border border-success/20 text-xs text-success font-bold flex items-center gap-2">
-                        <CheckCircle2 size={16} />
-                        Your skills match the high-demand market trends!
+                      <div className="text-center py-6 text-xs text-slate-550 border border-dashed border-slate-800 rounded-xl font-semibold">
+                        No government exam eligibility calculated. Upload details to check.
                       </div>
                     )}
-                  </div>
-
-                  {/* Right Column: Recommended Courses */}
-                  <div className="space-y-3">
-                    <span className="text-10 font-bold text-muted-foreground uppercase tracking-wider block">Recommended Upskill Courses</span>
-                    <div className="space-y-2.5">
-                      {skillsList.length === 0 ? (
-                        <p className="text-xs text-muted-foreground italic">No recommendations available.</p>
-                      ) : recommendedCourses.length > 0 ? (
-                        recommendedCourses.map((course, idx) => (
-                          <div key={idx} className="p-3 rounded-2xl border border-border bg-muted/20 dark:bg-muted/10 flex items-center justify-between gap-3 hover:bg-muted/30 transition-all">
-                            <div>
-                              <span className="text-xs font-bold text-foreground block">{course.title}</span>
-                              <span className="text-10 text-muted-foreground mt-0.5 block font-semibold">Upskill in: {course.skills.join(", ")}</span>
-                            </div>
-                            <Link href="/candidate/skill-lab">
-                              <Button size="xs" variant="outline" className="text-10 py-1 h-auto font-bold">
-                                Learn
-                              </Button>
-                            </Link>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-xs text-muted-foreground italic">All caught up! Check out Skill Lab for general learning.</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </Card>
-
-              {/* Row 4: Extracted Resume Analysis & Preview (Summary, Experience, Projects, Education) */}
-              {profile?.resume_status === "completed" && (
-                <Card className="p-6 space-y-6 border border-border bg-card shadow-sm rounded-3xl">
-                  <div className="flex items-center gap-3 border-b border-border pb-4">
-                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0 border border-indigo-500/20">
-                      <FileText size={20} />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-black text-foreground">Resume Analysis & Preview</h3>
-                      <p className="text-xs text-muted-foreground">Extracted resume details synced dynamically to your profile</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-6">
-                    {/* Extracted Summary */}
-                    {editForm.summary && (
-                      <div className="space-y-2">
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                          Professional Summary
-                        </h4>
-                        <p className="text-xs text-slate-700 dark:text-slate-350 leading-relaxed bg-muted/20 dark:bg-slate-900/20 p-4 rounded-2xl border border-border/55 whitespace-pre-line font-medium">
-                          {editForm.summary}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Skills Grid */}
-                    {skillsList.length > 0 && (
-                      <div className="space-y-2">
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                          Skills & Competencies
-                        </h4>
-                        <div className="flex flex-wrap gap-1.5 bg-muted/20 dark:bg-slate-900/20 p-4 rounded-2xl border border-border/55">
-                          {skillsList.map((skill: string, idx: number) => (
-                            <Badge key={idx} variant="outline" className="text-xs font-bold px-2.5 py-1 bg-background border-border text-foreground">
-                              {skill}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Experience Timeline */}
-                    {editForm.experienceList.length > 0 && (
-                      <div className="space-y-3">
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                          Work Experience Timeline
-                        </h4>
-                        <div className="relative border-l border-border ml-3 pl-6 space-y-6 py-2 bg-muted/10 dark:bg-slate-900/10 p-5 rounded-2xl border border-border/40">
-                          {editForm.experienceList.map((exp: any, index: number) => (
-                            <div key={index} className="relative">
-                              <span className="absolute left-[-29px] top-1 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-indigo-500 border border-indigo-500 shadow-sm shadow-indigo-500/20" />
-                              <div className="space-y-1">
-                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1">
-                                  <h5 className="text-xs font-bold text-foreground">{exp.role || "Role not specified"}</h5>
-                                  {exp.years && (
-                                    <span className="text-10 font-bold px-2 py-0.5 rounded bg-muted text-muted-foreground shrink-0 border border-border/45">
-                                      {exp.years} years
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-11 font-bold text-slate-550 dark:text-slate-400">{exp.company || "Company not specified"}</p>
-                                {exp.description && (
-                                  <p className="text-xs text-muted-foreground leading-relaxed pt-2 whitespace-pre-wrap">
-                                    {exp.description}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Projects Grid */}
-                    {editForm.projectList.length > 0 && (
-                      <div className="space-y-3">
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                          Projects Grid
-                        </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {editForm.projectList.map((proj: any, index: number) => (
-                            <div key={index} className="p-4 rounded-2xl border border-border bg-muted/20 dark:bg-slate-900/20 space-y-2 flex flex-col justify-between">
-                              <div className="space-y-1.5">
-                                <div className="flex justify-between items-start gap-3">
-                                  <h5 className="text-xs font-bold text-foreground leading-snug">{proj.name || "Project Name"}</h5>
-                                  {proj.link && (
-                                    <a href={proj.link} target="_blank" rel="noopener noreferrer" className="text-10 font-bold text-blue-650 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer shrink-0">
-                                      <span>Link</span>
-                                      <Globe size={10} />
-                                    </a>
-                                  )}
-                                </div>
-                                {proj.description && (
-                                  <p className="text-11 text-muted-foreground leading-relaxed">
-                                    {proj.description}
-                                  </p>
-                                )}
-                              </div>
-                              {proj.technologies && (
-                                <div className="flex flex-wrap gap-1 mt-2.5">
-                                  {(Array.isArray(proj.technologies) ? proj.technologies : String(proj.technologies).split(",")).map((tech: string, tIdx: number) => {
-                                    const clean = tech.trim();
-                                    if (!clean) return null;
-                                    return (
-                                      <span key={tIdx} className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-background border border-border text-muted-foreground">
-                                        {clean}
-                                      </span>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Education & Certifications Side-by-side */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Education */}
-                      {editForm.educationList.length > 0 && (
-                        <div className="space-y-3">
-                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                            Education History
-                          </h4>
-                          <div className="relative border-l border-border ml-3 pl-6 space-y-5 py-2 bg-muted/10 dark:bg-slate-900/10 p-5 rounded-2xl border border-border/40">
-                            {editForm.educationList.map((edu: any, index: number) => (
-                              <div key={index} className="relative">
-                                <span className="absolute left-[-29px] top-1 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-purple-500 border border-purple-500 shadow-sm" />
-                                <div className="space-y-0.5">
-                                  <div className="flex justify-between items-start gap-3">
-                                    <h5 className="text-xs font-bold text-foreground">{edu.degree || "Degree not specified"}</h5>
-                                    {edu.year && (
-                                      <span className="text-10 font-bold px-2 py-0.5 rounded bg-muted text-muted-foreground shrink-0 border border-border/45">
-                                        {edu.year}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="text-11 text-slate-550 dark:text-slate-400">{edu.school || "School not specified"}</p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Certifications */}
-                      {editForm.certifications && (
-                        <div className="space-y-3">
-                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                            Certifications
-                          </h4>
-                          <div className="flex flex-wrap gap-2 bg-muted/10 dark:bg-slate-900/10 p-5 rounded-2xl border border-border/40 min-h-[90px] content-start">
-                            {editForm.certifications.split(",").map((cert: string, idx: number) => {
-                              const clean = cert.trim();
-                              if (!clean) return null;
-                              return (
-                                <span key={idx} className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-background border border-border text-slate-705 dark:text-slate-300">
-                                  {clean}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
                   </div>
                 </Card>
-              )}
 
-            </div>
+                {/* Risks Card */}
+                <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-4">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Career Risk Analysis</span>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    {[
+                      { label: "Demand Risk", value: opportunities?.risk_analysis?.demand_risk || "Low", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
+                      { label: "Automation Risk", value: opportunities?.risk_analysis?.automation_risk || "Low", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
+                      { label: "Market Competition", value: opportunities?.risk_analysis?.market_competition || "High", color: "text-red-400 bg-red-500/10 border-red-500/20" },
+                      { label: "Future Growth", value: opportunities?.risk_analysis?.future_growth || "High", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
+                      { label: "Salary Stability", value: opportunities?.risk_analysis?.salary_growth || "Stable", color: "text-violet-400 bg-violet-500/10 border-violet-500/20" }
+                    ].map((risk, idx) => (
+                      <div key={idx} className="p-3 rounded-lg border border-slate-850 bg-slate-950/20 text-center space-y-1">
+                        <span className="text-[9px] font-bold text-slate-400 block">{risk.label}</span>
+                        <Badge className={`text-[10px] font-black border ${risk.color} mt-1`}>{risk.value}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+
+                {/* Top Opportunities Table */}
+                <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-4">
+                  <div className="border-b border-slate-850 pb-3">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Top 100 Ranked Match Career Tracks</span>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs font-semibold">
+                      <thead>
+                        <tr className="border-b border-slate-850 text-slate-400 text-[10px] uppercase">
+                          <th className="py-2.5 font-bold">Role/Exam Track</th>
+                          <th className="py-2.5 font-bold">Category</th>
+                          <th className="py-2.5 font-bold text-center">Confidence</th>
+                          <th className="py-2.5 font-bold text-center">Growth</th>
+                          <th className="py-2.5 font-bold text-right">Potential Pay</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {opportunities?.top_opportunities && opportunities.top_opportunities.length > 0 ? (
+                          opportunities.top_opportunities.map((opp: any, idx: number) => (
+                            <tr key={idx} className="border-b border-slate-850/60 hover:bg-slate-900/40 text-slate-300">
+                              <td className="py-3 font-bold text-slate-200">{opp.role_title}</td>
+                              <td className="py-3 text-[10px] font-bold text-slate-400">{opp.category}</td>
+                              <td className="py-3 text-center text-violet-400 font-black">{opp.confidence_score}%</td>
+                              <td className="py-3 text-center text-emerald-400 font-black">{opp.growth_score}%</td>
+                              <td className="py-3 text-right font-black text-slate-200">{opp.salary_potential || "N/A"}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={5} className="py-6 text-center text-slate-500 italic font-semibold">No opportunity careers matching.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            {/* IMPROVEMENTS TAB */}
+            {activeTab === "improvements" && (
+              <div className="space-y-6">
+                <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-6">
+                  <div className="flex items-center gap-3 border-b border-slate-850 pb-4">
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-500/20">
+                      <FileCheck size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-black text-white">ATS Improvements & Scores</h3>
+                      <p className="text-xs text-slate-400">Score metrics checking for grammar, keyword matches, achievements and layout formats.</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {[
+                      { label: "Overall ATS", score: improvements?.ats_score || 70, color: "text-violet-400" },
+                      { label: "Grammar & Spelling", score: improvements?.formatting_score || 75, color: "text-indigo-400" },
+                      { label: "Content Quality", score: improvements?.content_score || 68, color: "text-blue-400" },
+                      { label: "Keyword Matching", score: improvements?.keyword_score || 70, color: "text-teal-400" }
+                    ].map((s, idx) => (
+                      <div key={idx} className="p-4 rounded-xl border border-slate-850 bg-slate-950/20 text-center space-y-2">
+                        <span className="text-[10px] font-bold text-slate-400 block">{s.label}</span>
+                        <span className={`text-2xl font-black block ${s.color}`}>{s.score}<span className="text-xs text-slate-500">/100</span></span>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+
+                <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-4">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">AI Resume Improvement Suggestions</span>
+                  <div className="space-y-3">
+                    {improvements?.improvement_suggestions && improvements.improvement_suggestions.length > 0 ? (
+                      improvements.improvement_suggestions.map((suggestion: string, idx: number) => (
+                        <div key={idx} className="flex gap-2.5 items-start p-3.5 rounded-xl border border-slate-850 bg-slate-950/30 text-xs font-semibold text-slate-300">
+                          <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
+                          <span className="leading-relaxed">{suggestion}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-slate-500 italic">No recommendations calculated.</p>
+                    )}
+                  </div>
+                </Card>
+
+                <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-4">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Quantitative Achievement Rewrites (Before vs After)</span>
+                  <div className="space-y-4">
+                    {improvements?.achievement_suggestions && improvements.achievement_suggestions.length > 0 ? (
+                      improvements.achievement_suggestions.map((sugg: any, idx: number) => (
+                        <div key={idx} className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-slate-850/60 pb-4 last:border-b-0 last:pb-0">
+                          <div className="p-3.5 rounded-xl bg-red-500/5 border border-red-500/10 space-y-1">
+                            <span className="text-[9px] font-black text-red-400 uppercase tracking-wider">Before (Vague description)</span>
+                            <p className="text-xs text-slate-400 font-medium italic">"{sugg.before || sugg.original || sugg}"</p>
+                          </div>
+                          <div className="p-3.5 rounded-xl bg-emerald-500/5 border border-emerald-500/10 space-y-1">
+                            <span className="text-[9px] font-black text-emerald-400 uppercase tracking-wider">Suggested AI Rewrite (Impact-driven)</span>
+                            <p className="text-xs text-slate-200 font-semibold">"{sugg.after || sugg.rewritten || sugg}"</p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-slate-500 italic">No specific achievements suggestions computed.</p>
+                    )}
+                  </div>
+                </Card>
+              </div>
+            )}
 
           </div>
 
-          {/* RIGHT SIDEBAR (AI Insights, AI Quality Score, Resume Versions) */}
-          <div className="space-y-6">
+          {/* Column 4: Right Sidebar (1 col) */}
+          <div className="lg:col-span-1 space-y-6">
             
             {/* AI Insights Card */}
-            <Card>
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
-                <h3 className="text-base font-black text-foreground dark:text-white">AI Insights</h3>
-                <button className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">View All</button>
+            <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-5 shadow-xl space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-850 pb-3">
+                <h3 className="text-sm font-black text-white">AI Career Insights</h3>
               </div>
 
               <div className="space-y-4">
-                {/* Strongest skill */}
-                <div className="flex items-start gap-4">
-                  <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0 border border-teal-100/40 dark:border-teal-850">
-                    <Code size={16} />
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-teal-500/10 text-teal-400 flex items-center justify-center shrink-0 border border-teal-550/20">
+                    <Code size={14} />
                   </div>
                   <div>
-                    <span className="text-11 font-bold text-slate-400 dark:text-slate-500 block">Your strongest skill</span>
-                    <span className="text-xs font-black text-slate-800 dark:text-slate-200 mt-0.5 block">{strongestSkill}</span>
+                    <span className="text-[9px] font-bold text-slate-500 block">Strongest Competency</span>
+                    <span className="text-xs font-black text-slate-200 mt-0.5 block truncate">{strongestSkill}</span>
                   </div>
                 </div>
 
-                {/* Top improvement area */}
-                <div className="flex items-start gap-4">
-                  <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-955/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-100/40 dark:border-amber-850">
-                    <TrendingUp size={16} />
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0 border border-amber-550/20">
+                    <TrendingUp size={14} />
                   </div>
                   <div>
-                    <span className="text-11 font-bold text-slate-400 dark:text-slate-500 block">Top improvement area</span>
-                    <span className="text-xs font-black text-slate-800 dark:text-slate-200 mt-0.5 block">{improvementArea}</span>
+                    <span className="text-[9px] font-bold text-slate-500 block">Top Improvement Area</span>
+                    <span className="text-xs font-black text-slate-200 mt-0.5 block line-clamp-2 leading-tight">{improvementArea}</span>
                   </div>
                 </div>
 
-                {/* Profile strength */}
-                <div className="flex items-start gap-4">
-                  <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-650 dark:text-purple-400 flex items-center justify-center shrink-0 border border-purple-100/40 dark:border-purple-850">
-                    <ShieldCheck size={16} />
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center shrink-0 border border-purple-550/20">
+                    <ShieldCheck size={14} />
                   </div>
                   <div>
-                    <span className="text-11 font-bold text-slate-400 dark:text-slate-500 block">Profile strength</span>
-                    <span className="text-xs font-black text-slate-800 dark:text-slate-200 mt-0.5 block">{profileStrength}</span>
+                    <span className="text-[9px] font-bold text-slate-500 block">Profile Strength Score</span>
+                    <span className="text-xs font-black text-slate-200 mt-0.5 block">{profileStrength}</span>
                   </div>
                 </div>
 
-                {/* Recommended next step */}
-                <div className="flex items-start gap-4">
-                  <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-955/40 text-blue-650 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-100/40 dark:border-blue-850">
-                    <FileText size={16} />
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 border border-blue-550/20">
+                    <FileText size={14} />
                   </div>
                   <div>
-                    <span className="text-11 font-bold text-slate-400 dark:text-slate-500 block">Recommended next step</span>
-                    <span className="text-xs font-black text-slate-800 dark:text-slate-200 mt-0.5 block">{recommendedStep}</span>
+                    <span className="text-[9px] font-bold text-slate-500 block">Next Action Step</span>
+                    <span className="text-xs font-black text-slate-200 mt-0.5 block leading-tight">{recommendedStep}</span>
                   </div>
                 </div>
               </div>
             </Card>
 
             {/* AI Quality Score Card */}
-            <Card className="space-y-6">
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                <h3 className="text-base font-black text-foreground dark:text-white">AI Quality Score</h3>
+            <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-5 shadow-xl space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-850 pb-3">
+                <h3 className="text-sm font-black text-white">ATS Quality Rating</h3>
                 <button 
                   onClick={runAIAnalysis}
                   disabled={analysisLoading}
-                  className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer disabled:opacity-50"
+                  className="text-xs font-bold text-violet-400 hover:text-violet-300 hover:underline cursor-pointer disabled:opacity-50"
                 >
-                  {analysisLoading ? "Analyzing..." : "Re-analyze"}
+                  {analysisLoading ? "Running..." : "Analyze"}
                 </button>
               </div>
 
               <div className="flex items-center gap-6 justify-between">
-                {/* Circular progress */}
                 <div className="flex flex-col items-center shrink-0">
                   <div className="relative flex items-center justify-center">
-                    <svg width="84" height="84" className="transform -rotate-90">
-                      <circle cx="42" cy="42" r="36" fill="none" strokeWidth="6" className="text-slate-100 dark:text-slate-800" stroke="currentColor" />
-                      <circle cx="42" cy="42" r="36" fill="none" strokeWidth="6" strokeDasharray={2 * Math.PI * 36} strokeDashoffset={2 * Math.PI * 36 - (aiQualityScore * 10 / 100) * (2 * Math.PI * 36)} strokeLinecap="round" stroke="#6366f1" className="transition-all duration-700 ease-out" />
+                    <svg width="74" height="74" className="transform -rotate-90">
+                      <circle cx="37" cy="37" r="32" fill="none" strokeWidth="4" className="text-slate-800" stroke="currentColor" />
+                      <circle cx="37" cy="37" r="32" fill="none" strokeWidth="4" strokeDasharray={2 * Math.PI * 32} strokeDashoffset={2 * Math.PI * 32 - (aiQualityScore * 10 / 100) * (2 * Math.PI * 32)} strokeLinecap="round" stroke="#8b5cf6" className="transition-all duration-700 ease-out" />
                     </svg>
                     <div className="absolute flex flex-col items-center">
-                      <span className="text-lg font-black text-foreground dark:text-white">{aiQualityScore}</span>
-                      <span className="text-8 font-bold text-slate-400 dark:text-slate-500">/10</span>
+                      <span className="text-base font-black text-white">{aiQualityScore}</span>
+                      <span className="text-[8px] font-bold text-slate-500">/10</span>
                     </div>
                   </div>
-                  <span className="text-10 font-bold text-indigo-500 mt-1.5 uppercase">
+                  <span className="text-[9px] font-bold text-violet-400 mt-2 uppercase tracking-wide">
                     {skillsList.length === 0 ? "N/A" : (aiQualityScore >= 8 ? "Excellent" : (aiQualityScore >= 6 ? "Good" : "Needs Work"))}
                   </span>
                 </div>
 
-                {/* Score list */}
-                <div className="flex-1 space-y-1.5 text-xs font-bold text-slate-655 dark:text-slate-400 min-w-0">
+                <div className="flex-1 space-y-1.5 text-[10px] font-bold text-slate-400 min-w-0">
                   <div className="flex justify-between items-center">
-                    <span className="font-semibold text-slate-450 dark:text-muted-foreground">Grammar</span>
+                    <span className="font-semibold text-slate-500">Grammar</span>
                     <span>{skillsList.length === 0 ? 0 : aiQualityBreakdown.grammar}/10</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="font-semibold text-slate-450 dark:text-muted-foreground">Formatting</span>
+                    <span className="font-semibold text-slate-500">Format</span>
                     <span>{skillsList.length === 0 ? 0 : aiQualityBreakdown.formatting}/10</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="font-semibold text-slate-455 dark:text-muted-foreground">Readability</span>
+                    <span className="font-semibold text-slate-500">Readability</span>
                     <span>{skillsList.length === 0 ? 0 : aiQualityBreakdown.readability}/10</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="font-semibold text-slate-455 dark:text-muted-foreground">Projects</span>
-                    <span>{skillsList.length === 0 ? 0 : aiQualityBreakdown.project_quality}/10</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold text-slate-455 dark:text-muted-foreground">Achievements</span>
-                    <span>{skillsList.length === 0 ? 0 : aiQualityBreakdown.achievement_quality}/10</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold text-slate-455 dark:text-muted-foreground">Structure</span>
+                    <span className="font-semibold text-slate-500">Structure</span>
                     <span>{skillsList.length === 0 ? 0 : aiQualityBreakdown.structure}/10</span>
                   </div>
                 </div>
@@ -1813,99 +1248,98 @@ export default function ResumeBuilder() {
 
               <button 
                 onClick={handleImproveWithAI}
-                className="w-full py-2.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/30 dark:bg-indigo-950/20 text-indigo-655 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/45 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                className="w-full py-2 rounded-xl border border-violet-800 bg-violet-950/20 text-violet-300 hover:bg-violet-950/40 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
               >
-                <Sparkles size={13} className="animate-pulse" />
+                <Sparkles size={12} className="animate-pulse" />
                 <span>Improve with AI</span>
               </button>
             </Card>
 
             {/* Resume Versions Card */}
-            <Card className="space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                <h3 className="text-base font-black text-foreground dark:text-white">Resume Versions</h3>
-                <button className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">View All</button>
+            <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-5 shadow-xl space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-850 pb-3">
+                <h3 className="text-sm font-black text-white">Versions History</h3>
               </div>
 
-              <div className="space-y-2.5 max-h-260 overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1 scrollbar-thin">
                 {resumeVersions.map((ver, idx) => (
-                  <div key={idx} className="p-3 rounded-2xl border border-slate-100 dark:border-slate-800 bg-muted/10 dark:bg-card/40 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-655 dark:text-slate-455 flex items-center justify-center shrink-0">
-                        <FileText size={15} />
+                  <div key={idx} className="p-2.5 rounded-xl border border-slate-850 bg-slate-950/30 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-7 h-7 rounded bg-slate-900 border border-slate-800 text-slate-400 flex items-center justify-center shrink-0">
+                        <FileText size={14} />
                       </div>
                       <div className="min-w-0">
-                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1 truncate">
+                        <span className="text-[11px] font-bold text-slate-200 flex items-center gap-1 truncate">
                           {ver.version}
                           {ver.isLatest && (
-                            <span className="text-9 font-bold px-1 py-0.2 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded border border-blue-100 dark:border-blue-800/40 shrink-0">
-                              Latest
+                            <span className="text-[8px] font-bold px-1 bg-violet-500/20 text-violet-400 rounded border border-violet-850/40 shrink-0">
+                              Active
                             </span>
                           )}
                         </span>
-                        <span className="text-9 text-slate-400 dark:text-slate-500 font-semibold block mt-0.5">{ver.date}</span>
+                        <span className="text-[8px] text-slate-500 font-semibold block mt-0.5">{ver.date}</span>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
                       <button 
                         onClick={() => handlePreviewResume(ver.url)}
-                        className="p-1 rounded bg-white dark:bg-slate-900 border border-border dark:border-slate-850 text-slate-450 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer hover:bg-muted"
+                        className="p-1 rounded bg-slate-900 border border-slate-800 text-slate-450 hover:text-slate-200 cursor-pointer"
                         title="Preview"
                       >
-                        <Eye size={12} />
+                        <Eye size={11} />
                       </button>
                       <button 
                         onClick={() => handleDownloadResumeUrl(ver.url, ver.version)}
-                        className="p-1 rounded bg-white dark:bg-slate-900 border border-border dark:border-slate-850 text-slate-450 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer hover:bg-muted"
+                        className="p-1 rounded bg-slate-900 border border-slate-800 text-slate-450 hover:text-slate-200 cursor-pointer"
                         title="Download"
                       >
-                        <Download size={12} />
+                        <Download size={11} />
                       </button>
                       <button 
                         onClick={() => handleDeleteResumeVersion(ver.id)}
-                        className="p-1 rounded bg-white dark:bg-slate-900 border border-slate-155 border-border dark:border-slate-850 text-slate-455 hover:text-red-500 hover:border-red-205 cursor-pointer hover:bg-red-50"
+                        className="p-1 rounded bg-slate-900 border border-slate-800 text-slate-455 hover:text-red-400 cursor-pointer"
                         title="Delete"
                       >
-                        <Trash2 size={12} />
+                        <Trash2 size={11} />
                       </button>
                     </div>
                   </div>
                 ))}
 
                 {resumeVersions.length === 0 && (
-                  <div className="text-center py-6 text-xs text-slate-400 italic font-semibold">
-                    No resume uploaded yet.
+                  <div className="text-center py-6 text-xs text-slate-555 italic font-semibold">
+                    No versions.
                   </div>
                 )}
               </div>
 
-              <div className="flex flex-col gap-2 w-full">
+              <div className="flex flex-col gap-2 w-full pt-1">
                 <button 
                   onClick={triggerUpload}
                   disabled={uploading}
-                  className="w-full py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-muted dark:hover:bg-slate-800 text-slate-700 dark:text-slate-305 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50"
+                  className="w-full py-2.5 rounded-xl border border-slate-800 hover:bg-slate-800 text-slate-300 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50"
                 >
                   {uploading ? (
                     <>
-                      <Loader2 size={13} className="animate-spin" />
-                      <span>Uploading CV...</span>
+                      <Loader2 size={12} className="animate-spin" />
+                      <span>Uploading...</span>
                     </>
                   ) : (
                     <>
-                      <Upload size={13} />
-                      <span>Upload New Resume</span>
+                      <Upload size={12} />
+                      <span>Upload New Version</span>
                     </>
                   )}
                 </button>
-                <label className="flex items-center gap-2 text-[10px] select-none cursor-pointer mt-1 justify-center bg-white/5 border border-white/10 rounded-lg py-1.5 px-3 hover:bg-white/10 transition-colors">
+                <label className="flex items-center gap-1.5 text-[9px] select-none cursor-pointer mt-0.5 justify-center bg-slate-900/40 border border-slate-850 rounded-lg py-1 px-2.5 hover:bg-slate-800/40 transition-colors">
                   <input
                     type="checkbox"
                     checked={fastMode}
                     onChange={(e) => setFastMode(e.target.checked)}
-                    className="rounded border-slate-700 bg-slate-900 text-violet-600 focus:ring-violet-500"
+                    className="rounded border-slate-700 bg-slate-900 text-violet-600 focus:ring-violet-500 h-3 w-3"
                   />
-                  <span className="font-semibold text-slate-300">⚡ Instant Ingestion Mode (Milliseconds)</span>
+                  <span className="font-semibold text-slate-400">⚡ Instant Ingestion (Milliseconds)</span>
                 </label>
               </div>
             </Card>
@@ -1913,64 +1347,61 @@ export default function ResumeBuilder() {
           </div>
 
         </div>
-
       </div>
 
-      {/* 3. Slide-over Profile Edit Drawer (READ-ONLY Extracted Viewer) */}
+      {/* Slide-over Profile Edit Drawer (READ-ONLY Extracted Viewer) */}
       {isEditOpen && (
         <div className="fixed inset-0 z-50 overflow-hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
           <div className="absolute inset-0 overflow-hidden">
-            {/* Backdrop */}
             <div 
               onClick={() => setIsEditOpen(false)}
-              className="absolute inset-0 bg-slate-950/40 dark:bg-black/60 backdrop-blur-xs transition-opacity duration-300" 
+              className="absolute inset-0 bg-slate-950/40 dark:bg-black/60 backdrop-blur-sm transition-opacity duration-300" 
             />
-            {/* Panel */}
-            <div className="absolute inset-y-0 right-0 pl-0 md:pl-10 max-w-full flex">
-              <div className="w-screen max-w-2xl transform transition-all duration-300 ease-in-out bg-card border-l border-border shadow-2xl flex flex-col h-full">
+            <div className="absolute inset-y-0 right-0 pl-10 max-w-full flex">
+              <div className="w-screen max-w-2xl transform transition-all duration-300 ease-in-out bg-slate-900 border-l border-slate-800 shadow-2xl flex flex-col h-full text-slate-100">
                 
                 {/* Header */}
-                <div className="px-6 py-5 border-b border-slate-155 dark:border-border flex items-center justify-between shrink-0">
+                <div className="px-6 py-5 border-b border-slate-800 flex items-center justify-between shrink-0">
                   <div>
-                    <h2 className="text-lg font-black text-foreground dark:text-white" id="slide-over-title">
+                    <h2 className="text-lg font-black text-white" id="slide-over-title">
                       Extracted Profile Details
                     </h2>
-                    <p className="text-xs text-slate-400 dark:text-slate-550 font-semibold mt-1">
+                    <p className="text-xs text-slate-400 font-semibold mt-1">
                       Details parsed automatically from your resume. Manual editing is disabled.
                     </p>
                   </div>
                   <button 
                     onClick={() => setIsEditOpen(false)}
-                    className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                    className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
                   >
                     <X size={18} />
                   </button>
                 </div>
 
                 {/* Info Note Banner */}
-                <div className="bg-muted dark:bg-card/40 px-6 py-3 border-b border-slate-100 dark:border-border text-11 font-semibold text-slate-500 dark:text-slate-400 flex items-start gap-2 shrink-0">
+                <div className="bg-slate-950 px-6 py-3 border-b border-slate-800 text-xs font-semibold text-slate-400 flex items-start gap-2 shrink-0">
                   <AlertCircle size={14} className="text-slate-400 mt-0.5 shrink-0" />
                   <span>
                     Your profile is synchronized automatically with your latest resume. To make changes or fix inaccuracies, update your resume and upload it again.
                   </span>
                 </div>
 
-                {/* Body: Tabs on left/top, Content on right/bottom */}
+                {/* Body */}
                 <div className="flex-1 overflow-hidden flex flex-col md:flex-row min-h-0">
                   
                   {/* Tabs Selector List */}
-                  <div className="w-full md:w-48 bg-muted/50 dark:bg-slate-900/20 border-b md:border-b-0 md:border-r border-slate-100 dark:border-border overflow-x-auto md:overflow-y-auto py-2 md:py-4 flex md:flex-col shrink-0 scrollbar-none">
+                  <div className="w-full md:w-48 bg-slate-950/30 border-b md:border-b-0 md:border-r border-slate-800 overflow-x-auto md:overflow-y-auto py-2 md:py-4 flex md:flex-col shrink-0">
                     {profileSections.map((sec) => {
                       const TabIcon = sec.icon;
-                      const isTabActive = activeTab === sec.id;
+                      const isTabActive = activeDrawerTab === sec.id;
                       return (
                         <button
                           key={sec.id}
-                          onClick={() => setActiveTab(sec.id)}
+                          onClick={() => setActiveDrawerTab(sec.id)}
                           className={`px-4 py-2.5 text-xs font-bold flex items-center gap-2.5 transition-all border-b-2 md:border-b-0 md:border-l-2 shrink-0 ${
                             isTabActive
-                              ? "bg-slate-100 dark:bg-slate-800 text-slate-905 dark:text-white border-slate-950 dark:border-white"
-                              : "text-slate-455 dark:text-slate-550 border-transparent hover:text-slate-700 dark:hover:text-slate-300"
+                              ? "bg-slate-800 text-white border-violet-500"
+                              : "text-slate-400 border-transparent hover:text-slate-200"
                           }`}
                         >
                           <TabIcon size={14} className="shrink-0" />
@@ -1984,34 +1415,34 @@ export default function ResumeBuilder() {
                   <div className="flex-1 overflow-y-auto p-6 min-w-0">
                     
                     {/* PERSONAL INFORMATION TAB */}
-                    {activeTab === "personal" && (
+                    {activeDrawerTab === "personal" && (
                       <div className="space-y-6">
-                        <h4 className="text-sm font-black text-foreground dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
+                        <h4 className="text-sm font-black text-white border-b border-slate-800 pb-2 flex items-center gap-2">
                           <MapPin size={16} className="text-slate-400" />
                           <span>Personal Information</span>
                         </h4>
                         <div className="space-y-4">
                           <div>
-                            <span className="text-10 font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1">Full Name</span>
-                            <div className="px-3.5 py-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-muted/30 dark:bg-slate-900/30 text-xs font-semibold text-slate-800 dark:text-slate-200">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Full Name</span>
+                            <div className="px-3.5 py-2.5 rounded-xl border border-slate-800 bg-slate-950/30 text-xs font-semibold text-slate-200">
                               {editForm.name || "Not specified"}
                             </div>
                           </div>
                           <div>
-                            <span className="text-10 font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1">Email Address</span>
-                            <div className="px-3.5 py-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-muted/30 dark:bg-slate-900/30 text-xs font-semibold text-slate-800 dark:text-slate-200">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Email Address</span>
+                            <div className="px-3.5 py-2.5 rounded-xl border border-slate-800 bg-slate-950/30 text-xs font-semibold text-slate-200">
                               {editForm.email || "Not specified"}
                             </div>
                           </div>
                           <div>
-                            <span className="text-10 font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1">Phone Number</span>
-                            <div className="px-3.5 py-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-muted/30 dark:bg-slate-900/30 text-xs font-semibold text-slate-800 dark:text-slate-200">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Phone Number</span>
+                            <div className="px-3.5 py-2.5 rounded-xl border border-slate-800 bg-slate-950/30 text-xs font-semibold text-slate-200">
                               {editForm.phone || "Not specified"}
                             </div>
                           </div>
                           <div>
-                            <span className="text-10 font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1">Location / Address</span>
-                            <div className="px-3.5 py-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-muted/30 dark:bg-slate-900/30 text-xs font-semibold text-slate-800 dark:text-slate-200">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Location / Address</span>
+                            <div className="px-3.5 py-2.5 rounded-xl border border-slate-800 bg-slate-950/30 text-xs font-semibold text-slate-200">
                               {editForm.address || "Not specified"}
                             </div>
                           </div>
@@ -2020,15 +1451,15 @@ export default function ResumeBuilder() {
                     )}
 
                     {/* SUMMARY TAB */}
-                    {activeTab === "summary" && (
+                    {activeDrawerTab === "summary" && (
                       <div className="space-y-6">
-                        <h4 className="text-sm font-black text-foreground dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
+                        <h4 className="text-sm font-black text-white border-b border-slate-800 pb-2 flex items-center gap-2">
                           <FileText size={16} className="text-slate-400" />
                           <span>Professional Summary</span>
                         </h4>
                         <div>
-                          <span className="text-10 font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1.5">Summary</span>
-                          <div className="px-4 py-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-muted/30 dark:bg-slate-900/30 text-xs font-semibold text-slate-700 dark:text-slate-350 leading-relaxed whitespace-pre-wrap">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1.5">Summary</span>
+                          <div className="px-4 py-3 rounded-xl border border-slate-800 bg-slate-950/30 text-xs font-semibold text-slate-300 leading-relaxed whitespace-pre-wrap">
                             {editForm.summary || "No professional summary extracted."}
                           </div>
                         </div>
@@ -2036,22 +1467,22 @@ export default function ResumeBuilder() {
                     )}
 
                     {/* SKILLS TAB */}
-                    {activeTab === "skills" && (
+                    {activeDrawerTab === "skills" && (
                       <div className="space-y-6">
-                        <h4 className="text-sm font-black text-foreground dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
+                        <h4 className="text-sm font-black text-white border-b border-slate-800 pb-2 flex items-center gap-2">
                           <Code size={16} className="text-slate-400" />
                           <span>Extracted Skills</span>
                         </h4>
                         <div>
-                          <span className="text-10 font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-3">Skills List</span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-3">Skills List</span>
                           <div className="flex flex-wrap gap-2">
                             {skillsList.map((skill: string, idx: number) => (
-                              <span key={idx} className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-muted dark:bg-slate-850 border border-slate-100 dark:border-border text-slate-700 dark:text-slate-300">
+                              <span key={idx} className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-750 text-slate-300">
                                 {skill}
                               </span>
                             ))}
                             {skillsList.length === 0 && (
-                              <span className="text-xs text-slate-450 italic font-semibold">No skills extracted.</span>
+                              <span className="text-xs text-slate-500 italic font-semibold">No skills extracted.</span>
                             )}
                           </div>
                         </div>
@@ -2059,35 +1490,35 @@ export default function ResumeBuilder() {
                     )}
 
                     {/* EXPERIENCE TAB */}
-                    {activeTab === "experience" && (
+                    {activeDrawerTab === "experience" && (
                       <div className="space-y-6">
-                        <h4 className="text-sm font-black text-foreground dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
+                        <h4 className="text-sm font-black text-white border-b border-slate-800 pb-2 flex items-center gap-2">
                           <Briefcase size={16} className="text-slate-400" />
                           <span>Work Experience</span>
                         </h4>
                         <div className="space-y-4">
                           {editForm.experienceList.map((exp: any, index: number) => (
-                            <div key={index} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-muted/10 dark:bg-slate-900/20 space-y-2">
+                            <div key={index} className="p-4 rounded-2xl border border-slate-800 bg-slate-950/20 space-y-2">
                               <div className="flex justify-between items-start">
                                 <div>
-                                  <h5 className="text-xs font-bold text-foreground dark:text-white">{exp.role || "Role not specified"}</h5>
-                                  <p className="text-11 text-slate-550 dark:text-slate-400 font-semibold">{exp.company || "Company not specified"}</p>
+                                  <h5 className="text-xs font-bold text-white">{exp.role || "Role not specified"}</h5>
+                                  <p className="text-[11px] text-slate-400 font-semibold">{exp.company || "Company not specified"}</p>
                                 </div>
                                 {exp.years ? (
-                                  <span className="text-10 font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300">
                                     {exp.years} yrs
                                   </span>
                                 ) : null}
                               </div>
                               {exp.description && (
-                                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap pt-1 border-t border-slate-100/50 dark:border-slate-800/50">
+                                <p className="text-xs text-slate-400 leading-relaxed whitespace-pre-wrap pt-1 border-t border-slate-800/40">
                                   {exp.description}
                                 </p>
                               )}
                             </div>
                           ))}
                           {editForm.experienceList.length === 0 && (
-                            <div className="text-center py-8 text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl font-semibold">
+                            <div className="text-center py-8 text-xs text-slate-500 border border-dashed border-slate-800 rounded-2xl font-semibold">
                               No experience history extracted.
                             </div>
                           )}
@@ -2096,28 +1527,28 @@ export default function ResumeBuilder() {
                     )}
 
                     {/* EDUCATION TAB */}
-                    {activeTab === "education" && (
+                    {activeDrawerTab === "education" && (
                       <div className="space-y-6">
-                        <h4 className="text-sm font-black text-foreground dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
+                        <h4 className="text-sm font-black text-white border-b border-slate-800 pb-2 flex items-center gap-2">
                           <GraduationCap size={16} className="text-slate-400" />
                           <span>Education</span>
                         </h4>
                         <div className="space-y-4">
                           {editForm.educationList.map((edu: any, index: number) => (
-                            <div key={index} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-muted/10 dark:bg-slate-900/20 flex justify-between items-start">
+                            <div key={index} className="p-4 rounded-2xl border border-slate-800 bg-slate-950/20 flex justify-between items-start">
                               <div className="space-y-1">
-                                <h5 className="text-xs font-bold text-foreground dark:text-white">{edu.degree || "Degree not specified"}</h5>
-                                <p className="text-11 text-slate-550 dark:text-slate-400 font-semibold">{edu.school || "School/University not specified"}</p>
+                                <h5 className="text-xs font-bold text-white">{edu.degree || "Degree not specified"}</h5>
+                                <p className="text-[11px] text-slate-400 font-semibold">{edu.school || "School/University not specified"}</p>
                               </div>
                               {edu.year && (
-                                <span className="text-10 font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-350">
                                   {edu.year}
                                 </span>
                               )}
                             </div>
                           ))}
                           {editForm.educationList.length === 0 && (
-                            <div className="text-center py-8 text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl font-semibold">
+                            <div className="text-center py-8 text-xs text-slate-550 border border-dashed border-slate-800 rounded-2xl font-semibold">
                               No education history extracted.
                             </div>
                           )}
@@ -2126,23 +1557,23 @@ export default function ResumeBuilder() {
                     )}
 
                     {/* PROJECTS TAB */}
-                    {activeTab === "projects" && (
+                    {activeDrawerTab === "projects" && (
                       <div className="space-y-6">
-                        <h4 className="text-sm font-black text-foreground dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
+                        <h4 className="text-sm font-black text-white border-b border-slate-880 pb-2 flex items-center gap-2">
                           <Folder size={16} className="text-slate-400" />
                           <span>Projects</span>
                         </h4>
                         <div className="space-y-4">
                           {editForm.projectList.map((proj: any, index: number) => (
-                            <div key={index} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-muted/10 dark:bg-slate-900/20 space-y-2">
+                            <div key={index} className="p-4 rounded-2xl border border-slate-800 bg-slate-950/20 space-y-2">
                               <div className="flex justify-between items-center">
-                                <h5 className="text-xs font-bold text-foreground dark:text-white">{proj.name || "Project name not specified"}</h5>
+                                <h5 className="text-xs font-bold text-white">{proj.name || "Project name not specified"}</h5>
                                 {proj.link && (
                                   <a 
                                     href={proj.link} 
                                     target="_blank" 
                                     rel="noopener noreferrer" 
-                                    className="text-10 font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
+                                    className="text-[10px] font-bold text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
                                   >
                                     <span>Link</span>
                                     <Globe size={10} />
@@ -2150,14 +1581,14 @@ export default function ResumeBuilder() {
                                 )}
                               </div>
                               {proj.description && (
-                                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap pt-1 border-t border-slate-100/50 dark:border-slate-800/50">
+                                <p className="text-xs text-slate-400 leading-relaxed whitespace-pre-wrap pt-1 border-t border-slate-800/40">
                                   {proj.description}
                                 </p>
                               )}
                             </div>
                           ))}
                           {editForm.projectList.length === 0 && (
-                            <div className="text-center py-8 text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl font-semibold">
+                            <div className="text-center py-8 text-xs text-slate-550 border border-dashed border-slate-800 rounded-2xl font-semibold">
                               No projects history extracted.
                             </div>
                           )}
@@ -2166,28 +1597,28 @@ export default function ResumeBuilder() {
                     )}
 
                     {/* CERTIFICATIONS TAB */}
-                    {activeTab === "certifications" && (
+                    {activeDrawerTab === "certifications" && (
                       <div className="space-y-6">
-                        <h4 className="text-sm font-black text-foreground dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
+                        <h4 className="text-sm font-black text-white border-b border-slate-800 pb-2 flex items-center gap-2">
                           <Award size={16} className="text-slate-400" />
                           <span>Certifications</span>
                         </h4>
                         <div>
-                          <span className="text-10 font-bold uppercase tracking-wider text-slate-400 dark:text-muted-foreground block mb-3">Extracted Certifications</span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-3">Extracted Certifications</span>
                           <div className="flex flex-wrap gap-2">
                             {editForm.certifications ? (
                               editForm.certifications.split(",").map((cert: string, idx: number) => {
                                 const clean = cert.trim();
                                 if (!clean) return null;
                                 return (
-                                  <span key={idx} className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-muted dark:bg-slate-800 border border-slate-100 dark:border-border text-slate-700 dark:text-slate-300">
+                                  <span key={idx} className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-750 text-slate-300">
                                     {clean}
                                   </span>
                                 );
                               })
                             ) : null}
                             {(!editForm.certifications || !editForm.certifications.trim()) && (
-                              <span className="text-xs text-slate-455 italic font-semibold">No certifications extracted.</span>
+                              <span className="text-xs text-slate-500 italic font-semibold">No certifications extracted.</span>
                             )}
                           </div>
                         </div>
@@ -2195,9 +1626,9 @@ export default function ResumeBuilder() {
                     )}
 
                     {/* ACHIEVEMENTS TAB */}
-                    {activeTab === "achievements" && (
+                    {activeDrawerTab === "achievements" && (
                       <div className="space-y-6">
-                        <h4 className="text-sm font-black text-foreground dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
+                        <h4 className="text-sm font-black text-white border-b border-slate-800 pb-2 flex items-center gap-2">
                           <Trophy size={16} className="text-slate-400" />
                           <span>Achievements</span>
                         </h4>
@@ -2205,14 +1636,14 @@ export default function ResumeBuilder() {
                           {editForm.achievementsList.map((ach: string, index: number) => {
                             if (!ach.trim()) return null;
                             return (
-                              <div key={index} className="flex gap-2.5 items-start p-3 rounded-2xl border border-slate-100 dark:border-slate-800 bg-muted/10 dark:bg-slate-900/20 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                              <div key={index} className="flex gap-2.5 items-start p-3 rounded-2xl border border-slate-800 bg-slate-950/20 text-xs font-semibold text-slate-305">
                                 <CheckCircle2 size={14} className="text-emerald-500 mt-0.5 shrink-0" />
                                 <span className="leading-relaxed">{ach}</span>
                               </div>
                             );
                           })}
                           {editForm.achievementsList.length === 0 && (
-                            <div className="text-center py-8 text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl font-semibold">
+                            <div className="text-center py-8 text-xs text-slate-550 border border-dashed border-slate-800 rounded-2xl font-semibold">
                               No achievements extracted.
                             </div>
                           )}
@@ -2221,28 +1652,28 @@ export default function ResumeBuilder() {
                     )}
 
                     {/* LANGUAGES TAB */}
-                    {activeTab === "languages" && (
+                    {activeDrawerTab === "languages" && (
                       <div className="space-y-6">
-                        <h4 className="text-sm font-black text-foreground dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
+                        <h4 className="text-sm font-black text-white border-b border-slate-800 pb-2 flex items-center gap-2">
                           <Languages size={16} className="text-slate-400" />
                           <span>Languages</span>
                         </h4>
                         <div>
-                          <span className="text-10 font-bold uppercase tracking-wider text-slate-400 dark:text-muted-foreground block mb-3">Extracted Languages</span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-3">Extracted Languages</span>
                           <div className="flex flex-wrap gap-2">
                             {editForm.languages ? (
                               editForm.languages.split(",").map((lang: string, idx: number) => {
                                 const clean = lang.trim();
                                 if (!clean) return null;
                                 return (
-                                  <span key={idx} className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-muted dark:bg-slate-800 border border-slate-100 dark:border-border text-slate-700 dark:text-slate-300">
+                                  <span key={idx} className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-750 text-slate-300">
                                     {clean}
                                   </span>
                                 );
                               })
                             ) : null}
                             {(!editForm.languages || !editForm.languages.trim()) && (
-                              <span className="text-xs text-slate-455 italic font-semibold">No languages extracted.</span>
+                              <span className="text-xs text-slate-555 italic font-semibold">No languages extracted.</span>
                             )}
                           </div>
                         </div>
@@ -2250,21 +1681,21 @@ export default function ResumeBuilder() {
                     )}
 
                     {/* SOCIAL LINKS TAB */}
-                    {activeTab === "socials" && (
+                    {activeDrawerTab === "socials" && (
                       <div className="space-y-6">
-                        <h4 className="text-sm font-black text-foreground dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
+                        <h4 className="text-sm font-black text-white border-b border-slate-800 pb-2 flex items-center gap-2">
                           <Globe size={16} className="text-slate-400" />
                           <span>Social Links</span>
                         </h4>
                         <div className="space-y-4">
                           {editForm.linkedin && (
                             <div>
-                              <span className="text-10 font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1">LinkedIn Profile URL</span>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">LinkedIn Profile URL</span>
                               <a 
                                 href={editForm.linkedin} 
                                 target="_blank" 
                                 rel="noopener noreferrer" 
-                                className="px-3.5 py-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-muted/30 dark:bg-slate-900/30 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2"
+                                className="px-3.5 py-2.5 rounded-xl border border-slate-800 bg-slate-950/30 text-xs font-semibold text-blue-400 hover:underline flex items-center gap-2"
                               >
                                 <Globe size={13} />
                                 <span>{editForm.linkedin}</span>
@@ -2273,12 +1704,12 @@ export default function ResumeBuilder() {
                           )}
                           {editForm.github && (
                             <div>
-                              <span className="text-10 font-bold uppercase tracking-wider text-slate-400 dark:text-muted-foreground block mb-1">GitHub Profile URL</span>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">GitHub Profile URL</span>
                               <a 
                                 href={editForm.github} 
                                 target="_blank" 
                                 rel="noopener noreferrer" 
-                                className="px-3.5 py-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-muted/30 dark:bg-slate-900/30 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2"
+                                className="px-3.5 py-2.5 rounded-xl border border-slate-800 bg-slate-950/30 text-xs font-semibold text-blue-400 hover:underline flex items-center gap-2"
                               >
                                 <Code size={13} />
                                 <span>{editForm.github}</span>
@@ -2287,12 +1718,12 @@ export default function ResumeBuilder() {
                           )}
                           {editForm.portfolio && (
                             <div>
-                              <span className="text-10 font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1">Portfolio Website URL</span>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Portfolio Website URL</span>
                               <a 
                                 href={editForm.portfolio} 
                                 target="_blank" 
                                 rel="noopener noreferrer" 
-                                className="px-3.5 py-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-muted/30 dark:bg-slate-900/30 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2"
+                                className="px-3.5 py-2.5 rounded-xl border border-slate-800 bg-slate-950/30 text-xs font-semibold text-blue-400 hover:underline flex items-center gap-2"
                               >
                                 <Globe size={13} />
                                 <span>{editForm.portfolio}</span>
@@ -2300,7 +1731,7 @@ export default function ResumeBuilder() {
                             </div>
                           )}
                           {!editForm.linkedin && !editForm.github && !editForm.portfolio && (
-                            <div className="text-center py-8 text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl font-semibold">
+                            <div className="text-center py-8 text-xs text-slate-500 border border-dashed border-slate-800 rounded-2xl font-semibold">
                               No social links extracted.
                             </div>
                           )}
@@ -2313,20 +1744,20 @@ export default function ResumeBuilder() {
                 </div>
 
                 {/* Footer */}
-                <div className="px-6 py-4 border-t border-border dark:border-slate-850 bg-muted/50 dark:bg-slate-900/30 flex items-center justify-between gap-3 shrink-0">
+                <div className="px-6 py-4 border-t border-slate-800 bg-slate-950 flex items-center justify-between gap-3 shrink-0">
                   <button 
                     onClick={() => {
                       setIsEditOpen(false);
                       triggerUpload();
                     }}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-950 dark:bg-muted hover:bg-slate-900 dark:hover:bg-slate-205 text-white dark:text-slate-955 text-xs font-bold cursor-pointer transition-all shadow-md"
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-violet-650 hover:bg-violet-750 text-white text-xs font-bold cursor-pointer transition-all shadow-md"
                   >
                     <Upload size={13} />
                     <span>Upload Resume to Update</span>
                   </button>
                   <button 
                     onClick={() => setIsEditOpen(false)}
-                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer transition-colors"
+                    className="px-4 py-2 border border-slate-800 rounded-xl hover:bg-slate-800 text-xs font-bold text-slate-300 cursor-pointer transition-colors"
                   >
                     Close
                   </button>
@@ -2338,30 +1769,29 @@ export default function ResumeBuilder() {
           </div>
         </div>
       )}
-      {/* 4. PDF Preview Modal */}
+
+      {/* PDF Preview Modal */}
       {showPreviewModal && previewUrl && (
         <Modal
           isOpen={showPreviewModal}
           onClose={() => setShowPreviewModal(false)}
           title="Resume Preview"
-          className="max-w-4xl h-[85vh]"
+          className="max-w-4xl h-[85vh] bg-slate-900 border border-slate-800 text-slate-100"
         >
           <div className="flex flex-col h-full -m-6">
-            {/* Action Bar inside Modal */}
-            <div className="flex justify-end p-4 border-b border-border shrink-0">
+            <div className="flex justify-end p-4 border-b border-slate-800 shrink-0">
               <a 
                 href={`${getBackendBaseUrl()}${previewUrl}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border hover:bg-muted text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-800 hover:bg-slate-800 text-xs font-bold text-slate-300 transition-colors"
               >
                 <ExternalLink size={12} />
                 <span>Open in new tab</span>
               </a>
             </div>
             
-            {/* PDF Embed */}
-            <div className="flex-1 bg-slate-100 dark:bg-slate-950">
+            <div className="flex-1 bg-slate-950">
               <iframe
                 src={`${getBackendBaseUrl()}${previewUrl}`}
                 className="w-full h-full border-none"

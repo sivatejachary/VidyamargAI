@@ -17,6 +17,9 @@ NEW_JOB_TABLES = {
     "agent_notifications", "matches", "recommendations", "applications",
     "application_events", "interview_preparations", "skill_gap_analysis",
     "career_insights", "market_intelligence", "analytics_events",
+    "resume_versions", "resume_embeddings", "candidate_skill_graph",
+    "candidate_career_graph", "candidate_career_dna", "career_paths",
+    "career_opportunities", "resume_improvements", "career_eligibility_matrix",
 }
 
 # Dynamically route legacy tables to archive schema to prevent public schema recreation

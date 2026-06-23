@@ -206,6 +206,87 @@ export const apiService = {
     return res.json();
   },
 
+  async getResumeProfile() {
+    const res = await customFetch(`${getBaseUrl()}/resume/profile`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to load resume profile");
+    return res.json();
+  },
+
+  async getResumeCareerDna() {
+    const res = await customFetch(`${getBaseUrl()}/resume/career-dna`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to load career DNA");
+    return res.json();
+  },
+
+  async getResumeSkills() {
+    const res = await customFetch(`${getBaseUrl()}/resume/skills`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to load skills graph");
+    return res.json();
+  },
+
+  async getResumeRoles() {
+    const res = await customFetch(`${getBaseUrl()}/resume/roles`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to load generated roles");
+    return res.json();
+  },
+
+  async getResumeCareerPaths() {
+    const res = await customFetch(`${getBaseUrl()}/resume/career-paths`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to load career paths");
+    return res.json();
+  },
+
+  async getResumeSkillGaps() {
+    const res = await customFetch(`${getBaseUrl()}/resume/skill-gaps`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to load skill gaps");
+    return res.json();
+  },
+
+  async getResumeOpportunities() {
+    const res = await customFetch(`${getBaseUrl()}/resume/opportunities`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to load opportunities");
+    return res.json();
+  },
+
+  async getResumeMarketIntelligence() {
+    const res = await customFetch(`${getBaseUrl()}/resume/market-intelligence`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to load market trends");
+    return res.json();
+  },
+
+  async createResumeAgent() {
+    const res = await customFetch(`${getBaseUrl()}/resume/create-agent`, {
+      method: "POST",
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to trigger agent creation");
+    return res.json();
+  },
+
+  async getResumeImprovements() {
+    const res = await customFetch(`${getBaseUrl()}/resume/improvements`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to load resume improvements");
+    return res.json();
+  },
+
 
 
 

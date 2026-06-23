@@ -483,13 +483,10 @@ class AgentOrchestrator:
             except Exception as ws_err:
                 logger.warning(f"Failed to broadcast embeddings status: {ws_err}")
 
-            if fast:
-                logger.info("Fast mode enabled. Skipping ResumeIntelligenceAgent pipeline.")
-            else:
-                # Trigger ResumeIntelligenceAgent synchronously in the background worker
-                from app.agents.resume_intelligence_agent import ResumeIntelligenceAgent as RIA
-                ria = RIA(db, candidate_id)
-                await ria.execute_pipeline()
+            # Trigger ResumeIntelligenceAgent synchronously in the background worker
+            from app.agents.resume_intelligence_agent import ResumeIntelligenceAgent as RIA
+            ria = RIA(db, candidate_id, fast=fast)
+            await ria.execute_pipeline()
 
             # Mark ingestion complete
             candidate.resume_status = "completed"

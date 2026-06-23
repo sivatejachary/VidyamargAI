@@ -650,3 +650,136 @@ class AnalyticsEvent(Base):
         Index("idx_analytics_candidate_event", "candidate_id", "event_type"),
         Index("idx_analytics_created", "created_at"),
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RESUME & CAREER INTELLIGENCE SYSTEM
+# ─────────────────────────────────────────────────────────────────────────────
+
+class ResumeVersion(Base):
+    """Stores full file upload history, raw text, and parsed JSON metadata for a candidate's resume."""
+    __tablename__ = "resume_versions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    candidate_id = Column(Integer, ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, index=True)
+    resume_url = Column(String, nullable=False)
+    extracted_text = Column(Text, nullable=True)
+    parsed_json = Column(JSON, nullable=True)
+    version_name = Column(String(100), nullable=True)
+    is_active = Column(Boolean, default=False)
+    uploaded_at = Column(DateTime, default=datetime.utcnow)
+
+
+class ResumeEmbedding(Base):
+    """Stores embeddings per resume version."""
+    __tablename__ = "resume_embeddings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    candidate_id = Column(Integer, ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, index=True)
+    resume_id = Column(Integer, ForeignKey("candidate_resumes.id", ondelete="CASCADE"), nullable=True)
+    resume_version_id = Column(Integer, ForeignKey("resume_versions.id", ondelete="CASCADE"), nullable=True)
+    embedding_model = Column(String(100), nullable=False)
+    embedding_vector = Column(Text, nullable=False)  # JSON-serialized floats
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class CandidateSkillGraph(Base):
+    """Stores structured node/edge skill mappings for a candidate."""
+    __tablename__ = "candidate_skill_graph"
+
+    id = Column(Integer, primary_key=True, index=True)
+    candidate_id = Column(Integer, ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    skills = Column(JSON, nullable=False)  # array of skills with score, confidence, market demand, experience estimate
+    edges = Column(JSON, nullable=True)  # edges of the graph
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class CandidateCareerGraph(Base):
+    """Stores projected career graph stages."""
+    __tablename__ = "candidate_career_graph"
+
+    id = Column(Integer, primary_key=True, index=True)
+    candidate_id = Column(Integer, ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    career_paths = Column(JSON, nullable=False)  # career paths tree
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class CandidateCareerDNA(Base):
+    """Stores career personalities (Builder, Researcher, Operator, etc.) and growth potential."""
+    __tablename__ = "candidate_career_dna"
+
+    id = Column(Integer, primary_key=True, index=True)
+    candidate_id = Column(Integer, ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    personality = Column(String(100), nullable=True)
+    traits = Column(JSON, nullable=False)  # working style, pattern, leadership potential, growth potential
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class CareerPath(Base):
+    """Project multi-role advancement sequences."""
+    __tablename__ = "career_paths"
+
+    id = Column(Integer, primary_key=True, index=True)
+    candidate_id = Column(Integer, ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, index=True)
+    path_name = Column(String(255), nullable=False)
+    steps = Column(JSON, nullable=False)
+    milestones = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class CareerOpportunity(Base):
+    """Stores the Top 100 potential jobs/exam tracks, scoring remote, government, and international potential."""
+    __tablename__ = "career_opportunities"
+
+    id = Column(Integer, primary_key=True, index=True)
+    candidate_id = Column(Integer, ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, index=True)
+    role_title = Column(String(255), nullable=False)
+    category = Column(String(100), nullable=False)  # core, related, adjacent, transferable, future, leadership
+    confidence_score = Column(Float, default=0.0)
+    growth_score = Column(Float, default=0.0)
+    salary_potential = Column(JSON, default=dict)
+    remote_potential = Column(Float, default=0.0)
+    government_potential = Column(Float, default=0.0)
+    international_potential = Column(Float, default=0.0)
+    requirements_match = Column(JSON, default=list)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class ResumeImprovement(Base):
+    """Stores ATS scores, keyword matching metrics, and AI recommendations for resume rewrites."""
+    __tablename__ = "resume_improvements"
+
+    id = Column(Integer, primary_key=True, index=True)
+    candidate_id = Column(Integer, ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    ats_score = Column(Integer, default=0)
+    formatting_score = Column(Integer, default=0)
+    content_score = Column(Integer, default=0)
+    keyword_score = Column(Integer, default=0)
+    improvement_suggestions = Column(JSON, default=list)
+    resume_rewrite_suggestions = Column(JSON, default=list)
+    achievement_suggestions = Column(JSON, default=list)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class CareerEligibilityMatrix(Base):
+    """Stores career family, eligible government/private exams and jobs, opportunity scores, and risk analysis."""
+    __tablename__ = "career_eligibility_matrix"
+
+    id = Column(Integer, primary_key=True, index=True)
+    candidate_id = Column(Integer, ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    career_family = Column(String(100), nullable=True)  # Government, Private, PSU, etc.
+    eligible_exams = Column(JSON, default=list)
+    eligible_gov_jobs = Column(JSON, default=list)
+    eligible_psu_jobs = Column(JSON, default=list)
+    eligible_banking_jobs = Column(JSON, default=list)
+    eligible_defence_jobs = Column(JSON, default=list)
+    eligible_private_roles = Column(JSON, default=list)
+    eligible_international_roles = Column(JSON, default=list)
+    opportunity_scores = Column(JSON, default=dict)  # government, private, remote, international, leadership
+    risk_analysis = Column(JSON, default=dict)  # demand_risk, automation_risk, competition, future_demand, salary_growth
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
