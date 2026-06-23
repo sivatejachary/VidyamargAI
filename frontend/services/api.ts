@@ -157,10 +157,13 @@ export const apiService = {
     return res.json();
   },
 
-  async uploadResume(file: File) {
+  async uploadResume(file: File, fast?: boolean) {
     const formData = new FormData();
     formData.append("file", file);
-    const res = await customFetch(`${getBaseUrl()}/candidates/resume`, {
+    const url = fast
+      ? `${getBaseUrl()}/candidates/resume?fast=true`
+      : `${getBaseUrl()}/candidates/resume`;
+    const res = await customFetch(url, {
       method: "POST",
       headers: getHeaders(),
       body: formData,

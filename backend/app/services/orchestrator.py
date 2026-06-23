@@ -222,7 +222,7 @@ def fallback_parse_resume_text(text: str) -> dict:
 class AgentOrchestrator:
     
     # 1. RESUME COLLECTION AGENT
-    async def run_resume_collection_agent(self, db: Session, candidate_id: int, file_content: bytes, filename: str, background_tasks: Optional[BackgroundTasks] = None) -> CandidateResume:
+    async def run_resume_collection_agent(self, db: Session, candidate_id: int, file_content: bytes, filename: str, background_tasks: Optional[BackgroundTasks] = None, fast: bool = False) -> CandidateResume:
         candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
         if not candidate:
             raise Exception("Candidate not found")
@@ -306,7 +306,7 @@ class AgentOrchestrator:
                 from app.core.database import SessionLocal
                 db_session = SessionLocal()
                 try:
-                    await self.run_resume_parsing_agent(db_session, cand_id, None)
+                    await self.run_resume_parsing_agent(db_session, cand_id, None, fast=fast)
                 except Exception as bg_err:
                     logger.error(f"Background resume parsing failed: {bg_err}")
                 finally:
@@ -314,13 +314,13 @@ class AgentOrchestrator:
             
             background_tasks.add_task(run_parsing_bg, candidate_id)
         else:
-            await self.run_resume_parsing_agent(db, candidate_id, None)
+            await self.run_resume_parsing_agent(db, candidate_id, None, fast=fast)
         
         return resume
 
 
     # 2. RESUME PARSING AGENT
-    async def run_resume_parsing_agent(self, db: Session, candidate_id: int, background_tasks: Optional[BackgroundTasks] = None):
+    async def run_resume_parsing_agent(self, db: Session, candidate_id: int, background_tasks: Optional[BackgroundTasks] = None, fast: bool = False):
         candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
         profile = db.query(CandidateProfile).filter(CandidateProfile.candidate_id == candidate_id).order_by(CandidateProfile.created_at.desc()).first()
         
@@ -367,14 +367,18 @@ class AgentOrchestrator:
             )
             
             ai_response = None
-            if settings.GEMINI_API_KEY:
-                ai_response = await asyncio.to_thread(call_gemini, prompt, json_mode=True)
-            
-            if not ai_response and settings.NVIDIA_API_KEY:
-                messages = [{"role": "user", "content": prompt + "\nRemember: Return ONLY valid JSON, do not include any other text."}]
-                ai_response = await asyncio.to_thread(call_nvidia, messages)
-                
             data = {}
+            if fast:
+                logger.info("Fast mode enabled. Bypassing LLM calls.")
+                data = fallback_parse_resume_text(text_to_parse)
+            else:
+                if settings.GEMINI_API_KEY:
+                    ai_response = await asyncio.to_thread(call_gemini, prompt, json_mode=True)
+                
+                if not ai_response and settings.NVIDIA_API_KEY:
+                    messages = [{"role": "user", "content": prompt + "\nRemember: Return ONLY valid JSON, do not include any other text."}]
+                    ai_response = await asyncio.to_thread(call_nvidia, messages)
+            
             if ai_response:
                 try:
                     cleaned = ai_response.strip()
@@ -479,10 +483,13 @@ class AgentOrchestrator:
             except Exception as ws_err:
                 logger.warning(f"Failed to broadcast embeddings status: {ws_err}")
 
-            # Trigger ResumeIntelligenceAgent synchronously in the background worker
-            from app.agents.resume_intelligence_agent import ResumeIntelligenceAgent as RIA
-            ria = RIA(db, candidate_id)
-            await ria.execute_pipeline()
+            if fast:
+                logger.info("Fast mode enabled. Skipping ResumeIntelligenceAgent pipeline.")
+            else:
+                # Trigger ResumeIntelligenceAgent synchronously in the background worker
+                from app.agents.resume_intelligence_agent import ResumeIntelligenceAgent as RIA
+                ria = RIA(db, candidate_id)
+                await ria.execute_pipeline()
 
             # Mark ingestion complete
             candidate.resume_status = "completed"

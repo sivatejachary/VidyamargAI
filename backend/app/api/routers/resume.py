@@ -35,10 +35,13 @@ def safe_loads(val, default=None):
     return default if default is not None else {}
 
 
+from fastapi import Query
+
 @router.post("/candidates/resume")
 async def upload_resume(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    fast: bool = Query(False),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -83,7 +86,7 @@ async def upload_resume(
         )
 
         
-    resume = await orchestrator.run_resume_collection_agent(db, candidate.id, content, file.filename, background_tasks)
+    resume = await orchestrator.run_resume_collection_agent(db, candidate.id, content, file.filename, background_tasks, fast=fast)
     from app.services.resume_cache import invalidate_resume_analysis
     invalidate_resume_analysis(candidate.id)
     return {"message": "Resume uploaded successfully. Profile analysis is running in the background.", "url": resume.resume_url}

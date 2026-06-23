@@ -141,6 +141,7 @@ export default function ResumeBuilder() {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
+  const [fastMode, setFastMode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load all dashboard data
@@ -382,7 +383,7 @@ export default function ResumeBuilder() {
     setSuccessMsg("");
 
     try {
-      await apiService.uploadResume(selectedFile);
+      await apiService.uploadResume(selectedFile, fastMode);
       // Immediately fetch candidate profile to trigger adaptive polling status loop
       const prof = await apiService.getProfile();
       setProfile(prof);
@@ -831,23 +832,34 @@ export default function ResumeBuilder() {
             description="Upload your resume to extract profile details, analyze skills, and get personalized course recommendations."
             icon={<FileText size={36} />}
             action={
-              <Button 
-                onClick={triggerUpload}
-                disabled={uploading}
-                className="w-full sm:w-auto mt-4 shrink-0"
-              >
-                {uploading ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin mr-2 shrink-0" />
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <Upload size={16} className="mr-2 shrink-0" />
-                    Upload Resume
-                  </>
-                )}
-              </Button>
+              <div className="flex flex-col items-center gap-3 w-full">
+                <Button 
+                  onClick={triggerUpload}
+                  disabled={uploading}
+                  className="w-full sm:w-auto mt-4 shrink-0"
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin mr-2 shrink-0" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={16} className="mr-2 shrink-0" />
+                      Upload Resume
+                    </>
+                  )}
+                </Button>
+                <label className="flex items-center gap-2 text-xs select-none cursor-pointer mt-2 bg-white/5 border border-white/10 rounded-lg py-1.5 px-3 hover:bg-white/10 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={fastMode}
+                    onChange={(e) => setFastMode(e.target.checked)}
+                    className="rounded border-slate-700 bg-slate-900 text-violet-600 focus:ring-violet-500"
+                  />
+                  <span className="font-medium text-slate-300">⚡ Instant Mode (milliseconds)</span>
+                </label>
+              </div>
             }
           />
 
@@ -1868,23 +1880,34 @@ export default function ResumeBuilder() {
                 )}
               </div>
 
-              <button 
-                onClick={triggerUpload}
-                disabled={uploading}
-                className="w-full py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-muted dark:hover:bg-slate-800 text-slate-700 dark:text-slate-305 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50"
-              >
-                {uploading ? (
-                  <>
-                    <Loader2 size={13} className="animate-spin" />
-                    <span>Uploading CV...</span>
-                  </>
-                ) : (
-                  <>
-                    <Upload size={13} />
-                    <span>Upload New Resume</span>
-                  </>
-                )}
-              </button>
+              <div className="flex flex-col gap-2 w-full">
+                <button 
+                  onClick={triggerUpload}
+                  disabled={uploading}
+                  className="w-full py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-muted dark:hover:bg-slate-800 text-slate-700 dark:text-slate-305 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50"
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 size={13} className="animate-spin" />
+                      <span>Uploading CV...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={13} />
+                      <span>Upload New Resume</span>
+                    </>
+                  )}
+                </button>
+                <label className="flex items-center gap-2 text-[10px] select-none cursor-pointer mt-1 justify-center bg-white/5 border border-white/10 rounded-lg py-1.5 px-3 hover:bg-white/10 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={fastMode}
+                    onChange={(e) => setFastMode(e.target.checked)}
+                    className="rounded border-slate-700 bg-slate-900 text-violet-600 focus:ring-violet-500"
+                  />
+                  <span className="font-semibold text-slate-300">⚡ Instant Ingestion Mode (Milliseconds)</span>
+                </label>
+              </div>
             </Card>
 
           </div>
