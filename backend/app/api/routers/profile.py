@@ -27,7 +27,11 @@ router = APIRouter()
 def get_candidate_profile(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     candidate = db.query(Candidate).options(joinedload(Candidate.user)).filter(Candidate.user_id == current_user.id).first()
     if not candidate:
-        raise HTTPException(status_code=404, detail="Candidate profile not found")
+        candidate = Candidate(user_id=current_user.id, status="Registered", current_step="Profile")
+        db.add(candidate)
+        db.commit()
+        db.refresh(candidate)
+        candidate = db.query(Candidate).options(joinedload(Candidate.user)).filter(Candidate.user_id == current_user.id).first()
     
     # Attach experience_years from CandidateProfile
     profile = db.query(CandidateProfile).filter(CandidateProfile.candidate_id == candidate.id).order_by(CandidateProfile.created_at.desc()).first()
@@ -43,7 +47,11 @@ async def update_candidate_profile(
 ):
     candidate = db.query(Candidate).options(joinedload(Candidate.user)).filter(Candidate.user_id == current_user.id).first()
     if not candidate:
-        raise HTTPException(status_code=404, detail="Candidate not found")
+        candidate = Candidate(user_id=current_user.id, status="Registered", current_step="Profile")
+        db.add(candidate)
+        db.commit()
+        db.refresh(candidate)
+        candidate = db.query(Candidate).options(joinedload(Candidate.user)).filter(Candidate.user_id == current_user.id).first()
         
     for k, v in profile_in.dict(exclude_unset=True).items():
         setattr(candidate, k, v)
