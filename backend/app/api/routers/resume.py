@@ -282,11 +282,22 @@ async def analyze_resume(force: bool = False, current_user: User = Depends(get_c
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate profile not found")
 
-    from app.services.resume_cache import get_cached_resume_analysis, set_cached_resume_analysis
-    if not force:
-        cached_data = get_cached_resume_analysis(candidate.id)
-        if cached_data:
-            return cached_data
+    if force:
+        # Re-trigger parsing agent on the active resume to run Gemini/NVIDIA parsing
+        resume = db.query(CandidateResume).filter(
+            CandidateResume.candidate_id == candidate.id,
+            CandidateResume.is_active == True
+        ).first()
+        if not resume:
+            resume = db.query(CandidateResume).filter(
+                CandidateResume.candidate_id == candidate.id
+            ).order_by(CandidateResume.uploaded_at.desc()).first()
+            
+        if resume:
+            logger.info(f"Force re-parsing resume ID {resume.id} for candidate ID {candidate.id} using Gemini...")
+            await orchestrator.run_resume_parsing_agent(db, candidate.id, None, fast=False)
+            db.commit()
+            db.refresh(candidate)
 
     # ── Gather candidate data from database ──
     skills = candidate.skills or ""

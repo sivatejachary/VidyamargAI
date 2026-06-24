@@ -51,7 +51,7 @@ export default function ResumeIntelligenceDashboard() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
-  const [fastMode, setFastMode] = useState(true);
+  const [fastMode, setFastMode] = useState(false);
 
   // Slide-over & Preview States
   const [isEditOpen, setIsEditOpen] = useState(false);
