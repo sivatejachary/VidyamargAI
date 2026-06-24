@@ -25,6 +25,7 @@ from app.services.orchestrator import call_nvidia, call_gemini
 from app.core.config import settings
 from app.services.embedding_service import embedding_service
 from app.services.vector_store import vector_store
+from app.api.helpers import STATIC_RESUME_PROMPT, map_static_intel_to_legacy_schema
 from langgraph.graph import StateGraph, END
 
 logger = logging.getLogger("app.agents.resume_intelligence_agent")
@@ -106,11 +107,39 @@ class ResumeIntelligenceAgent:
 
         # Fallback to latest CandidateProfile text if not found
         if not profile_obj:
-            profile_obj = self.db.query(CandidateProfile).filter(
-                CandidateProfile.candidate_id == candidate_id
-            ).order_by(CandidateProfile.created_at.desc()).first()
+            profile_obj = CandidateProfile(candidate_id=candidate_id, resume_id=resume.id)
+            self.db.add(profile_obj)
+            self.db.commit()
 
-        if not profile_obj or not profile_obj.resume_text:
+        if not profile_obj.resume_text or profile_obj.resume_text.strip() == "":
+            try:
+                from urllib.parse import urlparse
+                from app.services.storage import storage_service
+                from app.services.orchestrator import extract_text_from_pdf
+                url_str = resume.resume_url
+                folder, filename = "", ""
+                if "/storage/" in url_str:
+                    rel_path = url_str.split("/storage/")[1]
+                    parts = rel_path.split("/")
+                    if len(parts) >= 2:
+                        folder = "/".join(parts[:-1])
+                        filename = parts[-1]
+                else:
+                    parsed = urlparse(url_str)
+                    path_parts = parsed.path.strip("/").split("/")
+                    if len(path_parts) >= 3:
+                        folder = "/".join(path_parts[1:-1])
+                        filename = path_parts[-1]
+                
+                if folder and filename:
+                    pdf_bytes = storage_service.get_file_content(folder, filename)
+                    if pdf_bytes:
+                        profile_obj.resume_text = extract_text_from_pdf(pdf_bytes)
+                        self.db.commit()
+            except Exception as e:
+                logger.error(f"Failed to auto-extract resume text in load_resume: {e}")
+
+        if not profile_obj.resume_text or profile_obj.resume_text.strip() == "":
             logger.warning(f"No resume text available for candidate {candidate_id}")
             return {"resume_id": resume.id, "skip_processing": True}
 
@@ -279,240 +308,7 @@ class ResumeIntelligenceAgent:
                 
             return {"career_intelligence": career_intel}
 
-        prompt = f"""
-You are a world-class Talent Intelligence System, Senior Recruiter, HR Director, Career Strategist, Government Career Advisor, Recruitment Analyst, and Workforce Intelligence Platform.
-Your responsibility is to deeply understand the uploaded resume and transform it into structured career intelligence.
-The platform supports every profession, industry, education level, government sector, private sector, certification track, and career path.
-Do not assume the candidate is a software engineer.
-Analyze the complete resume.
-Think step-by-step.
-Return ONLY valid JSON.
-No markdown.
-No explanations.
-No text outside JSON.
-
-JSON Structure to return:
-{{
-  "personal_info": {{
-    "name": "string",
-    "email": "string",
-    "phone": "string",
-    "location": "string (default: Remote)",
-    "summary": "string",
-    "linkedin": "string",
-    "portfolio": "string",
-    "github": "string",
-    "website": "string"
-  }},
-  "education": [
-    {{
-      "degree": "string (e.g. 10th, Intermediate, Diploma, ITI, Polytechnic, B.Tech, B.Com, BBA, MBA, MBBS, BDS, MCA, M.Tech, CA, CMA, CS, LLB)",
-      "branch": "string",
-      "specialization": "string",
-      "institution": "string",
-      "university": "string",
-      "graduation_year": "string",
-      "cgpa": "string",
-      "percentage": "string",
-      "academic_performance": "string",
-      "education_level": "string"
-    }}
-  ],
-  "experience": [
-    {{
-      "company": "string",
-      "role": "string",
-      "duration": "string",
-      "industry": "string",
-      "responsibilities": ["string"],
-      "achievements": ["string"],
-      "leadership": "string",
-      "promotions": "string",
-      "career_progression": "string",
-      "total_experience": "string",
-      "relevant_experience": "string"
-    }}
-  ],
-  "skill_intelligence": {{
-    "technical_skills": ["string"],
-    "business_skills": ["string"],
-    "domain_skills": ["string"],
-    "government_exam_skills": ["string"],
-    "teaching_skills": ["string"],
-    "healthcare_skills": ["string"],
-    "financial_skills": ["string"],
-    "legal_skills": ["string"],
-    "research_skills": ["string"],
-    "soft_skills": ["string"],
-    "languages": ["string"],
-    "tools": ["string"],
-    "frameworks": ["string"],
-    "platforms": ["string"],
-    "databases": ["string"],
-    "cloud_technologies": ["string"],
-    "ai_technologies": ["string"]
-  }},
-  "skills": [
-    {{
-      "name": "string",
-      "score": integer (0-100),
-      "confidence": integer (0-100),
-      "market_demand": integer (0-100),
-      "experience_years": float
-    }}
-  ],
-  "skill_graph_edges": [
-    {{
-      "from": "string",
-      "to": "string"
-    }}
-  ],
-  "projects": [
-    {{
-      "project_name": "string",
-      "description": "string",
-      "technologies": ["string"],
-      "complexity": "string",
-      "industry_domain": "string",
-      "business_impact": "string",
-      "leadership_indicators": "string",
-      "innovation_indicators": "string"
-    }}
-  ],
-  "certifications": [
-    {{
-      "certification": "string",
-      "provider": "string",
-      "category": "string",
-      "level": "string",
-      "industry_relevance": "string"
-    }}
-  ],
-  "career_classification": {{
-    "career_family": "string (strictly select one of: Government, Private, PSU, Banking, Defence, Teaching, Healthcare, Finance, Legal, Engineering, Business, Research, Agriculture)",
-    "experience_level": "string (strictly select one of: Entry Level, Mid-Level, Senior)",
-    "employability_score": integer (0-100),
-    "profile_strength": integer (0-100),
-    "classifications": [
-      {{
-        "name": "string",
-        "confidence": integer (0-100)
-      }}
-    ]
-  }},
-  "roles": {{
-    "core": [
-      {{"role": "string", "confidence": integer (0-100), "reason": "string"}}
-    ],
-    "related": [
-      {{"role": "string", "confidence": integer (0-100), "reason": "string"}}
-    ],
-    "adjacent": [
-      {{"role": "string", "confidence": integer (0-100), "reason": "string"}}
-    ],
-    "transferable": [
-      {{"role": "string", "confidence": integer (0-100), "reason": "string"}}
-    ],
-    "future": [
-      {{"role": "string", "confidence": integer (0-100), "reason": "string"}}
-    ],
-    "leadership": [
-      {{"role": "string", "confidence": integer (0-100), "reason": "string"}}
-    ],
-    "government": [
-      {{"role": "string", "confidence": integer (0-100), "reason": "string"}}
-    ],
-    "international": [
-      {{"role": "string", "confidence": integer (0-100), "reason": "string"}}
-    ],
-    "entrepreneurship": [
-      {{"role": "string", "confidence": integer (0-100), "reason": "string"}}
-    ]
-  }},
-  "opportunities": {{
-    "eligible_exams": [
-      {{
-        "exam_name": "string (e.g. UPSC, IAS, IPS, IFS, SSC, Banking, IBPS, SBI, RRB, Railways, Defence, Police, State PSC, Group 1, Group 2, PSU)",
-        "status": "string (Eligible/Not Eligible)",
-        "confidence": integer (0-100),
-        "reason": "string",
-        "career_growth": "string"
-      }}
-    ],
-    "eligible_gov_jobs": ["string"],
-    "eligible_psu_jobs": ["string"],
-    "eligible_banking_jobs": ["string"],
-    "eligible_defence_jobs": ["string"],
-    "eligible_private_roles": ["string"],
-    "eligible_international_roles": ["string"],
-    "opportunity_scores": {{
-      "government_score": integer (0-100),
-      "private_score": integer (0-100),
-      "remote_score": integer (0-100),
-      "international_score": integer (0-100),
-      "leadership_potential_score": integer (0-100),
-      "entrepreneurship_potential_score": integer (0-100)
-    }}
-  }},
-  "career_dna": {{
-    "personality": "string (strictly select one of: Builder, Researcher, Operator, Strategist, Leader, Innovator)",
-    "traits": {{
-      "working_style": "string",
-      "growth_potential": "string",
-      "leadership_potential": "string"
-    }},
-    "growth_potential": "string",
-    "leadership_potential": "string",
-    "career_direction": "string",
-    "learning_velocity": "string"
-  }},
-  "skill_gap_analysis": {{
-    "missing_skills": ["string"],
-    "priority_skills": ["string"],
-    "learning_roadmap": [
-      {{
-        "skill": "string",
-        "priority": "string",
-        "resources": ["string"],
-        "est_hours": integer,
-        "career_impact": "string"
-      }}
-    ],
-    "certifications": ["string"],
-    "projects_to_build": ["string"],
-    "estimated_learning_time": "string",
-    "career_impact": "string",
-    "overall_gap_score": float,
-    "estimated_upskill_months": float
-  }},
-  "career_risk_analysis": {{
-    "demand_risk": "string (Low/Medium/High)",
-    "automation_risk": "string (Low/Medium/High)",
-    "market_competition": "string (Low/Medium/High)",
-    "future_demand": "string (Low/Medium/High/Very High)",
-    "salary_growth": "string"
-  }},
-  "resume_improvements": {{
-    "ats_score": integer (0-100),
-    "formatting_score": integer (0-100),
-    "content_score": integer (0-100),
-    "keyword_score": integer (0-100),
-    "improvement_suggestions": ["string"],
-    "resume_rewrite_suggestions": ["string"],
-    "achievement_suggestions": ["string"]
-  }},
-  "career_paths": [
-    {{
-      "path_name": "string",
-      "steps": ["string"],
-      "milestones": ["string"]
-    }}
-  ]
-}}
-
-Resume Text:
-{state["resume_text"]}
-"""
+        prompt = STATIC_RESUME_PROMPT + f"\n\nResume Text:\n{state['resume_text']}"
 
         ai_response = None
         career_intel = {}
@@ -547,7 +343,8 @@ Resume Text:
         # Parse AI response if successful
         if ai_response:
             try:
-                career_intel = self._clean_and_parse_json(ai_response)
+                raw_intel = self._clean_and_parse_json(ai_response)
+                career_intel = map_static_intel_to_legacy_schema(raw_intel)
             except Exception as parse_err:
                 logger.error(f"[Resume Intelligence] Failed to parse JSON output: {parse_err}. Raw output was: {ai_response[:200]}")
 
@@ -709,7 +506,6 @@ Resume Text:
         })
         profile_obj.skills_graph = json.dumps(skills_raw)
         
-        # Map profile_data for parsed_metadata compatibility
         profile_data = {
             "skills": [s.get("name") for s in skills_raw],
             "experience_years": profile_obj.experience_years,
@@ -721,7 +517,22 @@ Resume Text:
             "profile_strength": classification.get("profile_strength", 75),
             "personal_info": personal
         }
-        profile_obj.parsed_metadata = json.dumps(profile_data)
+        existing_data = {}
+        if profile_obj.parsed_metadata:
+            try:
+                loaded = json.loads(profile_obj.parsed_metadata)
+                if isinstance(loaded, dict):
+                    existing_data = loaded
+            except Exception:
+                pass
+        existing_data.update(profile_data)
+        # Store raw static intelligence if present in mapped intel
+        if "raw_static_intel" in intel:
+            existing_data["raw_static_intel"] = intel["raw_static_intel"]
+        elif "personal_info" in intel:
+            existing_data["raw_static_intel"] = intel
+            
+        profile_obj.parsed_metadata = json.dumps(existing_data)
         self.db.commit()
         
         # 3. Create or Update ResumeVersion record

@@ -104,7 +104,7 @@ def call_nvidia(messages, json_mode: bool = False) -> str:
                     "messages": messages,
                     "temperature": 0.1,
                     "top_p": 1,
-                    "max_tokens": 1024,
+                    "max_tokens": 4096,
                     "stream": True
                 }
                 res = requests.post(url, headers=headers, json=payload, timeout=(10, 120), stream=True)
@@ -705,8 +705,8 @@ class AgentOrchestrator:
         except Exception as ws_err:
             logger.warning(f"Failed to broadcast extraction status: {ws_err}")
         
-        # Local text extraction is disabled per user request; Gemini will parse the PDF directly.
-        extracted_text = ""
+        # Extract text locally to ensure we always have resume_text fallback for NVIDIA Llama and agent pipeline
+        extracted_text = extract_text_from_pdf(file_content)
             
         profile = CandidateProfile(
             candidate_id=candidate_id,
@@ -795,25 +795,14 @@ class AgentOrchestrator:
                     if folder and filename:
                         pdf_bytes = storage_service.get_file_content(folder, filename)
                         logger.info(f"Loaded {len(pdf_bytes)} PDF bytes from storage for direct Gemini parsing.")
+                        if pdf_bytes and (not profile.resume_text or profile.resume_text.strip() == ""):
+                            profile.resume_text = extract_text_from_pdf(pdf_bytes)
+                            db.commit()
                 except Exception as e:
                     logger.error(f"Failed to read PDF bytes from storage: {e}")
 
-            prompt = (
-                "You are an expert resume parser. Parse the provided resume PDF document and output a JSON object with keys: "
-                "'name', 'email', 'phone', 'summary', 'skills', 'experience', 'education', 'projects', "
-                "'certifications', 'achievements', 'languages', 'github', 'linkedin', 'portfolio'.\n"
-                "Rules:\n"
-                "1. For 'skills', return a comma-separated string of skills.\n"
-                "2. For 'education', return a JSON array of objects with keys: degree, school, year.\n"
-                "3. For 'experience', return a JSON array of objects with keys: role, company, years, description.\n"
-                "4. For 'projects', return a JSON array of objects with keys: name, description, technologies.\n"
-                "5. For 'certifications', return a comma-separated string.\n"
-                "6. For 'achievements', return a JSON array of strings.\n"
-                "7. For 'languages', return a comma-separated string.\n"
-                "8. For 'summary', return a single string professional summary.\n"
-                "9. Output strictly valid JSON only. Do not wrap in backticks or markdown tags. "
-                "Ensure all double quotes inside JSON string values are properly escaped as \\\" or replaced with single quotes so that it parses successfully with json.loads.\n"
-            )
+            from app.api.helpers import STATIC_RESUME_PROMPT, map_static_intel_to_legacy_schema
+            prompt = STATIC_RESUME_PROMPT
             
             ai_response = None
             data = {}
@@ -855,13 +844,15 @@ class AgentOrchestrator:
                     # Pre-clean known problematic character formats
                     cleaned = cleaned.replace('\uFFFD', '').replace('', '')
                     
-                    data = json.loads(cleaned)
+                    raw_data = json.loads(cleaned)
+                    data = map_static_intel_to_legacy_schema(raw_data)
                 except Exception as e:
                     logger.error(f"Error parsing AI JSON response: {e}")
                     try:
                         import re
                         fixed = re.sub(r'(?<!\\)\\(?!["\\/bfnrtu])', r'\\\\', cleaned)
-                        data = json.loads(fixed)
+                        raw_data = json.loads(fixed)
+                        data = map_static_intel_to_legacy_schema(raw_data)
                         logger.info("Successfully recovered JSON using regex normalization.")
                     except Exception as ex:
                         logger.error(f"Fallback JSON recovery failed: {ex}")
@@ -1053,12 +1044,25 @@ class AgentOrchestrator:
             if not profile:
                 profile = CandidateProfile(candidate_id=candidate.id)
                 db.add(profile)
+                db.flush()
+            
+            existing_data = {}
+            if profile.parsed_metadata:
+                try:
+                    loaded = json.loads(profile.parsed_metadata)
+                    if isinstance(loaded, dict):
+                        existing_data = loaded
+                except Exception:
+                    pass
+            
+            # Merge recalculated profile fields
+            existing_data.update(profile_data)
             
             profile.experience_years = exp_years
             profile.generated_roles = json.dumps(preferred_roles)
             profile.specialization = subdomains[0] if subdomains else ""
             profile.current_role = preferred_roles[0] if preferred_roles else ""
-            profile.parsed_metadata = json.dumps(profile_data)
+            profile.parsed_metadata = json.dumps(existing_data)
             db.commit()
             logger.info(f"Candidate profile rebuilt successfully for candidate {candidate.id}")
 
