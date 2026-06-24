@@ -20,6 +20,7 @@ NEW_JOB_TABLES = {
     "resume_versions", "resume_embeddings", "candidate_skill_graph",
     "candidate_career_graph", "candidate_career_dna", "career_paths",
     "career_opportunities", "resume_improvements", "career_eligibility_matrix",
+    "resume_ai_analysis",
 }
 
 # Dynamically route legacy tables to archive schema to prevent public schema recreation

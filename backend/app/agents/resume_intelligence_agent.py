@@ -215,32 +215,142 @@ class ResumeIntelligenceAgent:
         except Exception:
             pass
 
+        # Load PDF bytes directly from storage using CandidateResume if we need to fall back
+        pdf_bytes = None
+        try:
+            resume = self.db.query(CandidateResume).filter(
+                CandidateResume.candidate_id == candidate_id,
+                CandidateResume.is_active == True
+            ).first()
+            if not resume:
+                resume = self.db.query(CandidateResume).filter(
+                    CandidateResume.candidate_id == candidate_id
+                ).order_by(CandidateResume.uploaded_at.desc()).first()
+            
+            if resume and resume.resume_url:
+                from urllib.parse import urlparse
+                from app.services.storage import storage_service
+                url_str = resume.resume_url
+                folder, filename = "", ""
+                if "/storage/" in url_str:
+                    rel_path = url_str.split("/storage/")[1]
+                    parts = rel_path.split("/")
+                    if len(parts) >= 2:
+                        folder = "/".join(parts[:-1])
+                        filename = parts[-1]
+                else:
+                    parsed = urlparse(url_str)
+                    path_parts = parsed.path.strip("/").split("/")
+                    if len(path_parts) >= 3:
+                        folder = "/".join(path_parts[1:-1])
+                        filename = path_parts[-1]
+                        
+                if folder and filename:
+                    pdf_bytes = storage_service.get_file_content(folder, filename)
+                    logger.info(f"[Resume Intelligence] Loaded {len(pdf_bytes)} PDF bytes from storage for fallback/Pro parsing.")
+        except Exception as e:
+            logger.error(f"[Resume Intelligence] Failed to load PDF bytes from storage: {e}")
+
         # Fast Mode / Dry-run checks
         if state.get("fast") or self.fast:
             logger.info("[Resume Intelligence] Fast mode enabled. Running rules-based parser fallback.")
-            career_intel = get_fallback_resume_intelligence(candidate, skills_list, exp_years)
+            if pdf_bytes:
+                from app.services.orchestrator import fallback_pymupdf_pipeline
+                fallback_res = fallback_pymupdf_pipeline(pdf_bytes)
+                career_intel = fallback_res.get("parsed_json", {})
+            else:
+                career_intel = get_fallback_resume_intelligence(candidate, skills_list, exp_years)
+            
+            # Save history in DB
+            try:
+                from app.models.job_models import ResumeAIAnalysis
+                analysis_rec = ResumeAIAnalysis(
+                    candidate_id=candidate_id,
+                    source_type="FALLBACK",
+                    raw_response=json.dumps(career_intel),
+                    parsed_json=career_intel,
+                    confidence_score="MEDIUM"
+                )
+                self.db.add(analysis_rec)
+                self.db.commit()
+            except Exception as db_err:
+                self.db.rollback()
+                logger.error(f"[Resume Intelligence] Failed to store fallback analysis: {db_err}")
+                
             return {"career_intelligence": career_intel}
 
         prompt = f"""
-You are an expert career intelligence and resume parsing agent. Parse the candidate's resume text and extract candidate intelligence.
-Analyze the candidate's skills, experience, projects, education, and achievements. Determine their career stage, employability, skill scores, personality traits, risk analysis, eligible exams (like UPSC, SSC, etc.), and resume improvement suggestions.
+You are a world-class Talent Intelligence System, Senior Recruiter, HR Director, Career Strategist, Government Career Advisor, Recruitment Analyst, and Workforce Intelligence Platform.
+Your responsibility is to deeply understand the uploaded resume and transform it into structured career intelligence.
+The platform supports every profession, industry, education level, government sector, private sector, certification track, and career path.
+Do not assume the candidate is a software engineer.
+Analyze the complete resume.
+Think step-by-step.
+Return ONLY valid JSON.
+No markdown.
+No explanations.
+No text outside JSON.
 
-Return ONLY a strictly valid JSON object. Do NOT wrap in markdown blocks, backticks, or write any explanatory text. Ensure all quotes are escaped properly.
-
-JSON Structure:
+JSON Structure to return:
 {{
   "personal_info": {{
     "name": "string",
     "email": "string",
     "phone": "string",
     "location": "string (default: Remote)",
-    "summary": "string"
+    "summary": "string",
+    "linkedin": "string",
+    "portfolio": "string",
+    "github": "string",
+    "website": "string"
   }},
-  "career_classification": {{
-    "career_family": "string (strictly select one of: Government, Private, PSU, Banking, Defence, Teaching, Healthcare, Finance, Legal, Engineering, Business, Research, Agriculture)",
-    "experience_level": "string (strictly select one of: Entry Level, Mid-Level, Senior)",
-    "employability_score": integer (0-100),
-    "profile_strength": integer (0-100)
+  "education": [
+    {{
+      "degree": "string (e.g. 10th, Intermediate, Diploma, ITI, Polytechnic, B.Tech, B.Com, BBA, MBA, MBBS, BDS, MCA, M.Tech, CA, CMA, CS, LLB)",
+      "branch": "string",
+      "specialization": "string",
+      "institution": "string",
+      "university": "string",
+      "graduation_year": "string",
+      "cgpa": "string",
+      "percentage": "string",
+      "academic_performance": "string",
+      "education_level": "string"
+    }}
+  ],
+  "experience": [
+    {{
+      "company": "string",
+      "role": "string",
+      "duration": "string",
+      "industry": "string",
+      "responsibilities": ["string"],
+      "achievements": ["string"],
+      "leadership": "string",
+      "promotions": "string",
+      "career_progression": "string",
+      "total_experience": "string",
+      "relevant_experience": "string"
+    }}
+  ],
+  "skill_intelligence": {{
+    "technical_skills": ["string"],
+    "business_skills": ["string"],
+    "domain_skills": ["string"],
+    "government_exam_skills": ["string"],
+    "teaching_skills": ["string"],
+    "healthcare_skills": ["string"],
+    "financial_skills": ["string"],
+    "legal_skills": ["string"],
+    "research_skills": ["string"],
+    "soft_skills": ["string"],
+    "languages": ["string"],
+    "tools": ["string"],
+    "frameworks": ["string"],
+    "platforms": ["string"],
+    "databases": ["string"],
+    "cloud_technologies": ["string"],
+    "ai_technologies": ["string"]
   }},
   "skills": [
     {{
@@ -253,54 +363,80 @@ JSON Structure:
   ],
   "skill_graph_edges": [
     {{
-      "from": "string (skill name)",
-      "to": "string (skill name)"
+      "from": "string",
+      "to": "string"
     }}
   ],
-  "career_dna": {{
-    "personality": "string (strictly select one of: Builder, Researcher, Manager, Strategist, Operator)",
-    "traits": {{
-      "working_style": "string",
-      "growth_potential": "string (Low/Medium/High/Strong)",
-      "leadership_potential": "string (Low/Medium/High/Strong)"
+  "projects": [
+    {{
+      "project_name": "string",
+      "description": "string",
+      "technologies": ["string"],
+      "complexity": "string",
+      "industry_domain": "string",
+      "business_impact": "string",
+      "leadership_indicators": "string",
+      "innovation_indicators": "string"
     }}
+  ],
+  "certifications": [
+    {{
+      "certification": "string",
+      "provider": "string",
+      "category": "string",
+      "level": "string",
+      "industry_relevance": "string"
+    }}
+  ],
+  "career_classification": {{
+    "career_family": "string (strictly select one of: Government, Private, PSU, Banking, Defence, Teaching, Healthcare, Finance, Legal, Engineering, Business, Research, Agriculture)",
+    "experience_level": "string (strictly select one of: Entry Level, Mid-Level, Senior)",
+    "employability_score": integer (0-100),
+    "profile_strength": integer (0-100),
+    "classifications": [
+      {{
+        "name": "string",
+        "confidence": integer (0-100)
+      }}
+    ]
   }},
   "roles": {{
     "core": [
-      {{"role": "string", "confidence": integer (0-100)}}
+      {{"role": "string", "confidence": integer (0-100), "reason": "string"}}
     ],
     "related": [
-      {{"role": "string", "confidence": integer (0-100)}}
+      {{"role": "string", "confidence": integer (0-100), "reason": "string"}}
     ],
     "adjacent": [
-      {{"role": "string", "confidence": integer (0-100)}}
+      {{"role": "string", "confidence": integer (0-100), "reason": "string"}}
     ],
     "transferable": [
-      {{"role": "string", "confidence": integer (0-100)}}
+      {{"role": "string", "confidence": integer (0-100), "reason": "string"}}
     ],
     "future": [
-      {{"role": "string", "confidence": integer (0-100)}}
+      {{"role": "string", "confidence": integer (0-100), "reason": "string"}}
     ],
     "leadership": [
-      {{"role": "string", "confidence": integer (0-100)}}
+      {{"role": "string", "confidence": integer (0-100), "reason": "string"}}
+    ],
+    "government": [
+      {{"role": "string", "confidence": integer (0-100), "reason": "string"}}
+    ],
+    "international": [
+      {{"role": "string", "confidence": integer (0-100), "reason": "string"}}
+    ],
+    "entrepreneurship": [
+      {{"role": "string", "confidence": integer (0-100), "reason": "string"}}
     ]
   }},
-  "career_paths": [
-    {{
-      "path_name": "string",
-      "steps": ["string"],
-      "milestones": ["string"]
-    }}
-  ],
   "opportunities": {{
     "eligible_exams": [
       {{
-        "exam_name": "string (e.g. UPSC Civil Services, SSC CGL)",
-        "status": "string (Eligible/Not Eligible/Pending)",
-        "age_eligibility": "string",
-        "education_eligibility": "string",
-        "attempts_analysis": "string",
-        "promotion_path": "string"
+        "exam_name": "string (e.g. UPSC, IAS, IPS, IFS, SSC, Banking, IBPS, SBI, RRB, Railways, Defence, Police, State PSC, Group 1, Group 2, PSU)",
+        "status": "string (Eligible/Not Eligible)",
+        "confidence": integer (0-100),
+        "reason": "string",
+        "career_growth": "string"
       }}
     ],
     "eligible_gov_jobs": ["string"],
@@ -314,8 +450,40 @@ JSON Structure:
       "private_score": integer (0-100),
       "remote_score": integer (0-100),
       "international_score": integer (0-100),
-      "leadership_potential_score": integer (0-100)
+      "leadership_potential_score": integer (0-100),
+      "entrepreneurship_potential_score": integer (0-100)
     }}
+  }},
+  "career_dna": {{
+    "personality": "string (strictly select one of: Builder, Researcher, Operator, Strategist, Leader, Innovator)",
+    "traits": {{
+      "working_style": "string",
+      "growth_potential": "string",
+      "leadership_potential": "string"
+    }},
+    "growth_potential": "string",
+    "leadership_potential": "string",
+    "career_direction": "string",
+    "learning_velocity": "string"
+  }},
+  "skill_gap_analysis": {{
+    "missing_skills": ["string"],
+    "priority_skills": ["string"],
+    "learning_roadmap": [
+      {{
+        "skill": "string",
+        "priority": "string",
+        "resources": ["string"],
+        "est_hours": integer,
+        "career_impact": "string"
+      }}
+    ],
+    "certifications": ["string"],
+    "projects_to_build": ["string"],
+    "estimated_learning_time": "string",
+    "career_impact": "string",
+    "overall_gap_score": float,
+    "estimated_upskill_months": float
   }},
   "career_risk_analysis": {{
     "demand_risk": "string (Low/Medium/High)",
@@ -332,7 +500,14 @@ JSON Structure:
     "improvement_suggestions": ["string"],
     "resume_rewrite_suggestions": ["string"],
     "achievement_suggestions": ["string"]
-  }}
+  }},
+  "career_paths": [
+    {{
+      "path_name": "string",
+      "steps": ["string"],
+      "milestones": ["string"]
+    }}
+  ]
 }}
 
 Resume Text:
@@ -341,16 +516,26 @@ Resume Text:
 
         ai_response = None
         career_intel = {}
+        source_type = "GEMINI"
+        confidence_score = "HIGH"
 
         # 1. Primary Model: Gemini Flash
         if settings.GEMINI_API_KEY:
             try:
-                logger.info("[Resume Intelligence] Invoking Gemini Flash for parsing...")
-                ai_response = await asyncio.to_thread(call_gemini, prompt, json_mode=True)
+                logger.info("[Resume Intelligence] Invoking Gemini Flash (gemini-2.0-flash) for parsing...")
+                ai_response = await asyncio.to_thread(call_gemini, prompt, True, pdf_bytes, "gemini-2.0-flash")
             except Exception as gemini_err:
                 logger.error(f"[Resume Intelligence] Gemini Flash call failed: {gemini_err}")
 
-        # 2. Fallback Model: NVIDIA Llama
+        # 2. Fallback Model: Gemini Pro
+        if not ai_response and settings.GEMINI_API_KEY:
+            try:
+                logger.info("[Resume Intelligence] Falling back to Gemini Pro (gemini-1.5-pro) for parsing...")
+                ai_response = await asyncio.to_thread(call_gemini, prompt, True, pdf_bytes, "gemini-1.5-pro")
+            except Exception as pro_err:
+                logger.error(f"[Resume Intelligence] Gemini Pro fallback failed: {pro_err}")
+
+        # 3. Nvidia fallback as intermediate backup before local PyMuPDF
         if not ai_response and settings.NVIDIA_API_KEY:
             try:
                 logger.info("[Resume Intelligence] Falling back to NVIDIA Llama for parsing...")
@@ -366,10 +551,34 @@ Resume Text:
             except Exception as parse_err:
                 logger.error(f"[Resume Intelligence] Failed to parse JSON output: {parse_err}. Raw output was: {ai_response[:200]}")
 
-        # 3. Rule-based Programmatic Fallback
+        # 4. Rule-based / PyMuPDF fallback
         if not career_intel:
             logger.warning("[Resume Intelligence] LLM parsing failed or keys are empty. Running programmatic fallback.")
-            career_intel = get_fallback_resume_intelligence(candidate, skills_list, exp_years)
+            source_type = "FALLBACK"
+            confidence_score = "MEDIUM"
+            if pdf_bytes:
+                from app.services.orchestrator import fallback_pymupdf_pipeline
+                fallback_res = fallback_pymupdf_pipeline(pdf_bytes)
+                career_intel = fallback_res.get("parsed_json", {})
+            else:
+                career_intel = get_fallback_resume_intelligence(candidate, skills_list, exp_years)
+
+        # 5. Persist history log to database (never overwriting)
+        try:
+            from app.models.job_models import ResumeAIAnalysis
+            analysis_rec = ResumeAIAnalysis(
+                candidate_id=candidate_id,
+                source_type=source_type,
+                raw_response=ai_response if ai_response else json.dumps(career_intel),
+                parsed_json=career_intel,
+                confidence_score=confidence_score
+            )
+            self.db.add(analysis_rec)
+            self.db.commit()
+            logger.info(f"[Resume Intelligence] Successfully stored resume AI analysis (Source: {source_type})")
+        except Exception as db_err:
+            self.db.rollback()
+            logger.error(f"[Resume Intelligence] Failed to store resume AI analysis in DB: {db_err}")
 
         return {"career_intelligence": career_intel}
 
@@ -438,6 +647,31 @@ Resume Text:
             candidate.phone = personal.get("phone") or candidate.phone
             candidate.parsed_name = personal.get("name") or candidate.parsed_name
             candidate.parsed_email = personal.get("email") or candidate.parsed_email
+            
+            # Enrich candidate social links and details
+            if personal.get("linkedin"):
+                candidate.linkedin = personal.get("linkedin")
+            if personal.get("github"):
+                candidate.github = personal.get("github")
+            if personal.get("portfolio"):
+                candidate.portfolio = personal.get("portfolio")
+            if personal.get("location"):
+                candidate.address = personal.get("location")
+                
+            if intel.get("education"):
+                candidate.education = json.dumps(intel.get("education"))
+            if intel.get("experience"):
+                candidate.experience = json.dumps(intel.get("experience"))
+            if intel.get("projects"):
+                candidate.projects = json.dumps(intel.get("projects"))
+                
+            if intel.get("certifications"):
+                cert_val = intel.get("certifications")
+                if isinstance(cert_val, list):
+                    candidate.certifications = ", ".join([c.get("certification", "") if isinstance(c, dict) else str(c) for c in cert_val])
+                else:
+                    candidate.certifications = str(cert_val)
+                    
             if candidate.parsed_name and candidate.user:
                 candidate.user.full_name = candidate.parsed_name
             self.db.commit()
@@ -721,7 +955,14 @@ def get_fallback_resume_intelligence(candidate, skills_list, experience_years) -
             edges.append({"from": structured_skills[i]["name"], "to": structured_skills[i+1]["name"]})
             
     # Roles with confidence scores
-    primary_role = (candidate.current_role if candidate else None) or ("Software Engineer" if is_tech else "Business Analyst")
+    candidate_role = None
+    if candidate:
+        if hasattr(candidate, "current_role") and candidate.current_role:
+            candidate_role = candidate.current_role
+        elif hasattr(candidate, "profiles") and candidate.profiles:
+            candidate_role = candidate.profiles[0].current_role
+            
+    primary_role = candidate_role or ("Software Engineer" if is_tech else "Business Analyst")
     roles = {
         "core": [{"role": primary_role, "confidence": 95}, {"role": f"Senior {primary_role}" if experience_years >= 3 else f"Associate {primary_role}", "confidence": 88}],
         "related": [{"role": "Systems Engineer" if is_tech else "Project Associate", "confidence": 82}],

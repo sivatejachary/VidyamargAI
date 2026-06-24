@@ -272,8 +272,8 @@ export default function ResumeIntelligenceDashboard() {
   const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const selectedFile = e.target.files[0];
-    if (selectedFile.type !== "application/pdf" && !selectedFile.name.endsWith(".docx")) {
-      setErrorMsg("Please upload a PDF or DOCX file only.");
+    if (selectedFile.type !== "application/pdf") {
+      setErrorMsg("Please upload a PDF file only.");
       return;
     }
 
@@ -360,10 +360,10 @@ export default function ResumeIntelligenceDashboard() {
     document.body.removeChild(link);
   };
 
-  const runAIAnalysis = async () => {
+  const runAIAnalysis = async (force: boolean = false) => {
     setAnalysisLoading(true);
     try {
-      await apiService.analyzeResume();
+      await apiService.analyzeResume(force);
       await loadIntelligence();
       setSuccessMsg("AI Analysis refreshed successfully!");
       setTimeout(() => setSuccessMsg(""), 3000);
@@ -372,61 +372,59 @@ export default function ResumeIntelligenceDashboard() {
     } finally {
       setAnalysisLoading(false);
     }
+  };  const downloadActiveResume = () => {
+    const activeVer = resumeVersions.find(v => v.isLatest);
+    if (activeVer) {
+      handleDownloadResumeUrl(activeVer.url, activeVer.version);
+    } else if (versions && versions.length > 0) {
+      handleDownloadResumeUrl(versions[0].resume_url, versions[0].resume_url.split("/").pop() || "resume.pdf");
+    } else {
+      setErrorMsg("No active resume version available.");
+    }
   };
 
-  const handleImproveWithAI = () => {
-    setActiveTab("improvements");
+  const ROLE_SKILLS_MAP: Record<string, string[]> = {
+    "ai engineer": ["python", "machine learning", "pytorch", "tensorflow", "deep learning", "nlp", "llm", "openai", "transformers"],
+    "ml engineer": ["python", "machine learning", "tensorflow", "pytorch", "scikit-learn", "numpy", "pandas", "computer vision", "nlp"],
+    "data scientist": ["python", "r", "sql", "machine learning", "pandas", "numpy", "statistics", "data analysis", "tableau"],
+    "data analyst": ["sql", "excel", "tableau", "power bi", "python", "data analysis", "statistics", "data visualization"],
+    "software engineer": ["python", "java", "c++", "javascript", "typescript", "git", "docker", "aws", "sql", "rest api"],
+    "backend engineer": ["python", "node.js", "go", "java", "sql", "postgresql", "mongodb", "docker", "aws", "apis", "redis"],
+    "frontend engineer": ["javascript", "typescript", "react", "next.js", "vue", "html", "css", "tailwind", "webpack"],
+    "fullstack engineer": ["javascript", "typescript", "react", "node.js", "sql", "html", "css", "docker", "aws"],
+    "devops engineer": ["docker", "kubernetes", "aws", "ci/cd", "jenkins", "terraform", "linux", "git", "bash"],
+    "cloud architect": ["aws", "azure", "gcp", "terraform", "kubernetes", "cloud architecture", "security"],
+    "nlp engineer": ["nlp", "python", "pytorch", "transformers", "llm", "bert", "gpt", "spacy", "nltk"],
+    "computer vision engineer": ["computer vision", "opencv", "pytorch", "tensorflow", "python", "cnn", "image processing"],
+    "product manager": ["product management", "agile", "scrum", "roadmap", "user stories", "analytics"],
+    "project manager": ["project management", "agile", "scrum", "jira", "budgeting", "risk management"],
+    "qa engineer": ["testing", "selenium", "cypress", "jest", "qa", "automation", "bug tracking"],
   };
 
-  if (loading && !uploading) {
-    return (
-      <div className="flex-1 min-h-screen bg-slate-950 text-slate-100 p-6 md:p-8 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="animate-spin text-violet-500 mx-auto" size={40} />
-          <p className="text-sm font-semibold text-slate-400">Loading Career Intelligence Operating System...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (versions.length === 0) {
-    return (
-      <div className="flex-1 min-h-screen bg-slate-950 text-slate-100 p-6 md:p-8 flex items-center justify-center font-sans">
-        <div className="max-w-md w-full space-y-4">
-          {errorMsg && <Alert variant="error">{errorMsg}</Alert>}
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleResumeUpload}
-            accept=".pdf,.docx"
-            className="hidden"
-          />
-          <EmptyState
-            title="No Resume Uploaded"
-            description="Your resume is the entry point into the Career Intelligence Operating System. Upload it to analyze skills, generate career DNA, and map opportunities."
-            icon={<FileText size={36} className="text-violet-500" />}
-            action={
-              <div className="flex flex-col items-center gap-3 w-full">
-                <Button onClick={triggerUpload} className="w-full sm:w-auto mt-4 bg-violet-650 hover:bg-violet-750 text-white">
-                  <Upload size={16} className="mr-2" />
-                  Upload Resume / CV
-                </Button>
-                <label className="flex items-center gap-2 text-xs cursor-pointer mt-2 bg-white/5 border border-white/10 rounded-lg py-1.5 px-3 hover:bg-white/10 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={fastMode}
-                    onChange={(e) => setFastMode(e.target.checked)}
-                    className="rounded border-slate-700 bg-slate-900 text-violet-600 focus:ring-violet-500"
-                  />
-                  <span className="font-medium text-slate-350">⚡ Instant Mode (milliseconds fallback)</span>
-                </label>
-              </div>
-            }
-          />
-        </div>
-      </div>
-    );
-  }
+  const getMatchedSkillsForRole = (roleName: string, candidateSkills: string[]): string[] => {
+    if (!candidateSkills || candidateSkills.length === 0) return [];
+    const normalizedRole = roleName.toLowerCase();
+    
+    let matchedGroup: string[] = [];
+    for (const [key, skills] of Object.entries(ROLE_SKILLS_MAP)) {
+      if (normalizedRole.includes(key) || key.includes(normalizedRole)) {
+        matchedGroup = skills;
+        break;
+      }
+    }
+    
+    const intersection = candidateSkills.filter(skill => {
+      const normSkill = skill.toLowerCase();
+      if (matchedGroup.includes(normSkill)) return true;
+      return matchedGroup.some(gSkill => gSkill.includes(normSkill) || normSkill.includes(gSkill));
+    });
+    
+    if (intersection.length > 0) {
+      return intersection.slice(0, 3);
+    }
+    
+    return candidateSkills.slice(0, 3);
+  };
 
   return (
     <div className="flex-1 min-h-screen bg-slate-950 text-slate-100 p-6 md:p-8 font-sans transition-all duration-300">
@@ -434,7 +432,7 @@ export default function ResumeIntelligenceDashboard() {
         type="file"
         ref={fileInputRef}
         onChange={handleResumeUpload}
-        accept=".pdf,.docx"
+        accept=".pdf"
         className="hidden"
       />
 
@@ -485,862 +483,339 @@ export default function ResumeIntelligenceDashboard() {
         {/* Header Banner */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-slate-900/60 backdrop-blur-md border border-slate-850 rounded-3xl p-6 shadow-xl">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-650 flex items-center justify-center text-white shadow-lg">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-violet-650 to-indigo-650 flex items-center justify-center text-white shadow-lg">
               <Sparkles size={22} className="animate-pulse" />
             </div>
             <div>
               <h1 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
-                Career Intelligence OS
-                <Badge className="bg-violet-500/20 text-violet-400 border border-violet-800/50 py-0.5 text-[9px] font-black uppercase tracking-wider">v2.0 Active</Badge>
+                My Resume Profile
+                <Badge className="bg-violet-500/20 text-violet-400 border border-violet-800/50 py-0.5 text-[9px] font-black uppercase tracking-wider">Active</Badge>
               </h1>
-              <p className="text-slate-400 mt-1 text-xs font-medium">Everything starts from Resume Intelligence. Managed by principal systems architects.</p>
+              <p className="text-slate-400 mt-1 text-xs font-medium">Upload, analyze, and map your resume to AI-recommended career paths and jobs.</p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <Button variant="outline" size="sm" onClick={triggerUpload} className="bg-slate-850 border-slate-750 text-slate-205 hover:bg-slate-800 text-xs">
+            <Button variant="outline" size="sm" onClick={triggerUpload} className="bg-slate-850 border-slate-750 text-slate-200 hover:bg-slate-800 text-xs">
               <Upload size={14} className="mr-1.5" />
               Upload New Version
             </Button>
-            <Button onClick={handleCreateAgent} disabled={agentCreating} className="bg-gradient-to-r from-violet-600 to-indigo-650 hover:from-violet-750 hover:to-indigo-750 text-white font-bold text-xs shadow-lg shadow-violet-500/20">
-              {agentCreating ? <Loader2 size={14} className="animate-spin mr-1.5" /> : <Zap size={14} className="mr-1.5 fill-current" />}
-              Create AI Job Agent
+            <Button variant="outline" size="sm" onClick={() => setIsEditOpen(true)} className="bg-slate-850 border-slate-750 text-slate-200 hover:bg-slate-800 text-xs">
+              <Eye size={14} className="mr-1.5" />
+              View Profile Details
+            </Button>
+            <Button variant="outline" size="sm" onClick={downloadActiveResume} className="bg-slate-850 border-slate-750 text-slate-200 hover:bg-slate-800 text-xs">
+              <Download size={14} className="mr-1.5" />
+              Download Resume
             </Button>
           </div>
         </div>
 
-        {/* Stats Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="bg-slate-900/40 border-slate-850 p-4">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Career Family</span>
-            <span className="text-lg font-black text-slate-100 mt-1 block">
-              {profile?.career_classification?.career_family || "Engineering"}
-            </span>
-          </Card>
-          <Card className="bg-slate-900/40 border-slate-850 p-4">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Profile Strength</span>
-            <div className="flex items-center gap-2 mt-1">
-              <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                <div className="bg-violet-500 h-full" style={{ width: `${profile?.career_classification?.profile_strength || 75}%` }} />
-              </div>
-              <span className="text-sm font-black text-slate-100">{profile?.career_classification?.profile_strength || 75}%</span>
-            </div>
-          </Card>
-          <Card className="bg-slate-900/40 border-slate-850 p-4">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Employability Score</span>
-            <div className="flex items-center gap-2 mt-1">
-              <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                <div className="bg-emerald-500 h-full" style={{ width: `${profile?.career_classification?.employability_score || 80}%` }} />
-              </div>
-              <span className="text-sm font-black text-slate-100">{profile?.career_classification?.employability_score || 80}%</span>
-            </div>
-          </Card>
-          <Card className="bg-slate-900/40 border-slate-850 p-4">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Experience Level</span>
-            <span className="text-lg font-black text-slate-100 mt-1 block">
-              {profile?.career_classification?.experience_level || "Mid-Level"}
-            </span>
-          </Card>
-        </div>
-
-        {/* Main Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          
-          {/* Column 1: Left Sidebar (1 col) */}
-          <div className="lg:col-span-1 space-y-4">
-            <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-3 shadow-xl">
-              <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider px-3 py-2 block">Intelligence Tabs</span>
-              <div className="space-y-1">
-                {[
-                  { id: "overview", label: "Candidate Profile", icon: LayoutDashboard },
-                  { id: "dna", label: "Career DNA", icon: Dna },
-                  { id: "skills", label: "Skill Graph Mapping", icon: Code },
-                  { id: "roles", label: "Role Intelligence", icon: Compass },
-                  { id: "paths", label: "Career Progress Graph", icon: Route },
-                  { id: "opportunities", label: "Opportunity Engine", icon: ShieldCheck },
-                  { id: "improvements", label: "Resume improvements", icon: FileCheck }
-                ].map((tab) => {
-                  const Icon = tab.icon;
-                  const isActive = activeTab === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${
-                        isActive 
-                          ? "bg-violet-600/20 text-violet-300 border-l-4 border-violet-500" 
-                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
-                      }`}
-                    >
-                      <Icon size={16} />
-                      {tab.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="border-t border-slate-800/60 mt-3 pt-3 px-1">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setIsEditOpen(true)} 
-                  className="w-full text-[11px] h-8 bg-slate-900 border-slate-800 hover:bg-slate-800 text-slate-350"
-                >
-                  <Eye size={12} className="mr-1" />
-                  View Parsed Raw Profile
-                </Button>
-              </div>
-            </Card>
-
-            <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-4 shadow-xl space-y-4">
+        {/* Analysis Status Banner */}
+        {profile?.analysis_status && (
+          <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+            profile.analysis_status.source_type === "GEMINI" 
+              ? "bg-emerald-950/20 border-emerald-800/40 text-emerald-400" 
+              : "bg-amber-950/20 border-amber-800/40 text-amber-400"
+          }`}>
+            <div className="flex items-center gap-3">
+              {profile.analysis_status.source_type === "GEMINI" ? (
+                <CheckCircle2 className="text-emerald-500 flex-shrink-0" size={20} />
+              ) : (
+                <AlertTriangle className="text-amber-500 flex-shrink-0" size={20} />
+              )}
               <div>
-                <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2.5 block">Top Skills</h3>
-                <div className="flex flex-wrap gap-1.5">
-                  {skillsList.slice(0, 10).map((skill: string, idx: number) => (
-                    <span key={idx} className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-800 border border-slate-750 text-slate-300">
-                      {skill}
-                    </span>
-                  ))}
-                  {skillsList.length === 0 && (
-                    <span className="text-xs text-slate-500 italic">No skills extracted.</span>
-                  )}
-                </div>
+                <h4 className="text-xs font-bold uppercase tracking-wider">
+                  {profile.analysis_status.source_type === "GEMINI" 
+                    ? "AI Analysis Completed" 
+                    : "Basic Resume Analysis Generated"}
+                </h4>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  {profile.analysis_status.source_type === "GEMINI"
+                    ? `Powered by Gemini 3.5. Confidence Level: ${profile.analysis_status.confidence_score || "HIGH"}.`
+                    : "Emergency fallback pipeline was used because the AI services were temporarily unavailable. A simplified profile has been generated."}
+                </p>
               </div>
-
-              <div className="border-t border-slate-850 pt-3">
-                <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2.5 block">Key Keywords</h3>
-                <div className="grid grid-cols-2 gap-2 text-[10px] font-bold text-slate-400">
-                  {keywordsList.slice(0, 6).map((kw: string, idx: number) => (
-                    <div key={idx} className="flex items-center gap-1.5">
-                      <Check size={10} className="text-emerald-500 shrink-0" />
-                      <span className="truncate">{kw}</span>
-                    </div>
-                  ))}
-                  {keywordsList.length === 0 && (
-                    <span className="col-span-2 text-xs text-slate-500 italic">No keywords.</span>
-                  )}
-                </div>
-              </div>
-            </Card>
+            </div>
+            {profile.analysis_status.source_type === "FALLBACK" && (
+              <Button 
+                onClick={() => runAIAnalysis(true)} 
+                disabled={analysisLoading}
+                size="sm" 
+                className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex-shrink-0"
+              >
+                {analysisLoading ? (
+                  <>
+                    <Loader2 size={12} className="animate-spin mr-1.5" />
+                    Retrying...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={12} className="mr-1.5" />
+                    Retry AI Analysis
+                  </>
+                )}
+              </Button>
+            )}
           </div>
+        )}
 
-          {/* Column 2 & 3: Middle Workspace (2 cols) */}
+        {/* Main Grid Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* Left Column: Spans 2 cols on desktop */}
           <div className="lg:col-span-2 space-y-6">
             
-            {/* OVERVIEW TAB */}
-            {activeTab === "overview" && (
-              <div className="space-y-6">
-                <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-6">
-                  <div className="flex items-center gap-3 border-b border-slate-850 pb-4">
-                    <div className="w-10 h-10 rounded-2xl bg-violet-500/10 text-violet-400 flex items-center justify-center shrink-0 border border-violet-500/20">
-                      <User size={20} />
+            {/* Profile Card */}
+            <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-violet-600/10 rounded-full blur-3xl pointer-events-none group-hover:bg-violet-600/20 transition-all duration-500" />
+              <div className="flex flex-col md:flex-row justify-between gap-4">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-violet-550/10 text-violet-400 flex items-center justify-center shrink-0 border border-violet-550/20 shadow-md">
+                      <User size={24} />
                     </div>
                     <div>
-                      <h3 className="text-lg font-black text-white">Candidate Profile</h3>
-                      <p className="text-xs text-slate-400">Personal information and professional background details.</p>
+                      <h2 className="text-2xl font-black tracking-tight text-white">
+                        {profile?.personal_info?.name || fullName || "Not Specified"}
+                      </h2>
+                      <p className="text-sm font-bold text-violet-400 mt-0.5">
+                        {profile?.current_role || (profile?.career_classification?.experience_level && profile?.career_classification?.career_family 
+                          ? `${profile.career_classification.experience_level} • ${profile.career_classification.career_family}` 
+                          : "Professional Profile")}
+                      </p>
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Name</span>
-                      <p className="text-xs font-semibold text-slate-200 bg-slate-950/40 p-3 rounded-xl border border-slate-850">{profile?.personal_info?.name || fullName || "Not specified"}</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Email</span>
-                      <p className="text-xs font-semibold text-slate-200 bg-slate-950/40 p-3 rounded-xl border border-slate-850">{profile?.personal_info?.email || email || "Not specified"}</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Phone</span>
-                      <p className="text-xs font-semibold text-slate-200 bg-slate-950/40 p-3 rounded-xl border border-slate-850">{profile?.personal_info?.phone || "Not specified"}</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Location</span>
-                      <p className="text-xs font-semibold text-slate-200 bg-slate-950/40 p-3 rounded-xl border border-slate-850">{profile?.personal_info?.location || "Remote"}</p>
-                    </div>
+                  
+                  <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
+                    <MapPin size={14} className="text-slate-500" />
+                    <span>{profile?.personal_info?.location || "Remote"}</span>
                   </div>
-
-                  {profile?.personal_info?.summary && (
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Professional Summary</span>
-                      <p className="text-xs font-medium text-slate-300 leading-relaxed bg-slate-950/40 p-4 rounded-xl border border-slate-850 whitespace-pre-wrap">{profile.personal_info.summary}</p>
-                    </div>
-                  )}
-                </Card>
-
-                {/* AI Skills Gap Card */}
-                <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-4">
-                  <div className="flex items-center gap-3 border-b border-slate-850 pb-3">
-                    <div className="w-9 h-9 rounded-xl bg-violet-600/10 text-violet-400 flex items-center justify-center shrink-0 border border-violet-650/20">
-                      <Sparkles size={18} className="animate-pulse" />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-black text-white">AI Skill Gap & Recommendations</h3>
-                      <p className="text-xs text-slate-400">Target roles upskilling priority index.</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-3">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Identified Missing Skills</span>
-                      {missingSkills.length > 0 ? (
-                        <div className="flex flex-wrap gap-2">
-                          {missingSkills.map((skill: any, idx: number) => (
-                            <span key={idx} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-bold">
-                              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse mr-1" />
-                              {skill}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 font-bold flex items-center gap-2">
-                          <CheckCircle2 size={14} />
-                          No critical missing skills.
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-3">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Recommended Upskill Actions</span>
-                      <div className="space-y-2">
-                        {recommendedCourses.length > 0 ? (
-                          recommendedCourses.slice(0, 3).map((course: any, idx: number) => (
-                            <div key={idx} className="p-2.5 rounded-xl border border-slate-800 bg-slate-950/20 flex items-center justify-between gap-3">
-                              <div className="min-w-0">
-                                <span className="text-[11px] font-bold text-slate-200 block truncate">{course.title}</span>
-                                <span className="text-[9px] text-slate-400 mt-0.5 block font-semibold">Focus: {course.skills.join(", ")}</span>
-                              </div>
-                              <Link href="/candidate/skill-lab">
-                                <Button size="xs" variant="outline" className="text-[9px] py-1 h-auto font-bold bg-slate-900 border-slate-800 hover:bg-slate-850">
-                                  Learn
-                                </Button>
-                              </Link>
-                            </div>
-                          ))
-                        ) : (
-                          <p className="text-xs text-slate-500 italic">No upskilling courses suggested.</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </Card>
+                </div>
+                
+                <div className="shrink-0 flex items-start">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setIsEditOpen(true)} 
+                    className="bg-slate-850 border-slate-750 text-slate-200 hover:bg-slate-800 text-xs font-bold w-full md:w-auto"
+                  >
+                    View Full Details
+                  </Button>
+                </div>
               </div>
-            )}
+            </Card>
 
-            {/* CAREER DNA TAB */}
-            {activeTab === "dna" && (
-              <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-6">
-                <div className="flex items-center gap-3 border-b border-slate-850 pb-4">
-                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-500/20">
-                    <Dna size={20} className="animate-pulse" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-black text-white">Career DNA Analysis</h3>
-                    <p className="text-xs text-slate-400">Archetype, behavioral traits, and leadership dynamics.</p>
-                  </div>
+            {/* Recommended Career Paths ⭐ */}
+            <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-6">
+              <div className="flex items-center gap-2.5 border-b border-slate-850 pb-4">
+                <div className="w-9 h-9 rounded-xl bg-violet-600/10 text-violet-400 flex items-center justify-center shrink-0 border border-violet-650/20 shadow-sm">
+                  <Sparkles size={18} className="animate-pulse" />
                 </div>
-
-                <div className="p-5 rounded-2xl bg-gradient-to-r from-violet-650/25 to-indigo-650/25 border border-violet-850/40 space-y-3">
-                  <span className="text-[10px] font-bold text-violet-400 uppercase tracking-wider block">Career Archetype</span>
-                  <div className="flex items-center justify-between gap-4">
-                    <h4 className="text-xl font-black text-white">{careerDna?.personality || "Builder"}</h4>
-                    <Badge className="bg-violet-500/25 text-violet-300 border border-violet-550/40 font-bold text-[10px] px-2 py-0.5">High Potential</Badge>
-                  </div>
-                  <p className="text-xs text-slate-350 leading-relaxed font-medium">
-                    This archetype describes candidates who focus on execution, engineering architecture, and scaling robust services. They excel in solving logical constraints and building systems.
-                  </p>
+                <div>
+                  <h3 className="text-lg font-black text-white flex items-center gap-1.5">
+                    Recommended Career Paths
+                    <span className="text-amber-400">⭐</span>
+                  </h3>
+                  <p className="text-xs text-slate-400">AI-recommended career pathways customized to your profile data.</p>
                 </div>
+              </div>
 
-                <div className="space-y-4">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Core Career Traits</span>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="p-4 rounded-xl border border-slate-850 bg-slate-950/20 space-y-2">
-                      <span className="text-[10px] font-bold text-slate-400 block">Working Style</span>
-                      <p className="text-xs text-slate-300 font-semibold leading-relaxed">{careerDna?.traits?.working_style || "Autonomous / Direct Execution"}</p>
-                    </div>
-                    <div className="p-4 rounded-xl border border-slate-850 bg-slate-950/20 space-y-2">
-                      <span className="text-[10px] font-bold text-slate-400 block">Growth Speed</span>
-                      <p className="text-xs text-slate-300 font-semibold leading-relaxed">{careerDna?.traits?.growth_potential || "Fast / Adaptive Learner"}</p>
-                    </div>
-                    <div className="p-4 rounded-xl border border-slate-850 bg-slate-950/20 space-y-2">
-                      <span className="text-[10px] font-bold text-slate-400 block">Leadership Archetype</span>
-                      <p className="text-xs text-slate-300 font-semibold leading-relaxed">{careerDna?.traits?.leadership_potential || "System Thinker & Lead Mentor"}</p>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            )}
+              <div className="space-y-6">
+                {[
+                  { key: "core", title: "Core Roles", desc: "Best-fit careers aligned with your core experience and strengths." },
+                  { key: "related", title: "Related Roles", desc: "Complementary pathways that leverage your transferable skills." },
+                  { key: "future", title: "Future Roles", desc: "Long-term, high-growth target roles for career progression." },
+                  { key: "government", title: "Government Roles", desc: "Eligible public sector and research pathways." },
+                  { key: "adjacent", title: "Adjacent Roles", desc: "Alternative sectors that value your skill profiles." },
+                  { key: "leadership", title: "Leadership Roles", desc: "Management and strategic leadership opportunities." }
+                ].map((category) => {
+                  const categoryRoles = roles?.[category.key] || [];
+                  if (categoryRoles.length === 0) return null;
 
-            {/* SKILLS TAB */}
-            {activeTab === "skills" && (
-              <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-6">
-                <div className="flex items-center gap-3 border-b border-slate-850 pb-4">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/20">
-                    <Code size={20} />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-black text-white">Skill Graph Mapping</h3>
-                    <p className="text-xs text-slate-400">Structured layout of technology node associations.</p>
-                  </div>
-                </div>
-
-                <div className="bg-slate-950/50 border border-slate-850 rounded-2xl p-6 min-h-[300px] flex flex-col justify-center items-center relative overflow-hidden">
-                  {skillsGraph?.skills && skillsGraph.skills.length > 0 ? (
-                    <div className="w-full space-y-6">
-                      <div className="h-44 w-full relative flex items-center justify-center bg-slate-950 border border-slate-850/60 rounded-xl p-4">
-                        <svg className="absolute inset-0 w-full h-full">
-                          <line x1="20%" y1="50%" x2="50%" y2="25%" stroke="#6366f1" strokeWidth="2" strokeDasharray="3,3" className="opacity-60" />
-                          <line x1="20%" y1="50%" x2="50%" y2="75%" stroke="#6366f1" strokeWidth="2" strokeDasharray="3,3" className="opacity-60" />
-                          <line x1="50%" y1="25%" x2="80%" y2="50%" stroke="#4f46e5" strokeWidth="2" className="opacity-80" />
-                          <line x1="50%" y1="75%" x2="80%" y2="50%" stroke="#4f46e5" strokeWidth="2" className="opacity-80" />
-                        </svg>
-                        
-                        <div className="absolute left-[10%] top-[40%] bg-violet-600/30 text-violet-300 border border-violet-500 px-3 py-1.5 rounded-lg text-xs font-black shadow-md">
-                          Core Experience
-                        </div>
-                        <div className="absolute left-[40%] top-[15%] bg-indigo-650/30 text-indigo-300 border border-indigo-500 px-3 py-1.5 rounded-lg text-xs font-black shadow-md">
-                          {skillsGraph.skills[0]?.name || skillsList[0] || "Python"}
-                        </div>
-                        <div className="absolute left-[40%] top-[65%] bg-teal-650/30 text-teal-300 border border-teal-500 px-3 py-1.5 rounded-lg text-xs font-black shadow-md">
-                          {skillsGraph.skills[1]?.name || skillsList[1] || "Database"}
-                        </div>
-                        <div className="absolute right-[10%] top-[40%] bg-blue-650/30 text-blue-300 border border-blue-500 px-3 py-1.5 rounded-lg text-xs font-black shadow-md">
-                          Fullstack OS
-                        </div>
+                  return (
+                    <div key={category.key} className="space-y-3">
+                      <div>
+                        <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                          {category.title}
+                        </h4>
+                        <p className="text-[10px] text-slate-500 font-medium mt-0.5">{category.desc}</p>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {skillsGraph.skills.map((skill: any, idx: number) => {
-                          const name = typeof skill === "string" ? skill : skill.name;
-                          const score = typeof skill === "string" ? (85 - idx * 5) : (skill.confidence || 80);
+                      <div className="space-y-3">
+                        {categoryRoles.map((r: any, idx: number) => {
+                          const matchedSkills = getMatchedSkillsForRole(r.role, skillsList);
                           return (
-                            <div key={idx} className="p-3.5 rounded-xl bg-slate-900 border border-slate-850 space-y-2">
-                              <div className="flex justify-between items-center text-xs font-bold">
-                                <span className="text-slate-200">{name}</span>
-                                <span className="text-violet-400">{score}% Confidence</span>
+                            <div key={idx} className="p-4 rounded-2xl bg-slate-950/40 border border-slate-850 flex flex-col md:flex-row justify-between md:items-center gap-4 transition-all hover:border-slate-800 hover:bg-slate-900/40">
+                              <div className="space-y-1">
+                                <h5 className="text-sm font-black text-slate-100">{r.role}</h5>
+                                {matchedSkills.length > 0 && (
+                                  <div className="text-xs text-slate-400">
+                                    <span className="font-semibold text-slate-500">Matched Skills: </span>
+                                    <span className="font-medium">{matchedSkills.join(" • ")}</span>
+                                  </div>
+                                )}
                               </div>
-                              <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
-                                <div className="bg-gradient-to-r from-violet-500 to-indigo-500 h-full" style={{ width: `${score}%` }} />
+                              <div className="shrink-0">
+                                <Link href="/candidate/job-agent">
+                                  <Button size="sm" className="bg-violet-650 hover:bg-violet-750 text-white border border-violet-600/30 text-xs font-bold py-1.5 px-4 rounded-xl transition-all shadow-md">
+                                    View Jobs
+                                  </Button>
+                                </Link>
                               </div>
                             </div>
                           );
                         })}
                       </div>
                     </div>
-                  ) : (
-                    <div className="text-center space-y-2">
-                      <Code size={36} className="text-slate-600 mx-auto" />
-                      <p className="text-xs text-slate-500 font-semibold">No structured skills graph found. Upload your resume to map taxonomy.</p>
-                    </div>
-                  )}
-                </div>
-              </Card>
-            )}
+                  );
+                })}
 
-            {/* ROLE INTELLIGENCE TAB */}
-            {activeTab === "roles" && (
-              <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-6">
-                <div className="flex items-center gap-3 border-b border-slate-850 pb-4">
-                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-500/20">
-                    <Compass size={20} />
+                {/* If all categories empty */}
+                {(!roles || Object.values(roles).every((arr: any) => !arr || arr.length === 0)) && (
+                  <div className="text-center py-8 border border-dashed border-slate-800 rounded-2xl space-y-2">
+                    <Compass size={36} className="text-slate-600 mx-auto" />
+                    <p className="text-xs text-slate-550 font-semibold">No career path recommendations available. Upload resume to discover paths.</p>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-black text-white">Role Discovery Engine</h3>
-                    <p className="text-xs text-slate-400">AI generated roles matching your Career DNA.</p>
-                  </div>
-                </div>
+                )}
+              </div>
+            </Card>
 
-                <div className="space-y-6">
+            {/* Resume Summary */}
+            <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-6">
+              <div className="flex items-center gap-2.5 border-b border-slate-850 pb-4">
+                <div className="w-9 h-9 rounded-xl bg-violet-600/10 text-violet-400 flex items-center justify-center shrink-0 border border-violet-650/20 shadow-sm">
+                  <FileText size={18} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-white">Resume Summary</h3>
+                  <p className="text-xs text-slate-400">Extracted professional highlights and structural metric counts.</p>
+                </div>
+              </div>
+
+              {profile?.personal_info?.summary && (
+                <div className="space-y-2">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Overview</span>
+                  <p className="text-xs text-slate-300 leading-relaxed font-medium bg-slate-950/40 p-4 rounded-xl border border-slate-850 whitespace-pre-wrap">
+                    {profile.personal_info.summary}
+                  </p>
+                </div>
+              )}
+
+              {/* Stats Count Breakdown Row */}
+              <div className="space-y-3">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Extracted Component Counts</span>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                   {[
-                    { title: "Core Focus Roles", key: "core", desc: "Highest match confidence based on direct experiences." },
-                    { title: "Related Roles", key: "related", desc: "Strong match based on transferable engineering skills." },
-                    { title: "Adjacent / Future Roles", key: "adjacent", desc: "Long-term career pathway suggestions." }
-                  ].map((group) => {
-                    const groupRoles = roles?.[group.key] || [];
+                    { label: "Skills", count: skillsList.length, icon: Code },
+                    { label: "Experience", count: editForm.experienceList.length || 0, icon: Briefcase },
+                    { label: "Education", count: editForm.educationList.length || 0, icon: GraduationCap },
+                    { label: "Projects", count: editForm.projectList.length || 0, icon: Folder },
+                    { label: "Certifications", count: editForm.certifications ? editForm.certifications.split(',').filter((s: string) => s.trim().length > 0).length : 0, icon: Award }
+                  ].map((stat, idx) => {
+                    const Icon = stat.icon;
                     return (
-                      <div key={group.key} className="space-y-3">
-                        <div>
-                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">{group.title}</h4>
-                          <p className="text-[10px] text-slate-500 mt-0.5">{group.desc}</p>
+                      <div key={idx} className="p-3.5 rounded-xl border border-slate-850 bg-slate-950/30 flex flex-col items-center justify-center text-center space-y-1.5 transition-all hover:bg-slate-900/30">
+                        <div className="w-8 h-8 rounded-lg bg-violet-500/10 border border-violet-550/15 text-violet-400 flex items-center justify-center">
+                          <Icon size={14} />
                         </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {groupRoles.length > 0 ? (
-                            groupRoles.map((r: any, idx: number) => (
-                              <div key={idx} className="p-3.5 rounded-xl bg-slate-950/40 border border-slate-850 flex items-center justify-between gap-4">
-                                <span className="text-xs font-bold text-slate-205">{r.role}</span>
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <span className="text-[10px] font-bold text-violet-400">{r.confidence}% Match</span>
-                                  <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center border border-violet-550/20">
-                                    <TrendingUp size={12} className="text-violet-400" />
-                                  </div>
-                                </div>
-                              </div>
-                            ))
-                          ) : (
-                            <div className="col-span-2 p-4 text-center rounded-xl border border-dashed border-slate-800 text-[11px] text-slate-500 font-medium">
-                              No roles discovered in this category.
-                            </div>
-                          )}
+                        <div>
+                          <span className="text-lg font-black text-slate-100 block">{stat.count}</span>
+                          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wide block mt-0.5">{stat.label}</span>
                         </div>
                       </div>
                     );
                   })}
                 </div>
-              </Card>
-            )}
-
-            {/* CAREER PATHS TAB */}
-            {activeTab === "paths" && (
-              <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-6">
-                <div className="flex items-center gap-3 border-b border-slate-850 pb-4">
-                  <div className="w-10 h-10 rounded-2xl bg-violet-500/10 text-violet-400 flex items-center justify-center shrink-0 border border-violet-500/20">
-                    <Route size={20} />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-black text-white">Career Path Progression</h3>
-                    <p className="text-xs text-slate-400">AI generated career roadmaps and promotion milestones.</p>
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  {careerPaths && careerPaths.length > 0 ? (
-                    careerPaths.map((path, idx) => (
-                      <div key={idx} className="p-5 rounded-2xl border border-slate-850 bg-slate-950/20 space-y-4">
-                        <div className="flex items-center justify-between gap-4">
-                          <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">{path.path_name} Roadmap</h4>
-                          <Badge className="bg-indigo-500/20 text-indigo-400 border border-indigo-850/40 text-[9px] font-black uppercase">Suggested Path</Badge>
-                        </div>
-
-                        <div className="relative border-l border-slate-800 ml-2.5 pl-6 space-y-6 py-2">
-                          {path.steps?.map((step: string, sIdx: number) => (
-                            <div key={sIdx} className="relative">
-                              <span className="absolute left-[-29px] top-1 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-violet-500 border border-violet-500 shadow-sm" />
-                              <div className="space-y-1">
-                                <h5 className="text-xs font-bold text-slate-202">{step}</h5>
-                                <p className="text-[10px] text-slate-500 font-semibold">
-                                  Milestone: {path.milestones?.[sIdx] || "Acquire leadership duties and scale service frameworks"}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-10 space-y-2 border border-dashed border-slate-800 rounded-2xl">
-                      <Route size={36} className="text-slate-600 mx-auto" />
-                      <p className="text-xs text-slate-500 font-semibold">No career path projections loaded. Upload resume to generate.</p>
-                    </div>
-                  )}
-                </div>
-              </Card>
-            )}
-
-            {/* OPPORTUNITIES TAB */}
-            {activeTab === "opportunities" && (
-              <div className="space-y-6">
-                
-                {/* Score Dials Card */}
-                <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-6">
-                  <div className="flex items-center gap-3 border-b border-slate-850 pb-4">
-                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-500/20">
-                      <ShieldCheck size={20} />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-black text-white">Opportunity Intelligence</h3>
-                      <p className="text-xs text-slate-400">Match score matrices across government, remote, and private opportunities.</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                    {[
-                      { label: "Government", score: opportunities?.opportunity_scores?.government_score || 45, color: "stroke-amber-500", text: "text-amber-400" },
-                      { label: "Private Core", score: opportunities?.opportunity_scores?.private_score || 85, color: "stroke-violet-500", text: "text-violet-400" },
-                      { label: "Remote Fit", score: opportunities?.opportunity_scores?.remote_score || 80, color: "stroke-emerald-500", text: "text-emerald-400" },
-                      { label: "International", score: opportunities?.opportunity_scores?.international_score || 65, color: "stroke-blue-500", text: "text-blue-400" },
-                      { label: "Leadership", score: opportunities?.opportunity_scores?.leadership_potential_score || 70, color: "stroke-purple-500", text: "text-purple-400" }
-                    ].map((dial, idx) => (
-                      <div key={idx} className="flex flex-col items-center p-3 rounded-xl bg-slate-950/40 border border-slate-850/60">
-                        <div className="relative w-16 h-16 flex items-center justify-center">
-                          <svg className="w-full h-full transform -rotate-90">
-                            <circle cx="32" cy="32" r="26" fill="none" strokeWidth="4" className="text-slate-800" stroke="currentColor" />
-                            <circle cx="32" cy="32" r="26" fill="none" strokeWidth="4" strokeDasharray={2*Math.PI*26} strokeDashoffset={2*Math.PI*26 - (dial.score / 100) * (2*Math.PI*26)} strokeLinecap="round" className={dial.color} />
-                          </svg>
-                          <span className="absolute text-xs font-black text-white">{dial.score}%</span>
-                        </div>
-                        <span className="text-[10px] font-bold text-slate-400 mt-2 block">{dial.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-
-                {/* Exam Eligibility Card */}
-                <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-6">
-                  <div className="border-b border-slate-850 pb-3 flex justify-between items-center">
-                    <div>
-                      <h4 className="text-base font-black text-white">Government Exam Eligibility & Age Matrix</h4>
-                      <p className="text-[10px] text-slate-400 mt-0.5">Eligibility check matching your age, education and attempt logs.</p>
-                    </div>
-                    <Badge className="bg-amber-500/10 text-amber-400 border border-amber-850/40 text-[9px] font-bold">Government Pipeline</Badge>
-                  </div>
-
-                  <div className="space-y-4">
-                    {opportunities?.eligible_exams && opportunities.eligible_exams.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {opportunities.eligible_exams.map((exam: any, idx: number) => (
-                          <div key={idx} className="p-4 rounded-xl border border-slate-850 bg-slate-950/30 space-y-2">
-                            <div className="flex justify-between items-start">
-                              <span className="text-xs font-black text-slate-200">{exam.exam_name || exam.name || "Exam Title"}</span>
-                              <Badge className={`text-[9px] font-black px-2 py-0.5 ${
-                                String(exam.status).toLowerCase().includes("ineligible") ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                              } border`}>
-                                {exam.status || "Eligible"}
-                              </Badge>
-                            </div>
-                            <div className="space-y-1 text-[10px] text-slate-400 font-semibold">
-                              <p>Age Criteria: {exam.age_status || "Pass"}</p>
-                              <p>Edu Criteria: {exam.education_status || "Pass"}</p>
-                              <p>Remaining Attempts: {exam.attempts_left ?? "N/A"}</p>
-                              {exam.promotion_path && <p className="text-violet-400 mt-1 block">Promotion: {exam.promotion_path}</p>}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-6 text-xs text-slate-550 border border-dashed border-slate-800 rounded-xl font-semibold">
-                        No government exam eligibility calculated. Upload details to check.
-                      </div>
-                    )}
-                  </div>
-                </Card>
-
-                {/* Risks Card */}
-                <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-4">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Career Risk Analysis</span>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                    {[
-                      { label: "Demand Risk", value: opportunities?.risk_analysis?.demand_risk || "Low", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
-                      { label: "Automation Risk", value: opportunities?.risk_analysis?.automation_risk || "Low", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
-                      { label: "Market Competition", value: opportunities?.risk_analysis?.market_competition || "High", color: "text-red-400 bg-red-500/10 border-red-500/20" },
-                      { label: "Future Growth", value: opportunities?.risk_analysis?.future_growth || "High", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
-                      { label: "Salary Stability", value: opportunities?.risk_analysis?.salary_growth || "Stable", color: "text-violet-400 bg-violet-500/10 border-violet-500/20" }
-                    ].map((risk, idx) => (
-                      <div key={idx} className="p-3 rounded-lg border border-slate-850 bg-slate-950/20 text-center space-y-1">
-                        <span className="text-[9px] font-bold text-slate-400 block">{risk.label}</span>
-                        <Badge className={`text-[10px] font-black border ${risk.color} mt-1`}>{risk.value}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-
-                {/* Top Opportunities Table */}
-                <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-4">
-                  <div className="border-b border-slate-850 pb-3">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Top 100 Ranked Match Career Tracks</span>
-                  </div>
-
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs font-semibold">
-                      <thead>
-                        <tr className="border-b border-slate-850 text-slate-400 text-[10px] uppercase">
-                          <th className="py-2.5 font-bold">Role/Exam Track</th>
-                          <th className="py-2.5 font-bold">Category</th>
-                          <th className="py-2.5 font-bold text-center">Confidence</th>
-                          <th className="py-2.5 font-bold text-center">Growth</th>
-                          <th className="py-2.5 font-bold text-right">Potential Pay</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {opportunities?.top_opportunities && opportunities.top_opportunities.length > 0 ? (
-                          opportunities.top_opportunities.map((opp: any, idx: number) => (
-                            <tr key={idx} className="border-b border-slate-850/60 hover:bg-slate-900/40 text-slate-300">
-                              <td className="py-3 font-bold text-slate-200">{opp.role_title}</td>
-                              <td className="py-3 text-[10px] font-bold text-slate-400">{opp.category}</td>
-                              <td className="py-3 text-center text-violet-400 font-black">{opp.confidence_score}%</td>
-                              <td className="py-3 text-center text-emerald-400 font-black">{opp.growth_score}%</td>
-                              <td className="py-3 text-right font-black text-slate-200">{opp.salary_potential || "N/A"}</td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr>
-                            <td colSpan={5} className="py-6 text-center text-slate-500 italic font-semibold">No opportunity careers matching.</td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </Card>
               </div>
-            )}
-
-            {/* IMPROVEMENTS TAB */}
-            {activeTab === "improvements" && (
-              <div className="space-y-6">
-                <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-6">
-                  <div className="flex items-center gap-3 border-b border-slate-850 pb-4">
-                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-500/20">
-                      <FileCheck size={20} />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-black text-white">ATS Improvements & Scores</h3>
-                      <p className="text-xs text-slate-400">Score metrics checking for grammar, keyword matches, achievements and layout formats.</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    {[
-                      { label: "Overall ATS", score: improvements?.ats_score || 70, color: "text-violet-400" },
-                      { label: "Grammar & Spelling", score: improvements?.formatting_score || 75, color: "text-indigo-400" },
-                      { label: "Content Quality", score: improvements?.content_score || 68, color: "text-blue-400" },
-                      { label: "Keyword Matching", score: improvements?.keyword_score || 70, color: "text-teal-400" }
-                    ].map((s, idx) => (
-                      <div key={idx} className="p-4 rounded-xl border border-slate-850 bg-slate-950/20 text-center space-y-2">
-                        <span className="text-[10px] font-bold text-slate-400 block">{s.label}</span>
-                        <span className={`text-2xl font-black block ${s.color}`}>{s.score}<span className="text-xs text-slate-500">/100</span></span>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-
-                <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-4">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">AI Resume Improvement Suggestions</span>
-                  <div className="space-y-3">
-                    {improvements?.improvement_suggestions && improvements.improvement_suggestions.length > 0 ? (
-                      improvements.improvement_suggestions.map((suggestion: string, idx: number) => (
-                        <div key={idx} className="flex gap-2.5 items-start p-3.5 rounded-xl border border-slate-850 bg-slate-950/30 text-xs font-semibold text-slate-300">
-                          <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
-                          <span className="leading-relaxed">{suggestion}</span>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-xs text-slate-500 italic">No recommendations calculated.</p>
-                    )}
-                  </div>
-                </Card>
-
-                <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-6 shadow-xl space-y-4">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Quantitative Achievement Rewrites (Before vs After)</span>
-                  <div className="space-y-4">
-                    {improvements?.achievement_suggestions && improvements.achievement_suggestions.length > 0 ? (
-                      improvements.achievement_suggestions.map((sugg: any, idx: number) => (
-                        <div key={idx} className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-slate-850/60 pb-4 last:border-b-0 last:pb-0">
-                          <div className="p-3.5 rounded-xl bg-red-500/5 border border-red-500/10 space-y-1">
-                            <span className="text-[9px] font-black text-red-400 uppercase tracking-wider">Before (Vague description)</span>
-                            <p className="text-xs text-slate-400 font-medium italic">"{sugg.before || sugg.original || sugg}"</p>
-                          </div>
-                          <div className="p-3.5 rounded-xl bg-emerald-500/5 border border-emerald-500/10 space-y-1">
-                            <span className="text-[9px] font-black text-emerald-400 uppercase tracking-wider">Suggested AI Rewrite (Impact-driven)</span>
-                            <p className="text-xs text-slate-200 font-semibold">"{sugg.after || sugg.rewritten || sugg}"</p>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-xs text-slate-500 italic">No specific achievements suggestions computed.</p>
-                    )}
-                  </div>
-                </Card>
-              </div>
-            )}
+            </Card>
 
           </div>
 
-          {/* Column 4: Right Sidebar (1 col) */}
+          {/* Right Column: Spans 1 col on desktop */}
           <div className="lg:col-span-1 space-y-6">
             
             {/* AI Insights Card */}
             <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-5 shadow-xl space-y-4">
               <div className="flex items-center justify-between border-b border-slate-850 pb-3">
-                <h3 className="text-sm font-black text-white">AI Career Insights</h3>
+                <h3 className="text-sm font-black text-white">AI Insights</h3>
               </div>
 
               <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-teal-500/10 text-teal-400 flex items-center justify-center shrink-0 border border-teal-550/20">
-                    <Code size={14} />
-                  </div>
-                  <div>
-                    <span className="text-[9px] font-bold text-slate-500 block">Strongest Competency</span>
-                    <span className="text-xs font-black text-slate-200 mt-0.5 block truncate">{strongestSkill}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0 border border-amber-550/20">
-                    <TrendingUp size={14} />
-                  </div>
-                  <div>
-                    <span className="text-[9px] font-bold text-slate-500 block">Top Improvement Area</span>
-                    <span className="text-xs font-black text-slate-200 mt-0.5 block line-clamp-2 leading-tight">{improvementArea}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center shrink-0 border border-purple-550/20">
-                    <ShieldCheck size={14} />
-                  </div>
-                  <div>
-                    <span className="text-[9px] font-bold text-slate-500 block">Profile Strength Score</span>
-                    <span className="text-xs font-black text-slate-200 mt-0.5 block">{profileStrength}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 border border-blue-550/20">
-                    <FileText size={14} />
-                  </div>
-                  <div>
-                    <span className="text-[9px] font-bold text-slate-500 block">Next Action Step</span>
-                    <span className="text-xs font-black text-slate-200 mt-0.5 block leading-tight">{recommendedStep}</span>
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            {/* AI Quality Score Card */}
-            <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-5 shadow-xl space-y-6">
-              <div className="flex items-center justify-between border-b border-slate-850 pb-3">
-                <h3 className="text-sm font-black text-white">ATS Quality Rating</h3>
-                <button 
-                  onClick={runAIAnalysis}
-                  disabled={analysisLoading}
-                  className="text-xs font-bold text-violet-400 hover:text-violet-300 hover:underline cursor-pointer disabled:opacity-50"
-                >
-                  {analysisLoading ? "Running..." : "Analyze"}
-                </button>
-              </div>
-
-              <div className="flex items-center gap-6 justify-between">
-                <div className="flex flex-col items-center shrink-0">
-                  <div className="relative flex items-center justify-center">
-                    <svg width="74" height="74" className="transform -rotate-90">
-                      <circle cx="37" cy="37" r="32" fill="none" strokeWidth="4" className="text-slate-800" stroke="currentColor" />
-                      <circle cx="37" cy="37" r="32" fill="none" strokeWidth="4" strokeDasharray={2 * Math.PI * 32} strokeDashoffset={2 * Math.PI * 32 - (aiQualityScore * 10 / 100) * (2 * Math.PI * 32)} strokeLinecap="round" stroke="#8b5cf6" className="transition-all duration-700 ease-out" />
-                    </svg>
-                    <div className="absolute flex flex-col items-center">
-                      <span className="text-base font-black text-white">{aiQualityScore}</span>
-                      <span className="text-[8px] font-bold text-slate-500">/10</span>
-                    </div>
-                  </div>
-                  <span className="text-[9px] font-bold text-violet-400 mt-2 uppercase tracking-wide">
-                    {skillsList.length === 0 ? "N/A" : (aiQualityScore >= 8 ? "Excellent" : (aiQualityScore >= 6 ? "Good" : "Needs Work"))}
+                <div className="space-y-1 bg-slate-950/30 border border-slate-850/50 p-3 rounded-xl">
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Best Career Match</span>
+                  <span className="text-sm font-black text-slate-150 block truncate">
+                    {roles?.core?.[0]?.role || profile?.current_role || "AI Engineer"}
                   </span>
                 </div>
 
-                <div className="flex-1 space-y-1.5 text-[10px] font-bold text-slate-400 min-w-0">
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold text-slate-500">Grammar</span>
-                    <span>{skillsList.length === 0 ? 0 : aiQualityBreakdown.grammar}/10</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold text-slate-500">Format</span>
-                    <span>{skillsList.length === 0 ? 0 : aiQualityBreakdown.formatting}/10</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold text-slate-500">Readability</span>
-                    <span>{skillsList.length === 0 ? 0 : aiQualityBreakdown.readability}/10</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold text-slate-500">Structure</span>
-                    <span>{skillsList.length === 0 ? 0 : aiQualityBreakdown.structure}/10</span>
-                  </div>
+                <div className="space-y-1 bg-slate-950/30 border border-slate-850/50 p-3 rounded-xl">
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Top Missing Skill</span>
+                  <span className="text-sm font-black text-slate-150 block truncate">
+                    {skillGaps?.missing_skills?.[0] || "AWS"}
+                  </span>
+                </div>
+
+                <div className="space-y-2 bg-slate-950/30 border border-slate-850/50 p-3 rounded-xl">
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Next Step</span>
+                  <Link href="/candidate/job-agent" className="flex items-center justify-between group cursor-pointer">
+                    <span className="text-xs font-bold text-violet-400 group-hover:text-violet-300 transition-colors">
+                      Open AI Job Agent
+                    </span>
+                    <ChevronRight size={14} className="text-violet-400 group-hover:translate-x-1 transition-transform" />
+                  </Link>
                 </div>
               </div>
-
-              <button 
-                onClick={handleImproveWithAI}
-                className="w-full py-2 rounded-xl border border-violet-800 bg-violet-950/20 text-violet-300 hover:bg-violet-950/40 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
-              >
-                <Sparkles size={12} className="animate-pulse" />
-                <span>Improve with AI</span>
-              </button>
             </Card>
 
-            {/* Resume Versions Card */}
+            {/* Career Opportunities Card */}
             <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-5 shadow-xl space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-850 pb-3">
-                <h3 className="text-sm font-black text-white">Versions History</h3>
+              <div className="border-b border-slate-850 pb-3">
+                <h3 className="text-sm font-black text-white">Career Opportunities</h3>
               </div>
 
-              <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1 scrollbar-thin">
-                {resumeVersions.map((ver, idx) => (
-                  <div key={idx} className="p-2.5 rounded-xl border border-slate-850 bg-slate-950/30 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-7 h-7 rounded bg-slate-900 border border-slate-800 text-slate-400 flex items-center justify-center shrink-0">
-                        <FileText size={14} />
-                      </div>
-                      <div className="min-w-0">
-                        <span className="text-[11px] font-bold text-slate-200 flex items-center gap-1 truncate">
-                          {ver.version}
-                          {ver.isLatest && (
-                            <span className="text-[8px] font-bold px-1 bg-violet-500/20 text-violet-400 rounded border border-violet-850/40 shrink-0">
-                              Active
-                            </span>
-                          )}
+              <div className="space-y-3">
+                {[
+                  { label: "Private Jobs", score: opportunities?.opportunity_scores?.private_score || 85 },
+                  { label: "Remote Jobs", score: opportunities?.opportunity_scores?.remote_score || 80 },
+                  { label: "International", score: opportunities?.opportunity_scores?.international_score || 65 },
+                  { label: "Government", score: opportunities?.opportunity_scores?.government_score || 45 }
+                ].map((opp, idx) => {
+                  let indicator = "🟢";
+                  if (opp.score < 50) indicator = "🔴";
+                  else if (opp.score < 80) indicator = "🟡";
+
+                  return (
+                    <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl border border-slate-850/60 bg-slate-955/20 transition-all hover:bg-slate-950/40">
+                      <span className="text-xs font-bold text-slate-200">{opp.label}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs">{indicator}</span>
+                        <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
+                          {opp.score >= 80 ? "High" : opp.score >= 50 ? "Medium" : "Low"}
                         </span>
-                        <span className="text-[8px] text-slate-500 font-semibold block mt-0.5">{ver.date}</span>
                       </div>
                     </div>
+                  );
+                })}
+              </div>
+            </Card>
 
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button 
-                        onClick={() => handlePreviewResume(ver.url)}
-                        className="p-1 rounded bg-slate-900 border border-slate-800 text-slate-450 hover:text-slate-200 cursor-pointer"
-                        title="Preview"
-                      >
-                        <Eye size={11} />
-                      </button>
-                      <button 
-                        onClick={() => handleDownloadResumeUrl(ver.url, ver.version)}
-                        className="p-1 rounded bg-slate-900 border border-slate-800 text-slate-450 hover:text-slate-200 cursor-pointer"
-                        title="Download"
-                      >
-                        <Download size={11} />
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteResumeVersion(ver.id)}
-                        className="p-1 rounded bg-slate-900 border border-slate-800 text-slate-455 hover:text-red-400 cursor-pointer"
-                        title="Delete"
-                      >
-                        <Trash2 size={11} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-
-                {resumeVersions.length === 0 && (
-                  <div className="text-center py-6 text-xs text-slate-555 italic font-semibold">
-                    No versions.
-                  </div>
-                )}
+            {/* Top Skills Card */}
+            <Card className="bg-slate-900/60 backdrop-blur-md border-slate-850 p-5 shadow-xl space-y-4">
+              <div className="border-b border-slate-850 pb-3">
+                <h3 className="text-sm font-black text-white">Top Skills</h3>
               </div>
 
-              <div className="flex flex-col gap-2 w-full pt-1">
-                <button 
-                  onClick={triggerUpload}
-                  disabled={uploading}
-                  className="w-full py-2.5 rounded-xl border border-slate-800 hover:bg-slate-800 text-slate-300 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50"
-                >
-                  {uploading ? (
-                    <>
-                      <Loader2 size={12} className="animate-spin" />
-                      <span>Uploading...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Upload size={12} />
-                      <span>Upload New Version</span>
-                    </>
-                  )}
-                </button>
-                <label className="flex items-center gap-1.5 text-[9px] select-none cursor-pointer mt-0.5 justify-center bg-slate-900/40 border border-slate-850 rounded-lg py-1 px-2.5 hover:bg-slate-800/40 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={fastMode}
-                    onChange={(e) => setFastMode(e.target.checked)}
-                    className="rounded border-slate-700 bg-slate-900 text-violet-600 focus:ring-violet-500 h-3 w-3"
-                  />
-                  <span className="font-semibold text-slate-400">⚡ Instant Ingestion (Milliseconds)</span>
-                </label>
+              <div className="flex flex-wrap gap-1.5">
+                {skillsList.slice(0, 12).map((skill: string, idx: number) => (
+                  <span key={idx} className="text-[10px] font-bold px-2.5 py-1.5 rounded-xl bg-slate-955/80 border border-slate-850 hover:border-slate-700 hover:text-white transition-all text-slate-300">
+                    {skill}
+                  </span>
+                ))}
+                {skillsList.length === 0 && (
+                  <span className="text-xs text-slate-550 italic font-semibold">No skills extracted.</span>
+                )}
               </div>
             </Card>
 

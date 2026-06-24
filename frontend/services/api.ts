@@ -197,8 +197,11 @@ export const apiService = {
     return res.json();
   },
 
-  async analyzeResume() {
-    const res = await customFetch(`${getBaseUrl()}/candidates/resume/analyze`, {
+  async analyzeResume(force?: boolean) {
+    const url = force 
+      ? `${getBaseUrl()}/candidates/resume/analyze?force=true`
+      : `${getBaseUrl()}/candidates/resume/analyze`;
+    const res = await customFetch(url, {
       method: "POST",
       headers: getHeaders(),
     });

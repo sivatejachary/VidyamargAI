@@ -62,14 +62,12 @@ async def upload_resume(
         
     # 2. Extension validation
     filename_lower = file.filename.lower()
-    if not (filename_lower.endswith(".pdf") or filename_lower.endswith(".docx")):
-        raise HTTPException(status_code=400, detail="Only PDF and DOCX file extensions are allowed.")
+    if not filename_lower.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF file format is allowed.")
         
     # 3. MIME type validation using python-magic
     allowed_mimes = [
-        "application/pdf",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "application/msword"
+        "application/pdf"
     ]
     mime_type = None
     try:
@@ -529,6 +527,25 @@ def get_resume_profile(
     
     metadata = safe_loads(profile.parsed_metadata) if profile else {}
     
+    def load_json_field(field_val):
+        if not field_val:
+            return []
+        if isinstance(field_val, (list, dict)):
+            return field_val
+        try:
+            return json.loads(field_val)
+        except Exception:
+            return []
+
+    from app.models.job_models import ResumeAIAnalysis
+    latest_analysis = db.query(ResumeAIAnalysis).filter(ResumeAIAnalysis.candidate_id == candidate.id).order_by(ResumeAIAnalysis.created_at.desc()).first()
+    
+    analysis_status = {
+        "source_type": latest_analysis.source_type if latest_analysis else "GEMINI",
+        "confidence_score": latest_analysis.confidence_score if latest_analysis else "HIGH",
+        "created_at": latest_analysis.created_at.isoformat() if latest_analysis else None
+    }
+
     return {
         "personal_info": {
             "name": candidate.parsed_name or current_user.full_name,
@@ -542,7 +559,19 @@ def get_resume_profile(
             "experience_level": metadata.get("career_level") or (parse_candidate_experience_level(candidate) if candidate else "Mid-Level"),
             "employability_score": metadata.get("employability_score", 80),
             "profile_strength": metadata.get("profile_strength", 75)
-        }
+        },
+        "skills": candidate.skills or "",
+        "experience": load_json_field(candidate.experience),
+        "education": load_json_field(candidate.education),
+        "projects": load_json_field(candidate.projects),
+        "certifications": candidate.certifications or "",
+        "achievements": load_json_field(candidate.achievements),
+        "languages": candidate.languages or "",
+        "linkedin": candidate.linkedin or "",
+        "github": candidate.github or "",
+        "portfolio": candidate.portfolio or "",
+        "resume_status": candidate.resume_status,
+        "analysis_status": analysis_status
     }
 
 

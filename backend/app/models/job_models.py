@@ -783,3 +783,16 @@ class CareerEligibilityMatrix(Base):
     risk_analysis = Column(JSON, default=dict)  # demand_risk, automation_risk, competition, future_demand, salary_growth
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class ResumeAIAnalysis(Base):
+    """Stores full history of resume intelligence runs for a candidate, including source type and confidence."""
+    __tablename__ = "resume_ai_analysis"
+
+    id = Column(Integer, primary_key=True, index=True)
+    candidate_id = Column(Integer, ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, index=True)
+    source_type = Column(String(50), nullable=False)  # GEMINI, FALLBACK
+    raw_response = Column(Text, nullable=True)
+    parsed_json = Column(JSON, nullable=True)
+    confidence_score = Column(String(50), nullable=False)  # HIGH, MEDIUM
+    created_at = Column(DateTime, default=datetime.utcnow)
