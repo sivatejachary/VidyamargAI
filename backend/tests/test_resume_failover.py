@@ -195,3 +195,44 @@ def test_get_resume_profile_endpoint(db_session):
         app.dependency_overrides.pop(get_db, None)
         app.dependency_overrides.pop(get_current_user, None)
 
+
+def test_all_resume_endpoints(db_session):
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.core.database import get_db
+    from app.api.routers.auth import get_current_user
+    
+    # Find candidate and user
+    candidate = db_session.query(Candidate).first()
+    user = db_session.query(User).filter(User.id == candidate.user_id).first()
+    
+    # Override dependencies
+    app.dependency_overrides[get_db] = lambda: db_session
+    app.dependency_overrides[get_current_user] = lambda: user
+    
+    client = TestClient(app)
+    
+    try:
+        endpoints = [
+            "/api/v1/resume/career-dna",
+            "/api/v1/resume/skills",
+            "/api/v1/resume/roles",
+            "/api/v1/resume/career-paths",
+            "/api/v1/resume/skill-gaps",
+            "/api/v1/resume/opportunities",
+            "/api/v1/resume/market-intelligence",
+            "/api/v1/resume/improvements",
+        ]
+        
+        for ep in endpoints:
+            response = client.get(ep)
+            assert response.status_code == 200, f"Failed on endpoint {ep} with status {response.status_code}: {response.text}"
+            
+        post_response = client.post("/api/v1/resume/create-agent")
+        assert post_response.status_code == 200, f"Failed on create-agent POST with status {post_response.status_code}: {post_response.text}"
+        
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_current_user, None)
+
+

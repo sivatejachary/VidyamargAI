@@ -14,7 +14,19 @@ from app.core.config import settings
 from app.core.security import get_current_user, get_current_admin
 from app.schemas import schemas
 from app.models.models import *
-from app.models.job_models import CareerEligibilityMatrix, CareerOpportunity, ResumeAIAnalysis
+from app.models.job_models import (
+    CareerEligibilityMatrix,
+    CareerOpportunity,
+    ResumeAIAnalysis,
+    CandidateCareerDNA,
+    CandidateSkillGraph,
+    CareerPath,
+    SkillGapAnalysis,
+    MarketIntelligence,
+    CandidateAgent,
+    CandidateAgentPreferences,
+    ResumeImprovement
+)
 
 from app.api.helpers import *
 from app.api.helpers import _check_resume_upload_rate_limit, _RESUME_UPLOAD_TIMESTAMPS
