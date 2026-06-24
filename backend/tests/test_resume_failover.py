@@ -132,3 +132,66 @@ async def test_agent_failover_to_fallback(
     # Clean up the analysis log
     db_session.delete(analysis_rec)
     db_session.commit()
+
+
+def test_get_resume_profile_endpoint(db_session):
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.core.database import get_db
+    from app.api.routers.auth import get_current_user
+    
+    # Find candidate and user
+    candidate = db_session.query(Candidate).first()
+    user = db_session.query(User).filter(User.id == candidate.user_id).first()
+    
+    # Override dependencies
+    app.dependency_overrides[get_db] = lambda: db_session
+    app.dependency_overrides[get_current_user] = lambda: user
+    
+    client = TestClient(app)
+    
+    try:
+        # 1. Test when there is no ResumeAIAnalysis at all
+        response = client.get("/api/v1/resume/profile")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["analysis_status"]["created_at"] is None
+        assert data["analysis_status"]["source_type"] == "GEMINI"
+        
+        # 2. Test when ResumeAIAnalysis exists but created_at is None
+        analysis = ResumeAIAnalysis(
+            candidate_id=candidate.id,
+            source_type="FALLBACK",
+            confidence_score="MEDIUM",
+            raw_response="{}",
+            parsed_json={}
+        )
+        db_session.add(analysis)
+        db_session.commit()
+        
+        # Force created_at to None to test the null-handling code path
+        db_session.query(ResumeAIAnalysis).filter(ResumeAIAnalysis.id == analysis.id).update({"created_at": None})
+        db_session.commit()
+        db_session.refresh(analysis)
+        
+        response = client.get("/api/v1/resume/profile")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["analysis_status"]["created_at"] is None
+        assert data["analysis_status"]["source_type"] == "FALLBACK"
+        
+        # 3. Test when ResumeAIAnalysis exists and created_at is set
+        from datetime import datetime
+        analysis.created_at = datetime(2026, 6, 24, 12, 0, 0)
+        db_session.commit()
+        
+        response = client.get("/api/v1/resume/profile")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["analysis_status"]["created_at"] == "2026-06-24T12:00:00"
+        assert data["analysis_status"]["source_type"] == "FALLBACK"
+        
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_current_user, None)
+

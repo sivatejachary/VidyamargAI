@@ -14,6 +14,7 @@ from app.core.config import settings
 from app.core.security import get_current_user, get_current_admin
 from app.schemas import schemas
 from app.models.models import *
+from app.models.job_models import CareerEligibilityMatrix, CareerOpportunity, ResumeAIAnalysis
 
 from app.api.helpers import *
 from app.api.helpers import _check_resume_upload_rate_limit, _RESUME_UPLOAD_TIMESTAMPS
@@ -97,7 +98,7 @@ def get_candidate_resume(current_user: User = Depends(get_current_user), db: Ses
     resume = db.query(CandidateResume).filter(CandidateResume.candidate_id == candidate.id).order_by(CandidateResume.uploaded_at.desc()).first()
     if not resume:
         raise HTTPException(status_code=404, detail="No resume found")
-    return {"id": resume.id, "resume_url": resume.resume_url, "uploaded_at": resume.uploaded_at.isoformat()}
+    return {"id": resume.id, "resume_url": resume.resume_url, "uploaded_at": resume.uploaded_at.isoformat() if resume.uploaded_at else None}
 
 @router.get("/candidates/resumes")
 def get_candidate_resumes(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -105,7 +106,7 @@ def get_candidate_resumes(current_user: User = Depends(get_current_user), db: Se
     if not candidate:
         return []
     resumes = db.query(CandidateResume).filter(CandidateResume.candidate_id == candidate.id).order_by(CandidateResume.uploaded_at.desc()).all()
-    return [{"id": r.id, "resume_url": r.resume_url, "uploaded_at": r.uploaded_at.isoformat()} for r in resumes]
+    return [{"id": r.id, "resume_url": r.resume_url, "uploaded_at": r.uploaded_at.isoformat() if r.uploaded_at else None} for r in resumes]
 
 @router.delete("/candidates/resume/{resume_id}")
 def delete_candidate_resume(resume_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -537,13 +538,12 @@ def get_resume_profile(
         except Exception:
             return []
 
-    from app.models.job_models import ResumeAIAnalysis
     latest_analysis = db.query(ResumeAIAnalysis).filter(ResumeAIAnalysis.candidate_id == candidate.id).order_by(ResumeAIAnalysis.created_at.desc()).first()
     
     analysis_status = {
         "source_type": latest_analysis.source_type if latest_analysis else "GEMINI",
         "confidence_score": latest_analysis.confidence_score if latest_analysis else "HIGH",
-        "created_at": latest_analysis.created_at.isoformat() if latest_analysis else None
+        "created_at": latest_analysis.created_at.isoformat() if (latest_analysis and latest_analysis.created_at) else None
     }
 
     return {
