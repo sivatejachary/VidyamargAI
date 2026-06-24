@@ -103,7 +103,7 @@ def get_candidate_resume(current_user: User = Depends(get_current_user), db: Ses
 def get_candidate_resumes(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     candidate = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
     if not candidate:
-        raise HTTPException(status_code=404, detail="Candidate profile not found")
+        return []
     resumes = db.query(CandidateResume).filter(CandidateResume.candidate_id == candidate.id).order_by(CandidateResume.uploaded_at.desc()).all()
     return [{"id": r.id, "resume_url": r.resume_url, "uploaded_at": r.uploaded_at.isoformat()} for r in resumes]
 

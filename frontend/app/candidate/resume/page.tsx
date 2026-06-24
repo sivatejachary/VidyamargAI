@@ -426,6 +426,56 @@ export default function ResumeIntelligenceDashboard() {
     return candidateSkills.slice(0, 3);
   };
 
+  if (loading && !uploading) {
+    return (
+      <div className="flex-1 min-h-screen bg-slate-955 text-slate-100 p-6 md:p-8 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="animate-spin text-violet-500 mx-auto" size={40} />
+          <p className="text-sm font-semibold text-slate-400">Loading Career Intelligence Operating System...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (versions.length === 0) {
+    return (
+      <div className="flex-1 min-h-screen bg-slate-955 text-slate-100 p-6 md:p-8 flex items-center justify-center font-sans">
+        <div className="max-w-md w-full space-y-4">
+          {errorMsg && <Alert variant="error">{errorMsg}</Alert>}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleResumeUpload}
+            accept=".pdf"
+            className="hidden"
+          />
+          <EmptyState
+            title="No Resume Uploaded"
+            description="Your resume is the entry point into the Career Intelligence Operating System. Upload it to analyze skills, generate career DNA, and map opportunities."
+            icon={<FileText size={36} className="text-violet-500" />}
+            action={
+              <div className="flex flex-col items-center gap-3 w-full">
+                <Button onClick={triggerUpload} className="w-full sm:w-auto mt-4 bg-violet-650 hover:bg-violet-750 text-white">
+                  <Upload size={16} className="mr-2" />
+                  Upload Resume / CV
+                </Button>
+                <label className="flex items-center gap-2 text-xs cursor-pointer mt-2 bg-white/5 border border-white/10 rounded-lg py-1.5 px-3 hover:bg-white/10 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={fastMode}
+                    onChange={(e) => setFastMode(e.target.checked)}
+                    className="rounded border-slate-700 bg-slate-900 text-violet-600 focus:ring-violet-500"
+                  />
+                  <span className="font-medium text-slate-350">⚡ Instant Mode (milliseconds fallback)</span>
+                </label>
+              </div>
+            }
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 min-h-screen bg-slate-950 text-slate-100 p-6 md:p-8 font-sans transition-all duration-300">
       <input
