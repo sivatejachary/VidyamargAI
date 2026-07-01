@@ -17,6 +17,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { apiClient } from "@/services/api";
+import AutonomousWorkflowVisualizer from "@/components/AutonomousWorkflowVisualizer";
 import type {
   DashboardData,
   JobMatch,
@@ -1429,6 +1430,7 @@ export default function JobAgentPage() {
           </div>
         )}
       </div>
+      <AutonomousWorkflowVisualizer defaultWorkflow="job" isExecuting={runningAgent || initializing} />
     </div>
   );
 }

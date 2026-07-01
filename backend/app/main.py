@@ -591,6 +591,13 @@ async def startup_event():
     except Exception as e:
         logger.error(f"Failed to start scheduler on startup: {e}")
 
+    try:
+        from app.workers.task_worker import background_monitoring_worker
+        asyncio.create_task(background_monitoring_worker())
+        logger.info("Background task monitoring worker started on startup.")
+    except Exception as e:
+        logger.error(f"Failed to launch background task monitoring worker: {e}")
+
 
 
 @app.on_event("shutdown")

@@ -16,6 +16,7 @@ import {
   Dna, Route, Compass, FileCheck, X, ExternalLink
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import AutonomousWorkflowVisualizer from "@/components/AutonomousWorkflowVisualizer";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
@@ -1326,6 +1327,7 @@ export default function ResumeIntelligenceDashboard() {
           </div>
         </Modal>
       )}
+      <AutonomousWorkflowVisualizer defaultWorkflow="resume" isExecuting={uploading || analysisLoading} />
     </div>
   );
 }

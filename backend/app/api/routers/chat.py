@@ -206,36 +206,53 @@ async def mcp_chat(
     db.commit()
 
     # Run supervisor agent
-    result = supervisor_agent.route(
-        message=payload.message,
-        mode=payload.mode,
-        candidate_id=cand.id,
+    result = await supervisor_agent.route(
+        db=db,
         user_id=current_user.id,
-        history=history,
-        context_hint=payload.context_hint,
-        db=db
+        user_role=current_user.role,
+        session_id=session_id,
+        query=payload.message
     )
 
-    # Convert action_cards (Pydantic objects) and actions to serializable dicts
-    action_cards_data = []
-    if result.action_cards:
-        for card in result.action_cards:
-            if hasattr(card, "dict"):
-                action_cards_data.append(card.dict())
-            elif hasattr(card, "model_dump"):
-                action_cards_data.append(card.model_dump())
-            else:
-                action_cards_data.append(card)
-
-    actions_data = []
-    if hasattr(result, "actions") and result.actions:
-        for action in result.actions:
-            if hasattr(action, "dict"):
-                actions_data.append(action.dict())
-            elif hasattr(action, "model_dump"):
-                actions_data.append(action.model_dump())
-            else:
-                actions_data.append(action)
+    # Map the result to MCPChatResponse properties
+    status = result.get("status")
+    final_response = result.get("final_response")
+    clarification_question = result.get("clarification_question")
+    
+    response_text = ""
+    action_cards = []
+    haq_required = False
+    haq_item = None
+    
+    if status == "clarifying" and clarification_question:
+        haq_required = True
+        response_text = clarification_question
+        haq_item = {
+            "callback_key": session_id,
+            "action_type": "clarify",
+            "title": "Clarification Required",
+            "description": clarification_question
+        }
+    elif status == "completed":
+        response_text = "I have successfully searched and verified jobs matching your preferences."
+        
+        if isinstance(final_response, list):
+            response_text = f"I found {len(final_response)} verified job listings matching your search:\n\n"
+            for job in final_response:
+                response_text += f"- **{job['title']}** at **{job['company_name']}** ({job.get('location', 'Remote')})\n"
+                
+                action_cards.append({
+                    "type": "job",
+                    "id": job.get("id"),
+                    "title": job["title"],
+                    "subtitle": job["company_name"],
+                    "action_label": "Apply",
+                    "action_href": job.get("apply_url") or job.get("job_url") or "#"
+                })
+        else:
+            response_text = str(final_response)
+    else:
+        response_text = f"Autonomous job search failed or timed out. Steps executed: {len(result.get('steps_executed', []))}"
 
     # Save assistant's message
     assistant_msg = MCPChatMessage(
@@ -243,10 +260,11 @@ async def mcp_chat(
         session_id=session_id,
         user_id=current_user.id,
         sender="tush",
-        text=result.response,
-        actions=actions_data,
-        action_cards=action_cards_data,
-        memory_updated=result.memory_updated
+        text=response_text,
+        actions=[],
+        action_cards=action_cards,
+        interactive_card=result.get("interactive_card"),
+        memory_updated=False
     )
     db.add(assistant_msg)
 
@@ -275,6 +293,7 @@ async def mcp_chat(
                 "text": assistant_msg.text,
                 "actions": assistant_msg.actions,
                 "action_cards": assistant_msg.action_cards,
+                "interactive_card": assistant_msg.interactive_card,
                 "memory_updated": assistant_msg.memory_updated,
                 "created_at": assistant_msg.created_at.isoformat() if hasattr(assistant_msg.created_at, "isoformat") else str(assistant_msg.created_at)
             }
@@ -283,14 +302,15 @@ async def mcp_chat(
         pass
 
     return schemas.MCPChatResponse(
-        response=result.response,
-        action_cards=result.action_cards if result.action_cards else [],
-        haq_required=result.haq_required,
-        haq_item=result.haq_item,
-        memory_updated=result.memory_updated,
-        intent=result.intent,
-        agent_used=result.agent_used,
-        session_id=session_id
+        response=response_text,
+        action_cards=action_cards,
+        haq_required=haq_required,
+        haq_item=haq_item,
+        memory_updated=False,
+        intent="job_search",
+        agent_used="autonomous_job_agent",
+        session_id=session_id,
+        interactive_card=result.get("interactive_card")
     )
 
 
@@ -359,6 +379,15 @@ async def mcp_chat_stream(
     db.commit()
 
     async def sse_generator():
+        progress_queue = asyncio.Queue()
+        
+        async def _on_telemetry(data):
+            if data.get("session_id") == session_id:
+                await progress_queue.put(data.get("progress_updates", []))
+                
+        from app.services.event_bus import event_bus
+        event_bus.subscribe("telemetry", _on_telemetry)
+        
         try:
             # 1. Send session info instantly (prevents Vercel/Railway gateway timeout)
             session_payload = {
@@ -369,45 +398,73 @@ async def mcp_chat_stream(
             yield f"data: {json.dumps(session_payload)}\n\n"
             await asyncio.sleep(0.01)
 
-            # 2. Run supervisor agent (slow LLM call)
-            # Run in executor to keep event loop unblocked
-            loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(
-                None,
-                lambda: supervisor_agent.route(
-                    message=payload.message,
-                    mode=payload.mode,
-                    candidate_id=cand.id,
+            # 2. Run supervisor agent as a background task
+            agent_task = asyncio.create_task(
+                supervisor_agent.route(
+                    db=db,
                     user_id=current_user.id,
-                    history=history,
-                    context_hint=payload.context_hint,
-                    db=db
+                    user_role=current_user.role,
+                    session_id=session_id,
+                    query=payload.message
                 )
             )
+            
+            # Consume from progress_queue until agent_task is done
+            while not agent_task.done():
+                try:
+                    updates = await asyncio.wait_for(progress_queue.get(), timeout=0.5)
+                    progress_payload = {
+                        "type": "progress",
+                        "progress_updates": updates
+                    }
+                    yield f"data: {json.dumps(progress_payload)}\n\n"
+                except asyncio.TimeoutError:
+                    pass
+                    
+            result = await agent_task
 
-            # Convert action_cards (Pydantic objects) and actions to serializable dicts
-            action_cards_data = []
-            if result.action_cards:
-                for card in result.action_cards:
-                    if hasattr(card, "dict"):
-                        action_cards_data.append(card.dict())
-                    elif hasattr(card, "model_dump"):
-                        action_cards_data.append(card.model_dump())
-                    else:
-                        action_cards_data.append(card)
-
-            actions_data = []
-            if hasattr(result, "actions") and result.actions:
-                for action in result.actions:
-                    if hasattr(action, "dict"):
-                        actions_data.append(action.dict())
-                    elif hasattr(action, "model_dump"):
-                        actions_data.append(action.model_dump())
-                    else:
-                        actions_data.append(action)
+            # Map the result to MCPChatResponse properties
+            status = result.get("status")
+            final_response = result.get("final_response")
+            clarification_question = result.get("clarification_question")
+            
+            response_text = ""
+            action_cards = []
+            haq_required = False
+            haq_item = None
+            
+            if status == "clarifying" and clarification_question:
+                haq_required = True
+                response_text = clarification_question
+                haq_item = {
+                    "callback_key": session_id,
+                    "action_type": "clarify",
+                    "title": "Clarification Required",
+                    "description": clarification_question
+                }
+            elif status == "completed":
+                response_text = "I have successfully searched and verified jobs matching your preferences."
+                
+                if isinstance(final_response, list):
+                    response_text = f"I found {len(final_response)} verified job listings matching your search:\n\n"
+                    for job in final_response:
+                        response_text += f"- **{job['title']}** at **{job['company_name']}** ({job.get('location', 'Remote')})\n"
+                        
+                        action_cards.append({
+                            "type": "job",
+                            "id": job.get("id"),
+                            "title": job["title"],
+                            "subtitle": job["company_name"],
+                            "action_label": "Apply",
+                            "action_href": job.get("apply_url") or job.get("job_url") or "#"
+                        })
+                else:
+                    response_text = str(final_response)
+            else:
+                response_text = f"Autonomous job search failed or timed out. Steps executed: {len(result.get('steps_executed', []))}"
 
             # 3. Stream response text in chunks
-            words = result.response.split(" ")
+            words = response_text.split(" ")
             for i, word in enumerate(words):
                 chunk_text = word + (" " if i < len(words) - 1 else "")
                 content_payload = {
@@ -423,10 +480,11 @@ async def mcp_chat_stream(
                 session_id=session_id,
                 user_id=current_user.id,
                 sender="tush",
-                text=result.response,
-                actions=actions_data,
-                action_cards=action_cards_data,
-                memory_updated=result.memory_updated
+                text=response_text,
+                actions=[],
+                action_cards=action_cards,
+                interactive_card=result.get("interactive_card"),
+                memory_updated=False
             )
             db.add(assistant_msg)
             session.updated_at = datetime.utcnow()
@@ -453,6 +511,7 @@ async def mcp_chat_stream(
                         "text": assistant_msg.text,
                         "actions": assistant_msg.actions,
                         "action_cards": assistant_msg.action_cards,
+                        "interactive_card": assistant_msg.interactive_card,
                         "memory_updated": assistant_msg.memory_updated,
                         "created_at": assistant_msg.created_at.isoformat() if hasattr(assistant_msg.created_at, "isoformat") else str(assistant_msg.created_at)
                     }
@@ -463,18 +522,21 @@ async def mcp_chat_stream(
             # 6. Send done payload
             done_payload = {
                 "type": "done",
-                "action_cards": action_cards_data,
-                "haq_required": result.haq_required,
-                "haq_item": result.haq_item,
-                "memory_updated": result.memory_updated,
-                "intent": result.intent,
-                "agent_used": result.agent_used
+                "action_cards": action_cards,
+                "haq_required": haq_required,
+                "haq_item": haq_item,
+                "interactive_card": result.get("interactive_card"),
+                "memory_updated": False,
+                "intent": "job_search",
+                "agent_used": "autonomous_job_agent"
             }
             yield f"data: {json.dumps(done_payload)}\n\n"
 
         except Exception as e:
             logger.error(f"Error in sse_generator: {e}")
             yield f"data: {json.dumps({'type': 'error', 'text': f'Error: {str(e)}'})}\n\n"
+        finally:
+            event_bus.unsubscribe("telemetry", _on_telemetry)
 
     return StreamingResponse(sse_generator(), media_type="text/event-stream")
 
@@ -538,6 +600,7 @@ def get_mcp_session_messages(
         "text": m.text,
         "actions": m.actions,
         "action_cards": m.action_cards,
+        "interactive_card": m.interactive_card,
         "memory_updated": m.memory_updated,
         "created_at": m.created_at
     } for m in messages]

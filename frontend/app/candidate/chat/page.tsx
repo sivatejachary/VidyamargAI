@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import AIActionCard from "@/components/AIActionCard";
+import AutonomousWorkflowVisualizer from "@/components/AutonomousWorkflowVisualizer";
+import AIInteractiveCard from "@/components/AIInteractiveCard";
 
 interface Message {
   sender: "user" | "tush";
@@ -20,6 +22,7 @@ interface Message {
   timestamp: Date;
   actions?: { label: string; href: string }[];
   action_cards?: any[];
+  interactive_card?: any;
   memory_updated?: boolean;
 }
 
@@ -170,6 +173,7 @@ export default function TushAIChat() {
                 timestamp: m.created_at ? new Date(m.created_at) : new Date(),
                 actions: m.actions,
                 action_cards: m.action_cards,
+                interactive_card: m.interactive_card,
                 memory_updated: m.memory_updated
               }));
 
@@ -338,6 +342,7 @@ export default function TushAIChat() {
         timestamp: m.created_at ? new Date(m.created_at) : new Date(),
         actions: m.actions,
         action_cards: m.action_cards,
+        interactive_card: m.interactive_card,
         memory_updated: m.memory_updated
       }));
 
@@ -559,6 +564,16 @@ export default function TushAIChat() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
+  const handleInteractiveSubmit = async (field: string, value: any) => {
+    let textToSend = "";
+    if (Array.isArray(value)) {
+      textToSend = `${field}: ${value.join(", ")}`;
+    } else {
+      textToSend = `${value}`;
+    }
+    await handleSend(textToSend);
+  };
+
   const handleSend = async (textToSend: string) => {
     let finalQuery = textToSend;
     let messageText = textToSend;
@@ -651,6 +666,7 @@ export default function TushAIChat() {
                     ...next[assistantMsgIndex],
                     actions: data.actions,
                     action_cards: data.action_cards,
+                    interactive_card: data.interactive_card,
                     memory_updated: data.memory_updated
                   };
                 }
@@ -695,6 +711,7 @@ export default function TushAIChat() {
                 timestamp: m.created_at ? new Date(m.created_at) : new Date(),
                 actions: m.actions,
                 action_cards: m.action_cards,
+                interactive_card: m.interactive_card,
                 memory_updated: m.memory_updated
               }));
               setMessages(formatted);
@@ -731,6 +748,7 @@ export default function TushAIChat() {
               timestamp: m.created_at ? new Date(m.created_at) : new Date(),
               actions: m.actions,
               action_cards: m.action_cards,
+              interactive_card: m.interactive_card,
               memory_updated: m.memory_updated
             }));
             setMessages(formatted);
@@ -1142,6 +1160,11 @@ export default function TushAIChat() {
                           ))}
                         </div>
                       )}
+                      {msg.interactive_card && (
+                        <div className="pt-2 mt-1 w-full max-w-md no-print">
+                          <AIInteractiveCard card={msg.interactive_card} onSubmit={handleInteractiveSubmit} disabled={idx < messages.length - 1 || loading} />
+                        </div>
+                      )}
                       {msg.memory_updated && (
                         <div className="flex items-center gap-1 text-[9px] text-violet-600 dark:text-violet-400 font-semibold self-start mt-0.5 no-print">
                           <span>🧠 Memory updated</span>
@@ -1222,6 +1245,7 @@ export default function TushAIChat() {
             </div>
           </div>
         )}
+        <AutonomousWorkflowVisualizer defaultWorkflow="chat" isExecuting={loading} />
       </div>
     </div>
   );

@@ -34,6 +34,17 @@ target_metadata = Base.metadata
 # ... etc.
 
 
+from app.models import legacy_table_names
+
+def include_object(object, name, type_, reflected, compare_to):
+    if type_ == "table":
+        if (object.schema == "archive" or 
+            name.startswith("legacy_") or 
+            name in legacy_table_names):
+            return False
+    return True
+
+
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
 
@@ -52,6 +63,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -76,6 +88,7 @@ def run_migrations_online() -> None:
             target_metadata=target_metadata,
             # Let each migration decide whether to use a transaction
             transaction_per_migration=True,
+            include_object=include_object,
         )
 
         with context.begin_transaction():

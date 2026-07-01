@@ -207,3 +207,38 @@ class CircuitBreakerState(Base):
     last_failure = Column(DateTime, nullable=True)
     opened_at = Column(DateTime, nullable=True)
 
+
+class BackgroundMonitoringTask(Base):
+    """
+    Saves candidate tasks that execute periodically in background workers.
+    """
+    __tablename__ = "background_monitoring_tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String, nullable=False)              # e.g., "AI Jobs Alert"
+    query = Column(String, nullable=False)
+    schedule = Column(String, nullable=False)          # Cron expression e.g. "0 9 * * 1"
+    last_run_at = Column(DateTime, nullable=True)
+    next_run_at = Column(DateTime, nullable=False)
+    is_active = Column(Boolean, default=True)
+    task_metadata = Column(JSON, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class AgentExecutionHistory(Base):
+    """
+    Saves a record of every supervisor run, its compiled plan DAG, and execution details.
+    """
+    __tablename__ = "agent_execution_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    session_id = Column(String(50), nullable=False, index=True)
+    plan_dag = Column(JSON, nullable=False)            # The original compiled plan list
+    execution_steps = Column(JSON, default=list)       # List of executed tools, parameters, and outputs
+    confidence_score = Column(Float, nullable=False)   # Score calculated during planning
+    status = Column(String(50), default="pending")     # "completed", "failed", "clarifying", "halted"
+    error_log = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+

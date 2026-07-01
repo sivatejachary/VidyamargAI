@@ -1,4 +1,4 @@
-﻿import uuid
+import uuid
 from datetime import datetime
 from sqlalchemy import (
     Column, Integer, String, Text, Boolean, DateTime, Float, ForeignKey, Index, JSON, CheckConstraint, UniqueConstraint
@@ -395,6 +395,7 @@ class MCPChatMessage(Base):
     actions = Column(JSON, default=list)
     action_cards = Column(JSON, default=list)
     memory_updated = Column(Boolean, default=False)
+    interactive_card = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     session = relationship("MCPChatSession", back_populates="messages")

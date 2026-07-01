@@ -74,6 +74,7 @@ class MCPChatResponse(BaseModel):
     intent: Optional[str] = None
     agent_used: Optional[str] = None
     session_id: Optional[str] = None
+    interactive_card: Optional[dict] = None
 
 
 class HAQItemResponse(BaseModel):

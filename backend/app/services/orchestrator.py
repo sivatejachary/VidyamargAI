@@ -18,7 +18,7 @@ from app.services.storage import storage_service, get_user_folder_name
 
 logger = logging.getLogger(__name__)
 
-def call_gemini(prompt: str, json_mode: bool = False, pdf_bytes: Optional[bytes] = None, model: str = "gemini-2.0-flash") -> str:
+def call_gemini(prompt: str, json_mode: bool = False, pdf_bytes: Optional[bytes] = None, model: str = "gemini-2.5-flash") -> str:
     """
     Direct HTTPS call to Gemini API with dynamic model support.
     Can accept pdf_bytes to send PDF file directly to Gemini's multimodal window.
@@ -812,17 +812,17 @@ class AgentOrchestrator:
             else:
                 if settings.GEMINI_API_KEY:
                     try:
-                        logger.info("Calling Gemini 3.5 Flash (gemini-2.0-flash)...")
-                        ai_response = await asyncio.to_thread(call_gemini, prompt, True, pdf_bytes, "gemini-2.0-flash")
+                        logger.info("Calling Gemini 3.5 Flash (gemini-2.5-flash)...")
+                        ai_response = await asyncio.to_thread(call_gemini, prompt, True, pdf_bytes, "gemini-2.5-flash")
                     except Exception as flash_err:
                         logger.error(f"Gemini 3.5 Flash failed: {flash_err}")
                 
                 if not ai_response and settings.GEMINI_API_KEY:
                     try:
-                        logger.info("Falling back to Gemini 3.5 Pro (gemini-1.5-pro)...")
-                        ai_response = await asyncio.to_thread(call_gemini, prompt, True, pdf_bytes, "gemini-1.5-pro")
+                        logger.info("Falling back to Gemini 2.0 Flash (gemini-2.0-flash)...")
+                        ai_response = await asyncio.to_thread(call_gemini, prompt, True, pdf_bytes, "gemini-2.0-flash")
                     except Exception as pro_err:
-                        logger.error(f"Gemini 3.5 Pro failed: {pro_err}")
+                        logger.error(f"Gemini 2.0 Flash failed: {pro_err}")
                 
                 if not ai_response and settings.NVIDIA_API_KEY:
                     text_to_parse = profile.resume_text or ""

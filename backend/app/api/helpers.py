@@ -377,17 +377,17 @@ def map_static_intel_to_legacy_schema(intel: dict) -> dict:
     paths_raw = intel.get("career_paths") or {}
     insights_raw = intel.get("ai_insights") or {}
     
-    # 1. Map personal_info
+    # 1. Map personal_info (with fallback to flat intel dict)
     personal = {
-        "name": personal_raw.get("full_name") or personal_raw.get("name") or "",
-        "email": personal_raw.get("email") or "",
-        "phone": personal_raw.get("phone") or "",
-        "location": personal_raw.get("location") or personal_raw.get("city") or "Remote",
-        "summary": insights_raw.get("top_strength") or "",
-        "linkedin": personal_raw.get("linkedin_url") or personal_raw.get("linkedin") or "",
-        "portfolio": personal_raw.get("portfolio_url") or personal_raw.get("portfolio") or "",
-        "github": personal_raw.get("github_url") or personal_raw.get("github") or "",
-        "website": personal_raw.get("website_url") or personal_raw.get("website") or ""
+        "name": (personal_raw.get("full_name") if isinstance(personal_raw, dict) else None) or (personal_raw.get("name") if isinstance(personal_raw, dict) else None) or intel.get("name") or intel.get("full_name") or "",
+        "email": (personal_raw.get("email") if isinstance(personal_raw, dict) else None) or intel.get("email") or "",
+        "phone": (personal_raw.get("phone") if isinstance(personal_raw, dict) else None) or intel.get("phone") or "",
+        "location": (personal_raw.get("location") if isinstance(personal_raw, dict) else None) or (personal_raw.get("city") if isinstance(personal_raw, dict) else None) or intel.get("location") or "Remote",
+        "summary": (insights_raw.get("top_strength") if isinstance(insights_raw, dict) else None) or intel.get("summary") or "",
+        "linkedin": (personal_raw.get("linkedin_url") if isinstance(personal_raw, dict) else None) or (personal_raw.get("linkedin") if isinstance(personal_raw, dict) else None) or intel.get("linkedin") or "",
+        "portfolio": (personal_raw.get("portfolio_url") if isinstance(personal_raw, dict) else None) or (personal_raw.get("portfolio") if isinstance(personal_raw, dict) else None) or intel.get("portfolio") or "",
+        "github": (personal_raw.get("github_url") if isinstance(personal_raw, dict) else None) or (personal_raw.get("github") if isinstance(personal_raw, dict) else None) or intel.get("github") or "",
+        "website": (personal_raw.get("website_url") if isinstance(personal_raw, dict) else None) or (personal_raw.get("website") if isinstance(personal_raw, dict) else None) or intel.get("website") or ""
     }
     
     # 2. Map education
@@ -414,8 +414,8 @@ def map_static_intel_to_legacy_schema(intel: dict) -> dict:
         for exp in exp_raw:
             if not isinstance(exp, dict): continue
             experience.append({
-                "company": exp.get("company_name") or "",
-                "role": exp.get("job_title") or "",
+                "company": exp.get("company_name") or exp.get("company") or "",
+                "role": exp.get("job_title") or exp.get("role") or "",
                 "duration": f"{exp.get('start_date', '')} - {exp.get('end_date', '')}".strip(" -"),
                 "industry": exp.get("industry") or "",
                 "responsibilities": exp.get("responsibilities") or [],
@@ -429,21 +429,37 @@ def map_static_intel_to_legacy_schema(intel: dict) -> dict:
         
     # 4. Map skills list (for legacy "skills" table & graphs)
     skills = []
-    skill_names = set()
+    skill_names = []
+    
+    def add_skill(name: str):
+        cleaned_name = name.strip()
+        if cleaned_name and cleaned_name not in skill_names:
+            skill_names.append(cleaned_name)
+
     if isinstance(skills_raw, dict):
         for cat, list_skills in skills_raw.items():
             if isinstance(list_skills, list):
                 for s in list_skills:
                     if s:
-                        skill_names.add(str(s).strip())
+                        add_skill(str(s))
+    elif isinstance(skills_raw, str):
+        for s in skills_raw.split(','):
+            add_skill(s)
+    elif isinstance(skills_raw, list):
+        for s in skills_raw:
+            if isinstance(s, str):
+                add_skill(s)
                     
     # Also fallback to general skills if any
     if isinstance(intel.get("skills"), list):
         for s in intel.get("skills"):
             if isinstance(s, dict) and s.get("name"):
-                skill_names.add(str(s.get("name")).strip())
+                add_skill(str(s.get("name")))
             elif isinstance(s, str):
-                skill_names.add(s.strip())
+                add_skill(s)
+    elif isinstance(intel.get("skills"), str):
+        for s in intel.get("skills").split(','):
+            add_skill(s)
         
     for name in skill_names:
         skills.append({
@@ -455,23 +471,24 @@ def map_static_intel_to_legacy_schema(intel: dict) -> dict:
         })
         
     # Technical skills, business skills, domain skills grouped under skill_intelligence
+    is_dict_skills = isinstance(skills_raw, dict)
     skill_intelligence = {
-        "technical_skills": skills_raw.get("technical_skills") or [],
-        "business_skills": skills_raw.get("business_skills") or [],
-        "domain_skills": skills_raw.get("domain_skills") or [],
-        "government_exam_skills": skills_raw.get("government_exam_skills") or [],
-        "teaching_skills": skills_raw.get("teaching_skills") or [],
-        "healthcare_skills": skills_raw.get("healthcare_skills") or [],
-        "financial_skills": skills_raw.get("finance_skills") or [],
-        "legal_skills": skills_raw.get("legal_skills") or [],
-        "research_skills": skills_raw.get("research_skills") or [],
-        "soft_skills": skills_raw.get("soft_skills") or [],
-        "languages": skills_raw.get("languages") or [],
-        "tools": skills_raw.get("tools") or [],
-        "frameworks": skills_raw.get("frameworks") or [],
-        "platforms": skills_raw.get("platforms") or [],
-        "databases": skills_raw.get("database_skills") or [],
-        "cloud_technologies": skills_raw.get("cloud_skills") or [],
+        "technical_skills": skills_raw.get("technical_skills") or [] if is_dict_skills else [],
+        "business_skills": skills_raw.get("business_skills") or [] if is_dict_skills else [],
+        "domain_skills": skills_raw.get("domain_skills") or [] if is_dict_skills else [],
+        "government_exam_skills": skills_raw.get("government_exam_skills") or [] if is_dict_skills else [],
+        "teaching_skills": skills_raw.get("teaching_skills") or [] if is_dict_skills else [],
+        "healthcare_skills": skills_raw.get("healthcare_skills") or [] if is_dict_skills else [],
+        "financial_skills": skills_raw.get("finance_skills") or [] if is_dict_skills else [],
+        "legal_skills": skills_raw.get("legal_skills") or [] if is_dict_skills else [],
+        "research_skills": skills_raw.get("research_skills") or [] if is_dict_skills else [],
+        "soft_skills": skills_raw.get("soft_skills") or [] if is_dict_skills else [],
+        "languages": skills_raw.get("languages") or [] if is_dict_skills else [],
+        "tools": skills_raw.get("tools") or [] if is_dict_skills else [],
+        "frameworks": skills_raw.get("frameworks") or [] if is_dict_skills else [],
+        "platforms": skills_raw.get("platforms") or [] if is_dict_skills else [],
+        "databases": skills_raw.get("database_skills") or [] if is_dict_skills else [],
+        "cloud_technologies": skills_raw.get("cloud_skills") or [] if is_dict_skills else [],
         "ai_technologies": []
     }
     
@@ -481,7 +498,7 @@ def map_static_intel_to_legacy_schema(intel: dict) -> dict:
         for p in projects_raw:
             if not isinstance(p, dict): continue
             projects.append({
-                "project_name": p.get("project_name") or "",
+                "project_name": p.get("project_name") or p.get("name") or "",
                 "description": p.get("description") or "",
                 "technologies": p.get("technologies") or p.get("tools") or [],
                 "complexity": p.get("complexity") or "Medium",
@@ -497,7 +514,7 @@ def map_static_intel_to_legacy_schema(intel: dict) -> dict:
         for c in certs_raw:
             if not isinstance(c, dict): continue
             certifications.append({
-                "certification": c.get("certification_name") or "",
+                "certification": c.get("certification_name") or c.get("name") or "",
                 "provider": c.get("provider") or "",
                 "category": c.get("category") or "",
                 "level": c.get("level") or "",
@@ -506,9 +523,9 @@ def map_static_intel_to_legacy_schema(intel: dict) -> dict:
         
     # 7. Map career_classification
     career_classification = {
-        "career_family": classification_raw.get("career_family") or "Private",
-        "experience_level": classification_raw.get("experience_level") or "Mid-Level",
-        "employability_score": classification_raw.get("employability_level") or 80,
+        "career_family": (classification_raw.get("career_family") if isinstance(classification_raw, dict) else None) or "Private",
+        "experience_level": (classification_raw.get("experience_level") if isinstance(classification_raw, dict) else None) or "Mid-Level",
+        "employability_score": (classification_raw.get("employability_level") if isinstance(classification_raw, dict) else None) or 80,
         "profile_strength": 75,
         "classifications": []
     }
@@ -516,13 +533,13 @@ def map_static_intel_to_legacy_schema(intel: dict) -> dict:
     # 8. Map roles
     roles = {}
     for cat in ["core", "related", "adjacent", "transferable", "future", "leadership", "government", "international", "entrepreneurship"]:
-        roles_list = roles_raw.get(f"{cat}_roles") or []
+        roles_list = roles_raw.get(f"{cat}_roles") or [] if isinstance(roles_raw, dict) else []
         roles[cat] = []
         if isinstance(roles_list, list):
             for r in roles_list:
                 if not isinstance(r, dict): continue
                 roles[cat].append({
-                    "role": r.get("role_name") or "",
+                    "role": r.get("role_name") or r.get("role") or "",
                     "confidence": r.get("confidence") or 85,
                     "reason": r.get("reason") or ""
                 })
@@ -537,10 +554,10 @@ def map_static_intel_to_legacy_schema(intel: dict) -> dict:
         "eligible_private_roles": [],
         "eligible_international_roles": [],
         "opportunity_scores": {
-            "government_score": opps_raw.get("government_job_opportunity") or 50,
-            "private_score": opps_raw.get("private_job_opportunity") or 80,
-            "remote_score": opps_raw.get("remote_job_opportunity") or 70,
-            "international_score": opps_raw.get("international_job_opportunity") or 60
+            "government_score": (opps_raw.get("government_job_opportunity") if isinstance(opps_raw, dict) else None) or 50,
+            "private_score": (opps_raw.get("private_job_opportunity") if isinstance(opps_raw, dict) else None) or 80,
+            "remote_score": (opps_raw.get("remote_job_opportunity") if isinstance(opps_raw, dict) else None) or 70,
+            "international_score": (opps_raw.get("international_job_opportunity") if isinstance(opps_raw, dict) else None) or 60
         }
     }
     
@@ -548,9 +565,9 @@ def map_static_intel_to_legacy_schema(intel: dict) -> dict:
     career_paths = {
         "paths": [
             {
-                "path_name": insights_raw.get("best_career_match") or "Core Career Path",
-                "steps": paths_raw.get("next_roles") or [],
-                "milestones": paths_raw.get("future_roles") or []
+                "path_name": (insights_raw.get("best_career_match") if isinstance(insights_raw, dict) else None) or "Core Career Path",
+                "steps": paths_raw.get("next_roles") or [] if isinstance(paths_raw, dict) else [],
+                "milestones": paths_raw.get("future_roles") or [] if isinstance(paths_raw, dict) else []
             }
         ]
     }
@@ -561,9 +578,9 @@ def map_static_intel_to_legacy_schema(intel: dict) -> dict:
         "formatting_score": 75,
         "content_score": 75,
         "keyword_score": 75,
-        "improvement_suggestions": gaps_raw.get("missing_skills") or [],
-        "resume_rewrite_suggestions": gaps_raw.get("recommended_certifications") or [],
-        "achievement_suggestions": gaps_raw.get("recommended_projects") or []
+        "improvement_suggestions": gaps_raw.get("missing_skills") or [] if isinstance(gaps_raw, dict) else [],
+        "resume_rewrite_suggestions": gaps_raw.get("recommended_certifications") or [] if isinstance(gaps_raw, dict) else [],
+        "achievement_suggestions": gaps_raw.get("recommended_projects") or [] if isinstance(gaps_raw, dict) else []
     }
     
     return {

@@ -63,9 +63,11 @@ for table_key in list(Base.metadata.tables.keys()):
         continue
 
     if base_name in legacy_table_names or name_to_check in legacy_table_names:
+        Base.metadata.remove(table_obj)
         table_obj.schema = "archive"
         if not table_obj.name.startswith("legacy_"):
             table_obj.name = f"legacy_{table_obj.name}"
+        Base.metadata._add_table(table_obj.name, table_obj.schema, table_obj)
 
 # Register before_create event listener to create schema for Postgres and bypass for SQLite
 from sqlalchemy import event, text

@@ -318,18 +318,18 @@ class ResumeIntelligenceAgent:
         # 1. Primary Model: Gemini Flash
         if settings.GEMINI_API_KEY:
             try:
-                logger.info("[Resume Intelligence] Invoking Gemini Flash (gemini-2.0-flash) for parsing...")
-                ai_response = await asyncio.to_thread(call_gemini, prompt, True, pdf_bytes, "gemini-2.0-flash")
+                logger.info("[Resume Intelligence] Invoking Gemini Flash (gemini-2.5-flash) for parsing...")
+                ai_response = await asyncio.to_thread(call_gemini, prompt, True, pdf_bytes, "gemini-2.5-flash")
             except Exception as gemini_err:
                 logger.error(f"[Resume Intelligence] Gemini Flash call failed: {gemini_err}")
 
-        # 2. Fallback Model: Gemini Pro
+        # 2. Fallback Model: Gemini Pro / 2.0 Flash
         if not ai_response and settings.GEMINI_API_KEY:
             try:
-                logger.info("[Resume Intelligence] Falling back to Gemini Pro (gemini-1.5-pro) for parsing...")
-                ai_response = await asyncio.to_thread(call_gemini, prompt, True, pdf_bytes, "gemini-1.5-pro")
+                logger.info("[Resume Intelligence] Falling back to Gemini 2.0 Flash (gemini-2.0-flash) for parsing...")
+                ai_response = await asyncio.to_thread(call_gemini, prompt, True, pdf_bytes, "gemini-2.0-flash")
             except Exception as pro_err:
-                logger.error(f"[Resume Intelligence] Gemini Pro fallback failed: {pro_err}")
+                logger.error(f"[Resume Intelligence] Gemini 2.0 Flash fallback failed: {pro_err}")
 
         # 3. Nvidia fallback as intermediate backup before local PyMuPDF
         if not ai_response and settings.NVIDIA_API_KEY:
@@ -566,14 +566,14 @@ class ResumeIntelligenceAgent:
         
         # 5. Create or Update CandidateEmbedding (legacy table compatibility)
         emb_obj = self.db.query(CandidateEmbedding).filter(
-            CandidateEmbedding.candidate_id == candidate_id,
-            CandidateEmbedding.resume_id == resume_id
+            CandidateEmbedding.candidate_id == candidate_id
         ).first()
         
         if not emb_obj:
-            emb_obj = CandidateEmbedding(candidate_id=candidate_id, resume_id=resume_id)
+            emb_obj = CandidateEmbedding(candidate_id=candidate_id)
             self.db.add(emb_obj)
             
+        emb_obj.resume_id = resume_id
         emb_obj.embedding_model = "nvidia/nv-embedqa-e5-v5"
         emb_obj.embedding_vector = json.dumps(embedding)
         self.db.commit()

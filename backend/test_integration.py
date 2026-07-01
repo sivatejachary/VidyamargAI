@@ -3,7 +3,9 @@ import json
 from unittest.mock import patch
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
+import app.models.job_models  # Ensure job models are imported and registered on Base metadata
 from app.core.database import Base
 from app.models.models import (
     User, Candidate, CandidateProfile, CandidateResume
@@ -14,10 +16,15 @@ class TestResumeIntegration(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         # Create SQLite in-memory database
         self.test_db_url = "sqlite:///:memory:"
-        self.engine = create_engine(self.test_db_url, connect_args={"check_same_thread": False})
+        self.engine = create_engine(
+            self.test_db_url,
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool
+        )
         TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
         Base.metadata.create_all(bind=self.engine)
         self.db = TestingSessionLocal()
+
 
     def tearDown(self):
         self.db.close()
@@ -47,8 +54,9 @@ class TestResumeIntegration(unittest.IsolatedAsyncioTestCase):
             
             # 2. Upload first resume
             resume_bytes_1 = b"Skill: Python, FastAPI, SQL. Experience: 3 Years."
-            # Patch call_gemini to avoid hitting actual API
-            with patch("app.services.orchestrator.call_gemini", return_value='{"name": "Delete Candidate", "email": "delete_test@candidate.com", "phone": "1234567", "skills": "Python, FastAPI, SQL", "experience": [{"role": "Developer", "years": 3}], "summary": "Dev 1", "education": [], "projects": [], "certifications": "", "achievements": [], "languages": "", "github": "", "linkedin": "", "portfolio": ""}'):
+            # Patch call_gemini in both modules to avoid hitting actual API
+            with patch("app.services.orchestrator.call_gemini", return_value='{"name": "Delete Candidate", "email": "delete_test@candidate.com", "phone": "1234567", "skills": "Python, FastAPI, SQL", "experience": [{"role": "Developer", "years": 3}], "summary": "Dev 1", "education": [], "projects": [], "certifications": "", "achievements": [], "languages": "", "github": "", "linkedin": "", "portfolio": ""}'), \
+                 patch("app.agents.resume_intelligence_agent.call_gemini", return_value='{"name": "Delete Candidate", "email": "delete_test@candidate.com", "phone": "1234567", "skills": "Python, FastAPI, SQL", "experience": [{"role": "Developer", "years": 3}], "summary": "Dev 1", "education": [], "projects": [], "certifications": "", "achievements": [], "languages": "", "github": "", "linkedin": "", "portfolio": ""}'):
                 resume1 = await orchestrator.run_resume_collection_agent(self.db, candidate.id, resume_bytes_1, "resume1.pdf")
             
             # Re-fetch candidate and verify parsed details
@@ -58,7 +66,8 @@ class TestResumeIntegration(unittest.IsolatedAsyncioTestCase):
             
             # 3. Upload second resume (latest version)
             resume_bytes_2 = b"Skill: Go, Docker, Kubernetes. Experience: 5 Years."
-            with patch("app.services.orchestrator.call_gemini", return_value='{"name": "Delete Candidate", "email": "delete_test@candidate.com", "phone": "1234567", "skills": "Go, Docker, Kubernetes", "experience": [{"role": "Senior Developer", "years": 5}], "summary": "Dev 2", "education": [], "projects": [], "certifications": "", "achievements": [], "languages": "", "github": "", "linkedin": "", "portfolio": ""}'):
+            with patch("app.services.orchestrator.call_gemini", return_value='{"name": "Delete Candidate", "email": "delete_test@candidate.com", "phone": "1234567", "skills": "Go, Docker, Kubernetes", "experience": [{"role": "Senior Developer", "years": 5}], "summary": "Dev 2", "education": [], "projects": [], "certifications": "", "achievements": [], "languages": "", "github": "", "linkedin": "", "portfolio": ""}'), \
+                 patch("app.agents.resume_intelligence_agent.call_gemini", return_value='{"name": "Delete Candidate", "email": "delete_test@candidate.com", "phone": "1234567", "skills": "Go, Docker, Kubernetes", "experience": [{"role": "Senior Developer", "years": 5}], "summary": "Dev 2", "education": [], "projects": [], "certifications": "", "achievements": [], "languages": "", "github": "", "linkedin": "", "portfolio": ""}'):
                 resume2 = await orchestrator.run_resume_collection_agent(self.db, candidate.id, resume_bytes_2, "resume2.pdf")
                 
             self.db.refresh(candidate)
