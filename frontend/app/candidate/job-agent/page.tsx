@@ -576,8 +576,10 @@ export default function JobAgentPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [fastMode, setFastMode] = useState(false);
 
-  // Load dashboard
   const loadDashboard = useCallback(async () => {
+    if (typeof window !== "undefined" && !localStorage.getItem("cache_job_agent_dashboard")) {
+      setLoading(true);
+    }
     try {
       const status = await apiClient.getAgentStatus();
       if (status?.initialized) {
@@ -586,6 +588,9 @@ export default function JobAgentPage() {
         setDashboard(data);
         setInsights(data.career_insights || []);
         setNotifications(data.notifications || []);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("cache_job_agent_dashboard", JSON.stringify(data));
+        }
       } else {
         setAgentInitialized(false);
       }
@@ -596,7 +601,6 @@ export default function JobAgentPage() {
     }
   }, []);
 
-  // Load jobs feed
   const loadJobs = useCallback(async (page = 1) => {
     setJobsLoading(true);
     try {
@@ -604,6 +608,9 @@ export default function JobAgentPage() {
       setJobs(page === 1 ? data.jobs : prev => [...prev, ...data.jobs]);
       setJobTotal(data.total);
       setJobPage(page);
+      if (page === 1 && typeof window !== "undefined") {
+        localStorage.setItem("cache_job_agent_jobs", JSON.stringify({ jobs: data.jobs, total: data.total }));
+      }
     } catch (e: any) {
       console.error("Jobs load error:", e);
     } finally {
@@ -633,6 +640,31 @@ export default function JobAgentPage() {
   }, []);
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const cachedDash = localStorage.getItem("cache_job_agent_dashboard");
+      if (cachedDash) {
+        try {
+          const data = JSON.parse(cachedDash);
+          setDashboard(data);
+          setInsights(data.career_insights || []);
+          setNotifications(data.notifications || []);
+          setAgentInitialized(true);
+          setLoading(false);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      const cachedJobs = localStorage.getItem("cache_job_agent_jobs");
+      if (cachedJobs) {
+        try {
+          const data = JSON.parse(cachedJobs);
+          setJobs(data.jobs || []);
+          setJobTotal(data.total || 0);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
     loadDashboard();
   }, [loadDashboard]);
 

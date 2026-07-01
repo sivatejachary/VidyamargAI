@@ -95,7 +95,9 @@ export default function ResumeIntelligenceDashboard() {
 
   // Load intelligence details from backend
   const loadIntelligence = async () => {
-    setLoading(true);
+    if (typeof window !== "undefined" && !localStorage.getItem("cache_resume_intelligence")) {
+      setLoading(true);
+    }
     setErrorMsg("");
     try {
       const resumeList = await apiService.getResumes();
@@ -134,13 +136,30 @@ export default function ResumeIntelligenceDashboard() {
         setMarketIntel(marketData);
         setImprovements(impData);
 
+        if (typeof window !== "undefined") {
+          localStorage.setItem("cache_resume_intelligence", JSON.stringify({
+            versions: resumeList,
+            profile: profData,
+            careerDna: dnaData,
+            skillsGraph: skillsData,
+            roles: rolesData,
+            careerPaths: pathsData || [],
+            skillGaps: gapsData,
+            opportunities: oppsData,
+            marketIntel: marketData,
+            improvements: impData
+          }));
+        }
+
         if (profData?.personal_info?.name && profData.personal_info.name !== fullName) {
           updateUser(profData.personal_info.name, profData.personal_info.email || email);
         }
       }
     } catch (err: any) {
       console.error("Failed to load Career Intelligence:", err);
-      setErrorMsg("Failed to load Career Intelligence. Please upload a resume to start.");
+      if (typeof window !== "undefined" && !localStorage.getItem("cache_resume_intelligence")) {
+        setErrorMsg("Failed to load Career Intelligence. Please upload a resume to start.");
+      }
     } finally {
       setLoading(false);
     }
@@ -175,6 +194,27 @@ export default function ResumeIntelligenceDashboard() {
   }, [clientId, addMessageListener]);
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("cache_resume_intelligence");
+      if (cached) {
+        try {
+          const data = JSON.parse(cached);
+          setVersions(data.versions || []);
+          setProfile(data.profile);
+          setCareerDna(data.careerDna);
+          setSkillsGraph(data.skillsGraph);
+          setRoles(data.roles);
+          setCareerPaths(data.careerPaths || []);
+          setSkillGaps(data.skillGaps);
+          setOpportunities(data.opportunities);
+          setMarketIntel(data.marketIntel);
+          setImprovements(data.improvements);
+          setLoading(false);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
     loadIntelligence();
   }, []);
 
