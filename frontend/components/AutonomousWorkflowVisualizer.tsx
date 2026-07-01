@@ -55,7 +55,7 @@ const WORKFLOWS: Record<string, Workflow> = {
       { id: "upload", label: "Resume Upload/Update", desc: "Candidate uploads PDF/DOCX resume or uses AI builder template.", tech: "Next.js file ingestion", icon: Sparkles },
       { id: "ocr", label: "OCR & Text Parser", desc: "Extracts raw text. Uses fallback pipeline in milliseconds if OCR service is busy.", tech: "PDFJS / AWS Textract Fallback", icon: Cpu },
       { id: "parser", label: "Resume Parsing Engine", desc: "Decomposes text into structured JSON blocks: Skills, Experience, Education, Projects.", tech: "Gemini Structured Outputs", icon: Layers },
-      { id: "skills", label: "Skills & DNA Mapping", desc: "Generates Career DNA, profile strength metrics, and maps to government or private pathways.", desc: "VidyaMarg Career DNA Engine", tech: "Skill Graph Indexer", icon: ShieldCheck },
+      { id: "skills", label: "Skills & DNA Mapping", desc: "Generates Career DNA, profile strength metrics, and maps to government or private pathways. Powered by VidyaMarg Career DNA Engine.", tech: "Skill Graph Indexer", icon: ShieldCheck },
       { id: "profile", label: "Candidate Profile Generation", desc: "Builds a unified candidate identity profile for job matching.", tech: "PostgreSQL Database", icon: Database },
       { id: "embeddings", label: "Embedding Generation", desc: "Converts structured profile text and skills into dense vectors (1536-dim).", tech: "OpenAI text-embedding-3-small", icon: Network },
       { id: "store", label: "Vector Database Storage", desc: "Stores candidate embeddings in Qdrant for semantic similarity searches.", tech: "Qdrant Vector DB", icon: Database }
