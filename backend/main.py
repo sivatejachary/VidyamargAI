@@ -19,6 +19,7 @@ from ai_os.execution.state_machine import ExecutionStateMachine
 
 # Microservice routers
 from services.candidate_service.app.router import router as candidate_router
+from app.api.endpoints import router as legacy_api_router
 
 # Configure logging
 configure_telemetry(service_name="vidyamarg-api")
@@ -39,7 +40,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount candidate business service router
+# Mount legacy api router under /api/v1 and candidate service router
+app.include_router(legacy_api_router, prefix="/api/v1")
 app.include_router(candidate_router)
 
 # Initialize singletons
