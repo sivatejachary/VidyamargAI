@@ -123,13 +123,14 @@ export default function Sidebar({ portal }: SidebarProps) {
   };
 
   const candidateLinks = [
-    { name: "AI Job Agent", href: "/candidate/job-agent", icon: Bot, highlight: true },
-    { name: "Ask Tush AI", href: "/candidate/chat", icon: Sparkles },
-    { name: "Resume Builder", href: "/candidate/resume", icon: FileText },
-    { name: "Skill Lab", href: "/candidate/skill-lab", icon: Compass },
-    { name: "Hackathons", href: "/candidate/hackathons", icon: Trophy },
-    { name: "Messages", href: "/candidate/messages", icon: MessageSquare },
-    { name: "Notifications", href: "/candidate/notifications", icon: Bell }
+    { name: "Tush AI", href: "/candidate/chat", icon: Sparkles, highlight: true },
+    { name: "Jobs Workspace", href: "/candidate/job-agent", icon: Briefcase },
+    { name: "Skill Lab Workspace", href: "/candidate/skill-lab", icon: Compass },
+    { name: "Resume Workspace", href: "/candidate/resume", icon: FileText },
+    { name: "Hackathon Workspace", href: "/candidate/hackathons", icon: Trophy },
+    { name: "Interview Workspace", href: "/candidate/interview", icon: GitFork },
+    { name: "Messages Workspace", href: "/candidate/messages", icon: MessageSquare },
+    { name: "Notification Center", href: "/candidate/notifications", icon: Bell }
   ];
 
   const adminLinks = [
