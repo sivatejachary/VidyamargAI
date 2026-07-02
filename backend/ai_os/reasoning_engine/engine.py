@@ -1,7 +1,7 @@
 import json
 import logging
 from typing import Dict, Any, Optional
-from ...packages.model_client.client import AppAIClient
+from packages.model_client.client import AppAIClient
 
 logger = logging.getLogger("ai_os.reasoning_engine.engine")
 

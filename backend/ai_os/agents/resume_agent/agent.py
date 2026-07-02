@@ -5,7 +5,7 @@ from .prompt import RESUME_EXTRACTION_PROMPT
 from .schemas import ResumeProfileSchema
 from ...registry.agent_registry import agent_registry
 from ...agent_runtime.execution_context import AgentExecutionContext
-from ...packages.model_client.client import AppAIClient
+from packages.model_client.client import AppAIClient
 
 logger = logging.getLogger("ai_os.agents.resume_agent.agent")
 

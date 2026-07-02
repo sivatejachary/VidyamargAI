@@ -6,7 +6,7 @@ from typing import Dict, Any
 from .schemas import ProfileResponse, CandidateCreate, CandidateResponse
 from .service import CandidateService
 from .repository import CandidateRepository
-from ....packages.core_lib.database import DatabaseManager
+from packages.core_lib.database import DatabaseManager
 
 logger = logging.getLogger("services.candidate_service.app.router")
 

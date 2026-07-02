@@ -23,12 +23,13 @@ jobs:
     - name: Scan for secrets
       run: detect-secrets scan
     - name: Run Ruff Linter
-      run: ruff check backend/app --exit-zero
+      run: ruff check backend/ai_os backend/services/candidate_service/app --exit-zero
     - name: Run Mypy Type Checks
-      run: mypy backend/app --ignore-missing-imports || true
+      run: mypy backend/ai_os backend/services/candidate_service/app --ignore-missing-imports || true
     - name: Run Pytest Suite
       env:
         SECRET_KEY: temporary-secret-key-for-ci-runs
         TESTING: "true"
+        PYTHONPATH: backend
       run: pytest backend/tests
 
