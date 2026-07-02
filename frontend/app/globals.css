@@ -40,6 +40,11 @@
 
   /* Custom shadows */
   --shadow-terminal-light: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.02);
+
+  /* Typography variables */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui;
+  --font-heading: var(--font-space-grotesk), sans-serif;
+  --font-mono: var(--font-jetbrains-mono), monospace;
 }
 
 /* ==========================================================================
@@ -436,4 +441,122 @@ textarea.chat-input-textarea:focus {
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(156, 163, 175, 0.5);
+}
+
+/* ==========================================================================
+   PREMIUM LANDING PAGE ANIMATIONS & UTILITIES
+   ========================================================================== */
+
+/* Typography application */
+.font-heading {
+  font-family: var(--font-heading);
+}
+.font-sans {
+  font-family: var(--font-sans);
+}
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Idle Floating Animations (GPU Accelerated) */
+@keyframes premium-float-1 {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50% { transform: translate3d(0, -10px, 0) rotate(1.5deg); }
+}
+
+@keyframes premium-float-2 {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50% { transform: translate3d(-5px, -15px, 0) rotate(-2deg); }
+}
+
+@keyframes premium-float-3 {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50% { transform: translate3d(6px, -12px, 0) rotate(1deg); }
+}
+
+.animate-float-1 {
+  animation: premium-float-1 8s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-float-2 {
+  animation: premium-float-2 10s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-float-3 {
+  animation: premium-float-3 12s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Glowing Neon Borders & Shimmer Sweeps */
+.premium-glow-border {
+  position: relative;
+  border-radius: 0.75rem;
+  background: linear-gradient(var(--app-card), var(--app-card)) padding-box,
+              linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(59, 130, 246, 0.2)) border-box;
+  border: 1px solid transparent;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.premium-glow-border:hover {
+  background: linear-gradient(var(--app-card), var(--app-card)) padding-box,
+              linear-gradient(135deg, rgba(168, 85, 247, 0.6), rgba(59, 130, 246, 0.6)) border-box;
+  box-shadow: 0 0 25px rgba(168, 85, 247, 0.15);
+}
+
+/* Light Sweep Overlay Effect */
+.light-sweep-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.light-sweep-container::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -60%;
+  width: 30%;
+  height: 200%;
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: rotate(25deg);
+  transition: all 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  opacity: 0;
+}
+
+.light-sweep-container:hover::after {
+  left: 130%;
+  opacity: 1;
+}
+
+/* Liquid/Glow Hover CTAs */
+.btn-magnetic {
+  position: relative;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Aurora background glow */
+.aurora-blur {
+  filter: blur(140px);
+  will-change: transform;
+}
+
+/* Grid overlay background */
+.digital-grid-bg {
+  background-size: 50px 50px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+}
+
+.dark .digital-grid-bg {
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
 }
