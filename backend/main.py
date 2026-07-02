@@ -68,22 +68,22 @@ async def run_db_migrations():
     logger.info("Running startup database schema migrations...")
     try:
         async with db_manager.engine.begin() as conn:
-            # Run migration on mcp_chat_messages table
+            # Run migration on archive.legacy_mcp_chat_messages table
             await conn.execute(
-                text("ALTER TABLE mcp_chat_messages ADD COLUMN IF NOT EXISTS interactive_card JSON;")
+                text("ALTER TABLE archive.legacy_mcp_chat_messages ADD COLUMN IF NOT EXISTS interactive_card JSON;")
             )
-            logger.info("Database schema migration completed successfully.")
+            logger.info("Database schema migration completed successfully on archive.legacy_mcp_chat_messages.")
     except Exception as e:
-        logger.error(f"Failed to run database schema migrations: {e}")
-        # Fallback to schema prefix check
+        logger.error(f"Failed to run database schema migrations on archive schema: {e}")
+        # Fallback to standard table name
         try:
             async with db_manager.engine.begin() as conn:
                 await conn.execute(
-                    text("ALTER TABLE legacy.mcp_chat_messages ADD COLUMN IF NOT EXISTS interactive_card JSON;")
+                    text("ALTER TABLE mcp_chat_messages ADD COLUMN IF NOT EXISTS interactive_card JSON;")
                 )
-                logger.info("Legacy schema database migration completed successfully.")
+                logger.info("Fallback schema database migration completed successfully.")
         except Exception as e_inner:
-            logger.error(f"Failed inner database migration: {e_inner}")
+            logger.error(f"Failed fallback database migration: {e_inner}")
 
 # WebSockets connection registry
 class ConnectionManager:
