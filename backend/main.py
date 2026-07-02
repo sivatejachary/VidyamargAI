@@ -46,7 +46,17 @@ app.include_router(candidate_router)
 db_url = os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/postgres")
 db_manager = DatabaseManager(database_url=db_url)
 ai_client = AppAIClient(api_key=os.getenv("GROQ_API_KEY", "mock_key"))
-memory_manager = MemoryManager()
+
+redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+qdrant_host = os.getenv("QDRANT_HOST", "localhost")
+qdrant_api_key = os.getenv("QDRANT_API_KEY", None)
+
+memory_manager = MemoryManager(
+    redis_url=redis_url,
+    db_session=db_manager.session_factory(),
+    qdrant_host=qdrant_host,
+    qdrant_api_key=qdrant_api_key
+)
 kernel = AIOSKernel(memory_manager=memory_manager, ai_client=ai_client)
 
 # WebSockets connection registry
