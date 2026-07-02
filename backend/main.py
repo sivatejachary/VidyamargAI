@@ -4,6 +4,7 @@ import asyncio
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from sqlalchemy import text
 
 # Core packages & services imports
 from packages.core_lib.database import DatabaseManager
@@ -60,6 +61,29 @@ memory_manager = MemoryManager(
     qdrant_api_key=qdrant_api_key
 )
 kernel = AIOSKernel(memory_manager=memory_manager, ai_client=ai_client)
+
+@app.on_event("startup")
+async def run_db_migrations():
+    """Applies runtime schema corrections to sync remote tables."""
+    logger.info("Running startup database schema migrations...")
+    try:
+        async with db_manager.engine.begin() as conn:
+            # Run migration on mcp_chat_messages table
+            await conn.execute(
+                text("ALTER TABLE mcp_chat_messages ADD COLUMN IF NOT EXISTS interactive_card JSON;")
+            )
+            logger.info("Database schema migration completed successfully.")
+    except Exception as e:
+        logger.error(f"Failed to run database schema migrations: {e}")
+        # Fallback to schema prefix check
+        try:
+            async with db_manager.engine.begin() as conn:
+                await conn.execute(
+                    text("ALTER TABLE legacy.mcp_chat_messages ADD COLUMN IF NOT EXISTS interactive_card JSON;")
+                )
+                logger.info("Legacy schema database migration completed successfully.")
+        except Exception as e_inner:
+            logger.error(f"Failed inner database migration: {e_inner}")
 
 # WebSockets connection registry
 class ConnectionManager:
