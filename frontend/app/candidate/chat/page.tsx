@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import AIActionCard from "@/components/AIActionCard";
-import AutonomousWorkflowVisualizer from "@/components/AutonomousWorkflowVisualizer";
 import AIInteractiveCard from "@/components/AIInteractiveCard";
 
 interface Message {
@@ -1245,7 +1244,6 @@ export default function TushAIChat() {
             </div>
           </div>
         )}
-        <AutonomousWorkflowVisualizer defaultWorkflow="chat" isExecuting={loading} />
       </div>
     </div>
   );
