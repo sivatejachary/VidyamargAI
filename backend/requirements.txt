@@ -21,3 +21,4 @@ opentelemetry-sdk>=1.23.0
 opentelemetry-instrumentation-fastapi>=0.44b0
 prometheus-client>=0.20.0
 groq>=0.5.0
+psycopg2-binary>=2.9.9
