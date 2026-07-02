@@ -193,3 +193,79 @@ def get_candidate_files(candidate_id: int, db: Session = Depends(get_db), admin:
 
     files.sort(key=lambda x: (x["category"], x["name"]))
     return files
+
+
+# ----------------- TELEGRAM SOURCES MANAGEMENT -----------------
+
+@router.get("/admin/telegram-sources", response_model=List[schemas.TelegramSourceResponse])
+def get_telegram_sources(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if not current_user or current_user.role not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Not authorized")
+    return db.query(TelegramSource).all()
+
+
+@router.post("/admin/telegram-sources", response_model=schemas.TelegramSourceResponse)
+def create_telegram_source(
+    source: schemas.TelegramSourceCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if not current_user or current_user.role not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    existing = db.query(TelegramSource).filter(TelegramSource.channel_name == source.channel_name).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Telegram source channel already exists")
+    
+    db_source = TelegramSource(channel_name=source.channel_name, active=source.active)
+    db.add(db_source)
+    db.commit()
+    db.refresh(db_source)
+    return db_source
+
+
+@router.put("/admin/telegram-sources/{source_id}", response_model=schemas.TelegramSourceResponse)
+def update_telegram_source(
+    source_id: int,
+    source: schemas.TelegramSourceCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if not current_user or current_user.role not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    db_source = db.query(TelegramSource).filter(TelegramSource.id == source_id).first()
+    if not db_source:
+        raise HTTPException(status_code=404, detail="Telegram source not found")
+        
+    if db_source.channel_name != source.channel_name:
+        existing = db.query(TelegramSource).filter(TelegramSource.channel_name == source.channel_name).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Telegram source channel already exists")
+            
+    db_source.channel_name = source.channel_name
+    db_source.active = source.active
+    db.commit()
+    db.refresh(db_source)
+    return db_source
+
+
+@router.delete("/admin/telegram-sources/{source_id}")
+def delete_telegram_source(
+    source_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if not current_user or current_user.role not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Not authorized")
+        
+    db_source = db.query(TelegramSource).filter(TelegramSource.id == source_id).first()
+    if not db_source:
+        raise HTTPException(status_code=404, detail="Telegram source not found")
+        
+    db.delete(db_source)
+    db.commit()
+    return {"message": "Telegram source deleted successfully"}

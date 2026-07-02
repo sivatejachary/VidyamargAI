@@ -97,10 +97,12 @@ class JobDiscoveryManager:
         """Factory — returns connector instance for a source."""
         from app.services.job_discovery.serper_connector import SerperJobsConnector
         from app.services.job_discovery.remoteok_connector import RemoteOKConnector
+        from app.services.job_discovery.telegram_connector import TelegramJobsConnector
 
         connectors = {
             "serper_jobs": SerperJobsConnector,
             "remoteok": RemoteOKConnector,
+            "telegram": TelegramJobsConnector,
         }
         cls = connectors.get(source_name)
         if cls:

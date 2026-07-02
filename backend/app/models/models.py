@@ -424,3 +424,12 @@ class CandidateEmbedding(Base):
     embedding_model = Column(String(100), nullable=False)
     embedding_vector = Column(Text, nullable=False)  # JSON-serialized floats
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class TelegramSource(Base):
+    __tablename__ = "telegram_sources"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    channel_name = Column(String, unique=True, index=True, nullable=False)
+    active = Column(Boolean, default=True)
+    last_checked = Column(DateTime, nullable=True)

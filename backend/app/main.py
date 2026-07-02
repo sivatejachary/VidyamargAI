@@ -69,6 +69,18 @@ def init_db_safely():
                 db_session.commit()
                 logger.info("Default Telegram channels seeded successfully.")
 
+            # Auto-seed default JobSources
+            from app.models.job_models import JobSource
+            for name, display_name, source_type in [
+                ("serper_jobs", "Serper Jobs", "api"),
+                ("remoteok", "RemoteOK", "api"),
+                ("telegram", "Telegram Channels", "scraper")
+            ]:
+                existing_src = db_session.query(JobSource).filter_by(name=name).first()
+                if not existing_src:
+                    db_session.add(JobSource(name=name, display_name=display_name, source_type=source_type, is_active=True))
+            db_session.commit()
+
             # Auto-seed default tool permissions if empty
             from app.models.mcp_models import ToolPermission
             perms_count = db_session.query(ToolPermission).count()
