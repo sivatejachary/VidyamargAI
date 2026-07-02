@@ -45,12 +45,12 @@ function CountUpNumber({ end, suffix = "", duration = 1.5 }: { end: number; suff
 
 // Cards for the floating panel grid
 const heroPanels = [
-  { id: "jobs", title: "Job Discovery", icon: Briefcase, color: "from-purple-500 to-indigo-500", desc: "Find matched jobs" },
-  { id: "resume", title: "Resume Builder", icon: FileText, color: "from-blue-500 to-cyan-500", desc: "ATS optimization" },
-  { id: "interview", title: "AI Mock Interviews", icon: Video, color: "from-emerald-500 to-teal-500", desc: "Real-time practice" },
-  { id: "learning", title: "Learning Hub", icon: BookOpen, color: "from-amber-500 to-orange-500", desc: "Custom skill courses" },
-  { id: "dashboard", title: "Career Dashboard", icon: LayoutDashboard, color: "from-rose-500 to-pink-500", desc: "Track applications" },
-  { id: "analytics", title: "Skill Analytics", icon: BarChart3, color: "from-indigo-500 to-purple-500", desc: "Visualize gap score" },
+  { id: "jobs", title: "Job Discovery", icon: Briefcase, color: "bg-indigo-500/10 border border-indigo-500/20 text-indigo-400", desc: "Find matched jobs" },
+  { id: "resume", title: "Resume Builder", icon: FileText, color: "bg-sky-500/10 border border-sky-500/20 text-sky-400", desc: "ATS optimization" },
+  { id: "interview", title: "AI Mock Interviews", icon: Video, color: "bg-violet-500/10 border border-violet-500/20 text-violet-400", desc: "Real-time practice" },
+  { id: "learning", title: "Learning Hub", icon: BookOpen, color: "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400", desc: "Custom skill courses" },
+  { id: "dashboard", title: "Career Dashboard", icon: LayoutDashboard, color: "bg-zinc-800/40 border border-zinc-700/30 text-zinc-300", desc: "Track applications" },
+  { id: "analytics", title: "Skill Analytics", icon: BarChart3, color: "bg-blue-500/10 border border-blue-500/20 text-blue-400", desc: "Visualize gap score" },
 ];
 
 export default function Hero() {
@@ -163,14 +163,14 @@ export default function Hero() {
           >
             <button
               onClick={() => startTransition("/signup")}
-              className="group inline-flex items-center justify-center gap-2 text-sm font-heading font-bold text-white bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 py-3.5 px-8 rounded-xl shadow-[0_0_25px_rgba(147,51,234,0.25)] hover:shadow-[0_0_30px_rgba(147,51,234,0.45)] hover:scale-[1.03] active:scale-[0.98] transition-all duration-300 select-none clickable"
+              className="group inline-flex items-center justify-center gap-2 text-sm font-heading font-bold text-slate-950 bg-white hover:bg-slate-100 py-3.5 px-8 rounded-xl shadow-[0_4px_20px_rgba(255,255,255,0.08)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 select-none clickable"
             >
               Get Started
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1 duration-200" />
             </button>
             <button
               onClick={() => startTransition("/login")}
-              className="inline-flex items-center justify-center text-sm font-heading font-bold text-slate-300 hover:text-white py-3.5 px-8 rounded-xl border border-slate-800 hover:border-purple-500/30 hover:bg-purple-500/5 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] select-none clickable"
+              className="inline-flex items-center justify-center text-sm font-heading font-bold text-slate-300 hover:text-white py-3.5 px-8 rounded-xl border border-slate-800 hover:border-slate-700 hover:bg-slate-900 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] select-none clickable"
             >
               Login
             </button>
@@ -270,15 +270,15 @@ export default function Hero() {
                   }}
                   className={`w-full group ${floatClass} select-none`}
                 >
-                  <div className="w-full p-5 rounded-2xl border border-slate-900/80 bg-slate-950/70 backdrop-blur-md shadow-[0_10px_30px_-15px_rgba(0,0,0,0.4)] hover:shadow-[0_15px_35px_rgba(147,51,234,0.1)] transition-all duration-300 hover:-translate-y-1.5 hover:border-purple-500/30 overflow-hidden relative select-none">
+                  <div className="w-full p-5 rounded-2xl border border-zinc-900 bg-zinc-950/70 backdrop-blur-md shadow-[0_8px_20px_rgba(0,0,0,0.6)] hover:shadow-[0_12px_25px_rgba(255,255,255,0.02)] transition-all duration-300 hover:-translate-y-1.5 hover:border-zinc-700/50 overflow-hidden relative select-none">
                     
                     {/* Ambient light reflection shine */}
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-[100%] group-hover:translate-x-[150%] transition-transform duration-1000 ease-out pointer-events-none" />
 
                     <div className="flex flex-col gap-3 relative z-10">
                       {/* Floating icon */}
-                      <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${panel.color} flex items-center justify-center shadow-md`}>
-                        <IconComponent className="w-4 h-4 text-white" />
+                      <div className={`w-9 h-9 rounded-lg ${panel.color} flex items-center justify-center shadow-sm`}>
+                        <IconComponent className="w-4 h-4" />
                       </div>
                       
                       <div>

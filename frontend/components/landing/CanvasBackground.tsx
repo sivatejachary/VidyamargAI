@@ -55,9 +55,9 @@ export default function CanvasBackground() {
 
     // Color circles for mesh gradient (Layer 1 & 4)
     const glowCircles = [
-      { x: width * 0.2, y: height * 0.3, radius: 350, color: "rgba(147, 51, 234, 0.08)", vx: 0.2, vy: 0.15 },  // Purple
-      { x: width * 0.8, y: height * 0.7, radius: 400, color: "rgba(37, 99, 235, 0.06)", vx: -0.15, vy: 0.25 }, // Blue
-      { x: width * 0.5, y: height * 0.4, radius: 380, color: "rgba(6, 182, 212, 0.04)", vx: 0.1, vy: -0.2 }    // Cyan
+      { x: width * 0.2, y: height * 0.3, radius: 350, color: "rgba(99, 102, 241, 0.05)", vx: 0.2, vy: 0.15 },  // Indigo
+      { x: width * 0.8, y: height * 0.7, radius: 400, color: "rgba(139, 92, 246, 0.04)", vx: -0.15, vy: 0.25 }, // Violet
+      { x: width * 0.5, y: height * 0.4, radius: 380, color: "rgba(148, 163, 184, 0.02)", vx: 0.1, vy: -0.2 }    // Slate
     ];
 
     let time = 0;
@@ -72,7 +72,7 @@ export default function CanvasBackground() {
       ctx.clearRect(0, 0, width, height);
 
       // --- Base Dark Theme Color ---
-      ctx.fillStyle = "#030712"; // Deep Slate Dark
+      ctx.fillStyle = "#09090b"; // Rich Charcoal Zinc-950
       ctx.fillRect(0, 0, width, height);
 
       // --- Layer 1 & 4: Mesh Gradient & Moving Glow Circles ---
@@ -82,7 +82,7 @@ export default function CanvasBackground() {
 
         const grad = ctx.createRadialGradient(currentX, currentY, 0, currentX, currentY, circle.radius);
         grad.addColorStop(0, circle.color);
-        grad.addColorStop(1, "rgba(3, 7, 18, 0)");
+        grad.addColorStop(1, "rgba(9, 9, 11, 0)");
         
         ctx.fillStyle = grad;
         ctx.beginPath();

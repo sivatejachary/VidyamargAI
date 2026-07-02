@@ -7,7 +7,6 @@ import { useAuthStore } from "@/store/authStore";
 // Core modules and sections
 import SmoothScroll from "@/components/landing/SmoothScroll";
 import CanvasBackground from "@/components/landing/CanvasBackground";
-import CustomCursor from "@/components/landing/CustomCursor";
 import { PageTransitionProvider } from "@/components/landing/PageTransitionOverlay";
 import Header from "@/components/landing/Header";
 import Hero from "@/components/landing/Hero";
@@ -69,9 +68,6 @@ export default function Home() {
         <main className="relative min-h-screen bg-slate-950 text-slate-100 overflow-x-hidden dark font-sans antialiased selection:bg-purple-500/30 selection:text-white">
           {/* Animated 6-layer background canvas */}
           <CanvasBackground />
-
-          {/* Mouse follow spotlight ring cursor */}
-          <CustomCursor />
 
           {/* Transparent sticky header */}
           <Header />

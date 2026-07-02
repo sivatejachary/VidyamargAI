@@ -84,14 +84,14 @@ export default function Header() {
         <div className="hidden md:flex items-center gap-4">
           <button
             onClick={() => startTransition("/login")}
-            className="text-sm font-heading font-semibold text-slate-300 hover:text-white transition-colors py-2 px-5 rounded-xl border border-slate-800 hover:border-purple-500/30 hover:bg-purple-500/5 focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:outline-none select-none clickable"
+            className="text-sm font-heading font-semibold text-slate-300 hover:text-white transition-colors py-2 px-5 rounded-xl border border-slate-800 hover:border-slate-700 hover:bg-slate-900 focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:outline-none select-none clickable"
           >
             Login
           </button>
           
           <button
             onClick={() => startTransition("/signup")}
-            className="text-sm font-heading font-semibold text-white bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 py-2.5 px-6 rounded-xl shadow-[0_0_20px_rgba(147,51,234,0.25)] hover:shadow-[0_0_25px_rgba(147,51,234,0.4)] transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:outline-none select-none clickable"
+            className="text-sm font-heading font-semibold text-slate-950 bg-white hover:bg-slate-100 py-2.5 px-6 rounded-xl shadow-[0_4px_15px_rgba(255,255,255,0.06)] hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:outline-none select-none clickable"
           >
             Get Started
           </button>
@@ -137,7 +137,7 @@ export default function Header() {
                     setMobileMenuOpen(false);
                     startTransition("/login");
                   }}
-                  className="w-full text-center py-3 rounded-xl border border-slate-800 text-slate-300 hover:text-white text-sm font-heading font-semibold"
+                  className="w-full text-center py-3 rounded-xl border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white text-sm font-heading font-semibold"
                 >
                   Login
                 </button>
@@ -146,7 +146,7 @@ export default function Header() {
                     setMobileMenuOpen(false);
                     startTransition("/signup");
                   }}
-                  className="w-full text-center py-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-heading font-semibold shadow-lg shadow-purple-500/10"
+                  className="w-full text-center py-3 rounded-xl bg-white text-slate-950 hover:bg-slate-100 text-sm font-heading font-semibold shadow-md"
                 >
                   Get Started
                 </button>

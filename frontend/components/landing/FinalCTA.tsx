@@ -53,9 +53,9 @@ export default function FinalCTA() {
           initial={{ opacity: 0, scale: 0.9 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
-          className="mb-8 w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center border border-white/10 shadow-[0_0_20px_rgba(168,85,247,0.3)] animate-float-1"
+          className="mb-8 w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center border border-slate-800 shadow-[0_0_15px_rgba(255,255,255,0.02)] animate-float-1"
         >
-          <Sparkles className="w-5 h-5 text-white" />
+          <Sparkles className="w-5 h-5 text-purple-400" />
         </motion.div>
 
         {/* Headline */}
@@ -94,7 +94,7 @@ export default function FinalCTA() {
             onMouseLeave={handleGetStartedMouseLeave}
             animate={{ x: getStartedCoords.x, y: getStartedCoords.y }}
             onClick={() => startTransition("/signup")}
-            className="group w-full sm:w-auto inline-flex items-center justify-center gap-2 text-sm font-heading font-bold text-white bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 py-4 px-10 rounded-xl shadow-[0_0_30px_rgba(147,51,234,0.3)] hover:shadow-[0_0_35px_rgba(147,51,234,0.5)] transition-all duration-200 select-none btn-magnetic clickable"
+            className="group w-full sm:w-auto inline-flex items-center justify-center gap-2 text-sm font-heading font-bold text-slate-950 bg-white hover:bg-slate-100 py-4 px-10 rounded-xl shadow-[0_4px_20px_rgba(255,255,255,0.08)] transition-all duration-200 select-none btn-magnetic clickable"
             style={{ transitionProperty: "box-shadow, background-color" }}
           >
             Get Started
@@ -107,7 +107,7 @@ export default function FinalCTA() {
             onMouseLeave={handleLoginMouseLeave}
             animate={{ x: loginCoords.x, y: loginCoords.y }}
             onClick={() => startTransition("/login")}
-            className="w-full sm:w-auto inline-flex items-center justify-center text-sm font-heading font-bold text-slate-300 hover:text-white py-4 px-10 rounded-xl border border-slate-800 hover:border-purple-500/30 hover:bg-purple-500/5 transition-all duration-200 select-none btn-magnetic clickable"
+            className="w-full sm:w-auto inline-flex items-center justify-center text-sm font-heading font-bold text-slate-300 hover:text-white py-4 px-10 rounded-xl border border-slate-800 hover:border-slate-700 hover:bg-slate-900 transition-all duration-200 select-none btn-magnetic clickable"
             style={{ transitionProperty: "border-color, background-color" }}
           >
             Login
