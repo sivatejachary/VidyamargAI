@@ -76,8 +76,6 @@ export default function Home() {
           <div className="relative w-full">
             <Hero />
             
-            <TrustedMarquee />
-            
             <Ecosystem />
             
             <WhyVidyaMarg />
@@ -99,6 +97,8 @@ export default function Home() {
             <CareerInsights />
             
             <FAQ />
+            
+            <TrustedMarquee />
             
             <FinalCTA />
           </div>
