@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 # Core packages & services imports
 from packages.core_lib.database import DatabaseManager
-from packages.core_lib.telemetry import TelemetryContext
+from packages.core_lib.telemetry import configure_telemetry
 from packages.model_client.client import AppAIClient
 
 # AI OS Subsystems imports
@@ -21,7 +21,7 @@ from ai_os.execution.state_machine import ExecutionStateMachine
 from services.candidate_service.app.router import router as candidate_router
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+configure_telemetry(service_name="vidyamarg-api")
 logger = logging.getLogger("vidyamarg.api")
 
 app = FastAPI(
