@@ -101,7 +101,96 @@ class TelegramJobsConnector:
         else:
             return f"{diff.days} days ago"
 
+    async def _fetch_messages_via_api(self, channel_name: str) -> List[Dict[str, Any]]:
+        import os
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # backend/app
+        session_path = os.path.join(base_dir, "agents", "telegram_session")
+        session_file = f"{session_path}.session"
+
+        if not os.path.exists(session_file):
+            logger.info(f"Telegram session file '{session_file}' not found. Skipping API fetch.")
+            return []
+
+        api_id_str = settings.TG_API_ID
+        api_hash = settings.TG_API_HASH
+        if not api_id_str or not api_hash:
+            logger.warning("Telegram credentials (TG_API_ID/TG_API_HASH) are not configured in .env. Skipping API fetch.")
+            return []
+
+        try:
+            api_id = int(api_id_str)
+        except ValueError:
+            logger.warning(f"Invalid TG_API_ID: {api_id_str}")
+            return []
+
+        messages = []
+        from telethon import TelegramClient
+        client = TelegramClient(session_path, api_id, api_hash)
+        try:
+            await client.connect()
+            if not await client.is_user_authorized():
+                logger.warning("Telegram session is unauthorized. Please run telegram_login.py again.")
+                return []
+
+            # Clean username format
+            clean_name = channel_name.strip()
+            if clean_name.startswith("@"):
+                clean_name = clean_name[1:]
+
+            # Try to resolve entity and fetch messages
+            entity = await client.get_input_entity(clean_name)
+            # Retrieve latest 20 messages
+            api_messages = await client.get_messages(entity, limit=20)
+            for m in api_messages:
+                if m.text:
+                    rel_date = self.get_relative_date_string(m.date) if m.date else "Today"
+                    messages.append({
+                        "text": m.text,
+                        "date": rel_date
+                    })
+            
+            logger.info(f"Fetched {len(messages)} messages from @{channel_name} via Telegram API")
+        except Exception as e:
+            logger.error(f"Error fetching from @{channel_name} via Telegram API: {e}")
+        finally:
+            await client.disconnect()
+
+        return messages
+
     def fetch_channel_messages_with_metadata(self, channel_name: str) -> List[Dict[str, Any]]:
+        # 1. Try to fetch via Telethon API first
+        import asyncio
+        import threading
+        
+        api_messages = []
+        try:
+            def run_async_in_thread(coro):
+                res = []
+                err = []
+                def target():
+                    try:
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                        res.append(loop.run_until_complete(coro))
+                    except Exception as e:
+                        err.append(e)
+                    finally:
+                        loop.close()
+                t = threading.Thread(target=target)
+                t.start()
+                t.join()
+                if err:
+                    raise err[0]
+                return res[0] if res else []
+                
+            api_messages = run_async_in_thread(self._fetch_messages_via_api(channel_name))
+        except Exception as e:
+            logger.warning(f"Failed to fetch Telegram messages via API: {e}. Falling back to web scraping.")
+
+        if api_messages:
+            return api_messages
+
+        # 2. Fallback: Web preview HTML scraping
         messages = []
         clean_name = channel_name.strip()
         if clean_name.startswith("@"):
