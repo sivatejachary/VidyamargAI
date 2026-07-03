@@ -65,7 +65,7 @@ export default function Home() {
   return (
     <PageTransitionProvider>
       <SmoothScroll>
-        <main className="relative min-h-screen bg-slate-950 text-slate-100 overflow-x-hidden dark font-sans antialiased selection:bg-purple-500/30 selection:text-white">
+        <main className="relative min-h-screen bg-transparent text-foreground overflow-x-hidden font-sans antialiased selection:bg-purple-500/30 selection:text-white">
           {/* Animated 6-layer background canvas */}
           <CanvasBackground />
 

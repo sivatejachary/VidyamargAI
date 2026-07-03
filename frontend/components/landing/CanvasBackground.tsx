@@ -53,11 +53,11 @@ export default function CanvasBackground() {
       });
     }
 
-    // Color circles for mesh gradient (Layer 1 & 4)
+    // Coordinates for mesh gradient glow nodes
     const glowCircles = [
-      { x: width * 0.2, y: height * 0.3, radius: 350, color: "rgba(99, 102, 241, 0.05)", vx: 0.2, vy: 0.15 },  // Indigo
-      { x: width * 0.8, y: height * 0.7, radius: 400, color: "rgba(139, 92, 246, 0.04)", vx: -0.15, vy: 0.25 }, // Violet
-      { x: width * 0.5, y: height * 0.4, radius: 380, color: "rgba(148, 163, 184, 0.02)", vx: 0.1, vy: -0.2 }    // Slate
+      { x: width * 0.2, y: height * 0.3, radius: 350, vx: 0.2, vy: 0.15 },
+      { x: width * 0.8, y: height * 0.7, radius: 400, vx: -0.15, vy: 0.25 },
+      { x: width * 0.5, y: height * 0.4, radius: 380, vx: 0.1, vy: -0.2 }
     ];
 
     let time = 0;
@@ -65,14 +65,17 @@ export default function CanvasBackground() {
     const render = () => {
       time += 0.002;
 
+      // Detect active theme
+      const isDark = !document.documentElement.classList.contains("light-theme");
+
       // Mouse position lerping
       mouse.x += (mouse.targetX - mouse.x) * 0.05;
       mouse.y += (mouse.targetY - mouse.y) * 0.05;
 
       ctx.clearRect(0, 0, width, height);
 
-      // --- Base Dark Theme Color ---
-      ctx.fillStyle = "#09090b"; // Rich Charcoal Zinc-950
+      // --- Base Background Color ---
+      ctx.fillStyle = isDark ? "#09090b" : "#f4f4f5"; // Dark Zinc vs Light Zinc
       ctx.fillRect(0, 0, width, height);
 
       // --- Layer 1 & 4: Mesh Gradient & Moving Glow Circles ---
@@ -80,9 +83,21 @@ export default function CanvasBackground() {
         const currentX = circle.x + Math.sin(time * 0.8 + idx * 3) * 120;
         const currentY = circle.y + Math.cos(time * 1.2 + idx * 7) * 100;
 
+        const circleColor = isDark
+          ? [
+              "rgba(99, 102, 241, 0.05)",  // Indigo
+              "rgba(139, 92, 246, 0.04)",  // Violet
+              "rgba(148, 163, 184, 0.02)"  // Slate
+            ][idx]
+          : [
+              "rgba(99, 102, 241, 0.03)",  // Indigo
+              "rgba(139, 92, 246, 0.025)", // Violet
+              "rgba(148, 163, 184, 0.015)" // Slate
+            ][idx];
+
         const grad = ctx.createRadialGradient(currentX, currentY, 0, currentX, currentY, circle.radius);
-        grad.addColorStop(0, circle.color);
-        grad.addColorStop(1, "rgba(9, 9, 11, 0)");
+        grad.addColorStop(0, circleColor);
+        grad.addColorStop(1, isDark ? "rgba(9, 9, 11, 0)" : "rgba(244, 244, 245, 0)");
         
         ctx.fillStyle = grad;
         ctx.beginPath();
@@ -92,7 +107,7 @@ export default function CanvasBackground() {
 
       // --- Layer 2: Aurora Waves ---
       ctx.save();
-      ctx.strokeStyle = "rgba(147, 51, 234, 0.02)";
+      ctx.strokeStyle = isDark ? "rgba(147, 51, 234, 0.02)" : "rgba(147, 51, 234, 0.04)";
       ctx.lineWidth = 3.5;
       
       for (let w = 0; w < 3; w++) {
@@ -113,7 +128,7 @@ export default function CanvasBackground() {
 
       // --- Layer 5: Digital Grid ---
       ctx.save();
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.012)";
+      ctx.strokeStyle = isDark ? "rgba(255, 255, 255, 0.012)" : "rgba(9, 9, 11, 0.035)";
       ctx.lineWidth = 1;
 
       const gridSpacing = 80;
@@ -139,7 +154,7 @@ export default function CanvasBackground() {
       ctx.restore();
 
       // --- Layer 3: Floating Particles ---
-      ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+      ctx.fillStyle = isDark ? "rgba(255, 255, 255, 0.35)" : "rgba(9, 9, 11, 0.15)";
       particles.forEach((p) => {
         // Move particle
         p.y += p.speedY;
@@ -177,9 +192,15 @@ export default function CanvasBackground() {
 
       // --- Layer 6: Cursor Spotlight Glow ---
       const spotGrad = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 250);
-      spotGrad.addColorStop(0, "rgba(168, 85, 247, 0.06)");
-      spotGrad.addColorStop(0.4, "rgba(59, 130, 246, 0.03)");
-      spotGrad.addColorStop(1, "rgba(3, 7, 18, 0)");
+      if (isDark) {
+        spotGrad.addColorStop(0, "rgba(168, 85, 247, 0.06)");
+        spotGrad.addColorStop(0.4, "rgba(59, 130, 246, 0.03)");
+        spotGrad.addColorStop(1, "rgba(9, 9, 11, 0)");
+      } else {
+        spotGrad.addColorStop(0, "rgba(168, 85, 247, 0.03)");
+        spotGrad.addColorStop(0.4, "rgba(59, 130, 246, 0.015)");
+        spotGrad.addColorStop(1, "rgba(244, 244, 245, 0)");
+      }
 
       ctx.fillStyle = spotGrad;
       ctx.beginPath();

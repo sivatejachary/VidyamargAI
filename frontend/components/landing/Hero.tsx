@@ -37,7 +37,7 @@ function CountUpNumber({ end, suffix = "", duration = 1.5 }: { end: number; suff
   }, [end, duration]);
 
   return (
-    <span className="font-mono font-bold tracking-tight text-3xl md:text-4xl text-white">
+    <span className="font-mono font-bold tracking-tight text-3xl md:text-4xl text-foreground">
       {count.toLocaleString()}{suffix}
     </span>
   );
@@ -122,7 +122,7 @@ export default function Hero() {
             variants={containerVariants}
             initial="hidden"
             animate="visible"
-            className="text-4xl sm:text-5xl md:text-7xl font-heading font-black tracking-tight leading-[1.05] text-white flex flex-col mb-6"
+            className="text-4xl sm:text-5xl md:text-7xl font-heading font-black tracking-tight leading-[1.05] text-foreground flex flex-col mb-6"
           >
             <span className="overflow-hidden block py-1">
               <motion.span variants={lineVariants} className="block">
@@ -130,7 +130,7 @@ export default function Hero() {
               </motion.span>
             </span>
             <span className="overflow-hidden block py-1">
-              <motion.span variants={lineVariants} className="block text-slate-400">
+              <motion.span variants={lineVariants} className="block text-muted-foreground">
                 for Your Complete
               </motion.span>
             </span>
@@ -149,7 +149,7 @@ export default function Hero() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.6, ease: "easeOut" }}
-            className="text-slate-400 font-sans text-base md:text-lg leading-relaxed max-w-xl mb-10"
+            className="text-muted-foreground font-sans text-base md:text-lg leading-relaxed max-w-xl mb-10"
           >
             Find jobs, build skills, create ATS-friendly resumes, prepare for interviews, and grow your career—all in one intelligent platform.
           </motion.p>
@@ -163,14 +163,14 @@ export default function Hero() {
           >
             <button
               onClick={() => startTransition("/signup")}
-              className="group inline-flex items-center justify-center gap-2 text-sm font-heading font-bold text-slate-950 bg-white hover:bg-slate-100 py-3.5 px-8 rounded-xl shadow-[0_4px_20px_rgba(255,255,255,0.08)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 select-none clickable"
+              className="group inline-flex items-center justify-center gap-2 text-sm font-heading font-bold text-background bg-foreground hover:bg-foreground/90 py-3.5 px-8 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 select-none clickable"
             >
               Get Started
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1 duration-200" />
             </button>
             <button
               onClick={() => startTransition("/login")}
-              className="inline-flex items-center justify-center text-sm font-heading font-bold text-slate-300 hover:text-white py-3.5 px-8 rounded-xl border border-slate-800 hover:border-slate-700 hover:bg-slate-900 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] select-none clickable"
+              className="inline-flex items-center justify-center text-sm font-heading font-bold text-muted-foreground hover:text-foreground py-3.5 px-8 rounded-xl border border-border hover:border-border-hover hover:bg-muted transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] select-none clickable"
             >
               Login
             </button>
@@ -181,23 +181,23 @@ export default function Hero() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.9 }}
-            className="grid grid-cols-2 gap-x-8 gap-y-6 w-full border-t border-slate-900 pt-8"
+            className="grid grid-cols-2 gap-x-8 gap-y-6 w-full border-t border-border pt-8"
           >
             <div>
               <CountUpNumber end={50000} suffix="+" />
-              <p className="text-xs font-heading font-medium text-slate-500 uppercase tracking-wider mt-1">Active Jobs</p>
+              <p className="text-xs font-heading font-medium text-muted-foreground uppercase tracking-wider mt-1">Active Jobs</p>
             </div>
             <div>
               <CountUpNumber end={500} suffix="+" />
-              <p className="text-xs font-heading font-medium text-slate-500 uppercase tracking-wider mt-1">Hiring Companies</p>
+              <p className="text-xs font-heading font-medium text-muted-foreground uppercase tracking-wider mt-1">Hiring Companies</p>
             </div>
             <div>
               <CountUpNumber end={100000} suffix="+" />
-              <p className="text-xs font-heading font-medium text-slate-500 uppercase tracking-wider mt-1">Candidates Registered</p>
+              <p className="text-xs font-heading font-medium text-muted-foreground uppercase tracking-wider mt-1">Candidates Registered</p>
             </div>
             <div>
               <CountUpNumber end={95} suffix="%" />
-              <p className="text-xs font-heading font-medium text-slate-500 uppercase tracking-wider mt-1">Success Rate</p>
+              <p className="text-xs font-heading font-medium text-muted-foreground uppercase tracking-wider mt-1">Success Rate</p>
             </div>
           </motion.div>
         </div>
@@ -270,7 +270,7 @@ export default function Hero() {
                   }}
                   className={`w-full group ${floatClass} select-none`}
                 >
-                  <div className="w-full p-5 rounded-2xl border border-zinc-900 bg-zinc-950/70 backdrop-blur-md shadow-[0_8px_20px_rgba(0,0,0,0.6)] hover:shadow-[0_12px_25px_rgba(255,255,255,0.02)] transition-all duration-300 hover:-translate-y-1.5 hover:border-zinc-700/50 overflow-hidden relative select-none">
+                  <div className="w-full p-5 rounded-2xl border border-border bg-card/75 backdrop-blur-md shadow-[0_8px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_8px_20px_rgba(0,0,0,0.6)] transition-all duration-300 hover:-translate-y-1.5 hover:border-border-hover overflow-hidden relative select-none">
                     
                     {/* Ambient light reflection shine */}
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-[100%] group-hover:translate-x-[150%] transition-transform duration-1000 ease-out pointer-events-none" />
@@ -282,10 +282,10 @@ export default function Hero() {
                       </div>
                       
                       <div>
-                        <h3 className="font-heading font-bold text-sm text-white group-hover:text-purple-300 transition-colors">
+                        <h3 className="font-heading font-bold text-sm text-foreground group-hover:text-purple-500 dark:group-hover:text-purple-300 transition-colors">
                           {panel.title}
                         </h3>
-                        <p className="font-sans text-xs text-slate-500 mt-1">
+                        <p className="font-sans text-xs text-muted-foreground mt-1">
                           {panel.desc}
                         </p>
                       </div>
