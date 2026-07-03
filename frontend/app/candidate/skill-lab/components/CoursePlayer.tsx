@@ -311,7 +311,7 @@ export default function CoursePlayer({
         initialized = true;
         if (checkInterval) clearInterval(checkInterval);
         
-        const videoId = extractYouTubeId(currentLesson?.video_url || "");
+        const videoId = extractYouTubeId(currentLesson?.video_url || "", selectedCourse?.id, currentLesson?.id);
         if (!videoId) {
           setVideoError("Invalid YouTube URL");
           setIsLoading(false);
@@ -452,7 +452,7 @@ export default function CoursePlayer({
   useEffect(() => {
     if (!isYouTube || !isPlayerReady || !ytPlayerRef.current) return;
 
-    const videoId = extractYouTubeId(currentLesson?.video_url || "");
+    const videoId = extractYouTubeId(currentLesson?.video_url || "", selectedCourse?.id, currentLesson?.id);
     if (!videoId) {
       setVideoError("Invalid YouTube URL");
       return;
@@ -1932,7 +1932,7 @@ export default function CoursePlayer({
   );
 }
 
-function extractYouTubeId(url: string): string | null {
+function extractYouTubeId(url: string, courseId?: string, lessonId?: string): string | null {
   if (!url) return null;
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
   const match = url.match(regExp);
@@ -1941,7 +1941,25 @@ function extractYouTubeId(url: string): string | null {
   }
   // Graceful fallback for placeholder or generic URLs to ensure a premium player experience
   if (url.includes("youtube.com") || url.includes("youtu.be") || url.startsWith("url")) {
-    return "Ke90Tje7VS0"; // High-quality educational introduction video
+    const cid = String(courseId || "").toUpperCase();
+    const lid = String(lessonId || "");
+    
+    // Stable hash function to distribute fallback videos across lessons
+    let hash = 0;
+    for (let i = 0; i < lid.length; i++) {
+      hash = lid.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const idx = Math.abs(hash);
+    
+    if (cid.includes("D1") || cid.includes("DOCKER")) {
+      const dockerVids = ["3c-iKanfgbA", "fqMOX6JJhGo", "pTFZFxd4hOI", "gAkwW2tuIqE", "ScMzIvxBSi4"];
+      return dockerVids[idx % dockerVids.length];
+    } else if (cid.includes("H1") || cid.includes("HTML")) {
+      const htmlVids = ["MDLn5-zSQQI", "kUMe1FH4WHY", "hu-q2zYwEYs", "PlxWf493en4", "ok-plXXgbWA"];
+      return htmlVids[idx % htmlVids.length];
+    }
+    
+    return "Ke90Tje7VS0"; // Default React video if no course match
   }
   return null;
 }
