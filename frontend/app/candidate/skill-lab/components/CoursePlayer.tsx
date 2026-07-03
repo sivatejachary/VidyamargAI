@@ -79,6 +79,7 @@ export default function CoursePlayer({
   const ytPlayerRef = useRef<any>(null);
   const ytIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const ytStartedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingSeekTimeRef = useRef<number | null>(null);
 
   const pauseActiveVideo = () => {
     if (ytPlayerRef.current && typeof ytPlayerRef.current.pauseVideo === "function") {
@@ -268,16 +269,23 @@ export default function CoursePlayer({
       const loadResumeState = async () => {
         try {
           const res = await apiService.getResumeLearning(selectedCourse.id);
+          let targetTime = 0;
           if (res && res.lessonId === currentLesson.id && res.playbackPosition > 0) {
-            console.log(`Resuming lesson at position: ${res.playbackPosition}`);
-            if (videoRef.current) {
-              videoRef.current.currentTime = res.playbackPosition;
-            }
+            targetTime = res.playbackPosition;
           } else {
-            // Local fallback
             const cached = localStorage.getItem(`resume:lesson:${currentLesson.id}`);
-            if (cached && videoRef.current) {
-              videoRef.current.currentTime = parseFloat(cached);
+            if (cached) targetTime = parseFloat(cached);
+          }
+          
+          if (targetTime > 0) {
+            if (isYouTube) {
+              if (ytPlayerRef.current && typeof ytPlayerRef.current.seekTo === "function" && isPlayerReady) {
+                ytPlayerRef.current.seekTo(targetTime, true);
+              } else {
+                pendingSeekTimeRef.current = targetTime;
+              }
+            } else if (videoRef.current) {
+              videoRef.current.currentTime = targetTime;
             }
           }
         } catch (e) {
@@ -357,6 +365,10 @@ export default function CoursePlayer({
                 setDuration(event.target.getDuration());
                 setIsLoading(false);
                 setIsPlayerReady(true);
+                if (pendingSeekTimeRef.current !== null) {
+                  event.target.seekTo(pendingSeekTimeRef.current, true);
+                  pendingSeekTimeRef.current = null;
+                }
               },
               onStateChange: (event: any) => {
                 const state = event.data;
@@ -385,6 +397,21 @@ export default function CoursePlayer({
 
                         const dur = ytPlayerRef.current.getDuration();
                         if (dur > 0) {
+                          // Save position dynamically every 5 seconds
+                          const roundedTime = Math.round(currTime);
+                          if (roundedTime > 0 && roundedTime % 5 === 0) {
+                            localStorage.setItem(`resume:lesson:${currentLesson.id}`, currTime.toString());
+                            const totalSegs = Math.ceil(dur / 5);
+                            const uniquePct = totalSegs > 0 ? (watchedSegments.length / totalSegs) * 100 : 0;
+                            apiService.saveResumeLearning({
+                              courseId: selectedCourse.id,
+                              lessonId: currentLesson.id,
+                              playbackPosition: currTime,
+                              watchedSegments: watchedSegments,
+                              completion: Math.round(uniquePct)
+                            }).catch(err => console.error("Auto-save position error:", err));
+                          }
+
                           if (dur > 15) {
                             if (currTime >= dur - 15) {
                               setIsNextUnlocked(true);
