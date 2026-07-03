@@ -15,11 +15,34 @@ import Certificates from "./components/Certificates";
 import AiMentor from "./components/AiMentor";
 
 
-function transformNewCurriculumToOld(newCur: any) {
+function transformNewCurriculumToOld(newCur: any, clientCompletedIds?: any[]) {
   if (!newCur || !newCur.modules || !Array.isArray(newCur.modules)) return newCur;
   
   const sections: any[] = [];
   const completedLessonIds: string[] = [];
+  
+  // Unify database completed IDs
+  newCur.modules.forEach((mod: any) => {
+    if (mod.topics && Array.isArray(mod.topics)) {
+      mod.topics.forEach((topic: any) => {
+        if (topic.video?.completed) completedLessonIds.push(String(topic.video.id));
+        if (topic.pdf?.completed) completedLessonIds.push(String(topic.pdf.id));
+      });
+    }
+    if (mod.quiz?.completed) completedLessonIds.push(String(mod.quiz.id));
+    if (mod.writtenAssessment?.completed) completedLessonIds.push(String(mod.writtenAssessment.id));
+    if (mod.aiInterview?.completed) completedLessonIds.push(String(mod.aiInterview.id));
+  });
+
+  // Merge client Completed IDs
+  if (clientCompletedIds && Array.isArray(clientCompletedIds)) {
+    clientCompletedIds.forEach(id => {
+      const sId = String(id);
+      if (!completedLessonIds.includes(sId)) {
+        completedLessonIds.push(sId);
+      }
+    });
+  }
   
   newCur.modules.forEach((mod: any) => {
     const sectionLessons: any[] = [];
@@ -39,9 +62,6 @@ function transformNewCurriculumToOld(newCur: any) {
             video_url: topic.video.youtubeUrl,
             description: topic.video.description,
           });
-          if (topic.video.completed) {
-            completedLessonIds.push(vidId);
-          }
         }
         
         // 2. PDF
@@ -55,9 +75,6 @@ function transformNewCurriculumToOld(newCur: any) {
             is_locked: !mod.unlocked, // will compute sequentially later
             pdf_url: topic.pdf.pdfUrl,
           });
-          if (topic.pdf.completed) {
-            completedLessonIds.push(pdfId);
-          }
         }
       });
     }
@@ -82,9 +99,6 @@ function transformNewCurriculumToOld(newCur: any) {
           }))
         }
       });
-      if (mod.quiz.completed) {
-        completedLessonIds.push(quizId);
-      }
     }
     
     // 4. Written Assessment
@@ -105,9 +119,6 @@ function transformNewCurriculumToOld(newCur: any) {
           feedback: mod.writtenAssessment.feedback
         }
       });
-      if (mod.writtenAssessment.completed) {
-        completedLessonIds.push(writtenId);
-      }
     }
     
     // 5. AI Interview
@@ -128,16 +139,13 @@ function transformNewCurriculumToOld(newCur: any) {
           feedback: mod.aiInterview.feedback
         }
       });
-      if (mod.aiInterview.completed) {
-        completedLessonIds.push(interviewId);
-      }
     }
     
     // Perform sequential linear lock computation for the lessons in this section
     let prevCompleted = true; // The first item is unlocked if the module itself is unlocked
     sectionLessons.forEach((les: any) => {
       les.is_locked = !mod.unlocked || !prevCompleted;
-      prevCompleted = completedLessonIds.includes(les.id);
+      prevCompleted = completedLessonIds.includes(String(les.id));
     });
     
     sections.push({
@@ -223,9 +231,15 @@ export default function SkillLab() {
     placeholderData: keepPreviousData,
   });
 
+  // Local state for current selections
+  const [completedLessonIds, setCompletedLessonIds] = useState<any[]>([]);
+  const [currentLesson, setCurrentLesson] = useState<any>(null);
+  const [autoSelectLessonId, setAutoSelectLessonId] = useState<string | number | null>(null);
+  const [autoSelectType, setAutoSelectType] = useState<string | null>(null);
+
   const curriculum = useMemo(() => {
-    return transformNewCurriculumToOld(rawCurriculum);
-  }, [rawCurriculum]);
+    return transformNewCurriculumToOld(rawCurriculum, completedLessonIds);
+  }, [rawCurriculum, completedLessonIds]);
 
   const enrolledCourseIds = useMemo(() => {
     if (!Array.isArray(enrollments)) return [];
@@ -253,14 +267,8 @@ export default function SkillLab() {
   });
 
   const activeEnrollmentCurriculum = useMemo(() => {
-    return transformNewCurriculumToOld(rawActiveEnrollmentCurriculum);
-  }, [rawActiveEnrollmentCurriculum]);
-
-  // Local state for current selections
-  const [currentLesson, setCurrentLesson] = useState<any>(null);
-  const [completedLessonIds, setCompletedLessonIds] = useState<number[]>([]);
-  const [autoSelectLessonId, setAutoSelectLessonId] = useState<string | number | null>(null);
-  const [autoSelectType, setAutoSelectType] = useState<string | null>(null);
+    return transformNewCurriculumToOld(rawActiveEnrollmentCurriculum, completedLessonIds);
+  }, [rawActiveEnrollmentCurriculum, completedLessonIds]);
 
   // Sync current lesson selection when curriculum changes
   useEffect(() => {
