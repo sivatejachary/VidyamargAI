@@ -893,7 +893,7 @@ class MatchingAgent:
             return state
 
         try:
-            # Get jobs to match against — verified from this run + recent jobs in DB
+            # Get jobs to match against — verified from this run
             jobs_to_match = list(state.get("verified_jobs", []))
 
             # Also pull recent high-quality jobs from DB not yet matched
@@ -901,18 +901,54 @@ class MatchingAgent:
             rows = db.query(Match.job_id).filter(Match.candidate_id == candidate_id).all()
             existing_match_ids = {r[0] for r in rows}
 
-            db_jobs = (
-                db.query(Job)
-                .filter(
-                    Job.is_active == True,
-                    Job.quality_score >= 0.4,
-                    Job.spam_score <= 0.3,
-                    ~Job.id.in_(existing_match_ids),
-                )
-                .order_by(Job.discovered_at.desc())
-                .limit(200)
-                .all()
+            # Retrieve candidate resume text
+            profile_obj = (
+                db.query(CandidateProfile)
+                .filter(CandidateProfile.candidate_id == candidate_id)
+                .order_by(CandidateProfile.created_at.desc())
+                .first()
             )
+            resume_text = ""
+            if profile_obj and profile_obj.resume_text:
+                resume_text = profile_obj.resume_text
+
+            from app.services.vector_store import vector_store
+            import asyncio
+
+            qdrant_scores = {}
+            db_jobs = []
+
+            if vector_store.enabled and resume_text:
+                try:
+                    qdrant_scores = asyncio.run(vector_store.search_jobs_with_scores(resume_text, limit=100))
+                    matched_ids = [jid for jid in qdrant_scores.keys() if jid not in existing_match_ids]
+                    if matched_ids:
+                        db_jobs = (
+                            db.query(Job)
+                            .filter(
+                                Job.id.in_(matched_ids),
+                                Job.is_active == True,
+                                Job.quality_score >= 0.4,
+                                Job.spam_score <= 0.3,
+                            )
+                            .all()
+                        )
+                except Exception as ex:
+                    logger.warning(f"MatchingAgent: Qdrant search failed: {ex}. Falling back to DB jobs.")
+
+            if not db_jobs:
+                db_jobs = (
+                    db.query(Job)
+                    .filter(
+                        Job.is_active == True,
+                        Job.quality_score >= 0.4,
+                        Job.spam_score <= 0.3,
+                        ~Job.id.in_(existing_match_ids),
+                    )
+                    .order_by(Job.discovered_at.desc())
+                    .limit(200)
+                    .all()
+                )
 
             for j in db_jobs:
                 jobs_to_match.append({
@@ -997,15 +1033,17 @@ class MatchingAgent:
                 # 5. Salary score (default neutral if missing)
                 salary_score = 70.0
 
-                # 6. Semantic score (approximate via skill overlap + title similarity)
-                target_roles_lower = [r.lower() for r in state.get("target_roles", [])]
-                job_title_lower = job.get("title", "").lower()
-                semantic_score = 40.0
-                for role in target_roles_lower:
-                    role_words = role.split()
-                    if any(w in job_title_lower for w in role_words if len(w) > 3):
-                        semantic_score = min(90.0, semantic_score + 20.0)
-                        break
+                # 6. Semantic score (try Qdrant score first, fall back to title similarity)
+                semantic_score = qdrant_scores.get(job_id) if qdrant_scores else None
+                if semantic_score is None:
+                    target_roles_lower = [r.lower() for r in state.get("target_roles", [])]
+                    job_title_lower = job.get("title", "").lower()
+                    semantic_score = 40.0
+                    for role in target_roles_lower:
+                        role_words = role.split()
+                        if any(w in job_title_lower for w in role_words if len(w) > 3):
+                            semantic_score = min(90.0, semantic_score + 20.0)
+                            break
 
                 # Composite score
                 overall_score = (

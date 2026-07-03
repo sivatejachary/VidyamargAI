@@ -165,6 +165,7 @@ class Job(Base):
     is_duplicate = Column(Boolean, default=False)
     duplicate_of_id = Column(Integer, ForeignKey("jobs.id", ondelete="SET NULL"), nullable=True)
     rejection_reason = Column(String(255), nullable=True)      # spam, duplicate, expired, fake
+    lifecycle_status = Column(String(50), default="discovered", index=True)
 
     # Embedding
     embedding_id = Column(String(100), nullable=True)          # Qdrant point ID
@@ -175,6 +176,7 @@ class Job(Base):
     expires_at = Column(DateTime, nullable=True, index=True)
     discovered_at = Column(DateTime, default=datetime.utcnow, index=True)
     verified_at = Column(DateTime, nullable=True)
+    deleted_at = Column(DateTime, nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

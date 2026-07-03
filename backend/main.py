@@ -72,7 +72,14 @@ async def run_db_migrations():
             await conn.execute(
                 text("ALTER TABLE archive.legacy_mcp_chat_messages ADD COLUMN IF NOT EXISTS interactive_card JSON;")
             )
-            logger.info("Database schema migration completed successfully on archive.legacy_mcp_chat_messages.")
+            # Add lifecycle_status and deleted_at to jobs
+            await conn.execute(
+                text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS lifecycle_status VARCHAR(50) DEFAULT 'discovered';")
+            )
+            await conn.execute(
+                text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;")
+            )
+            logger.info("Database schema migration completed successfully on archive.legacy_mcp_chat_messages and jobs.")
     except Exception as e:
         logger.error(f"Failed to run database schema migrations on archive schema: {e}")
         # Fallback to standard table name
@@ -81,9 +88,46 @@ async def run_db_migrations():
                 await conn.execute(
                     text("ALTER TABLE mcp_chat_messages ADD COLUMN IF NOT EXISTS interactive_card JSON;")
                 )
+                await conn.execute(
+                    text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS lifecycle_status VARCHAR(50) DEFAULT 'discovered';")
+                )
+                await conn.execute(
+                    text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;")
+                )
                 logger.info("Fallback schema database migration completed successfully.")
         except Exception as e_inner:
             logger.error(f"Failed fallback database migration: {e_inner}")
+
+@app.on_event("startup")
+async def start_event_bus_and_workers():
+    logger.info("Initializing Redis EventBus connection...")
+    try:
+        from app.core.event_bus import event_bus
+        await event_bus.connect(redis_url)
+        
+        # Start background workers
+        from app.job_discovery.workers.embedding.worker import start_embedding_worker
+        from app.job_discovery.workers.matching.worker import start_matching_worker
+        from app.job_discovery.workers.recommendation.worker import start_recommendation_worker
+        
+        await start_embedding_worker()
+        await start_matching_worker()
+        await start_recommendation_worker()
+        
+        # Start split scheduler
+        from app.core.scheduler import start_scheduler
+        start_scheduler()
+    except Exception as e:
+        logger.error(f"Failed to initialize EventBus, workers, or scheduler: {e}")
+
+@app.on_event("shutdown")
+async def shutdown_event_bus_and_workers():
+    logger.info("Shutting down background scheduler...")
+    try:
+        from app.core.scheduler import shutdown_scheduler
+        shutdown_scheduler()
+    except Exception as e:
+        logger.error(f"Failed to shutdown scheduler: {e}")
 
 # WebSockets connection registry
 class ConnectionManager:

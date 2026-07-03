@@ -312,5 +312,56 @@ class QdrantVectorStore:
             logger.error(f"Failed to upsert skill {skill_id} to Qdrant: {e}")
             return False
 
+    async def search_jobs_with_scores(self, resume_text: str, limit: int = 50) -> Dict[int, float]:
+        """Searches 'job_embeddings' collection using resume embedding and returns a dictionary of job_id -> cosine_similarity score."""
+        if not self.enabled or not self.client:
+            return {}
+            
+        try:
+            vector = await embedding_service.get_nvidia_embedding(resume_text)
+            import asyncio
+            loop = asyncio.get_running_loop()
+            
+            def _search():
+                return self.client.search(
+                    collection_name="job_embeddings",
+                    query_vector=vector,
+                    limit=limit
+                )
+                
+            results = await loop.run_in_executor(None, _search)
+            scores = {}
+            for r in results:
+                if r.payload and "job_id" in r.payload:
+                    jid = r.payload["job_id"]
+                    score_pct = max(0.0, min(100.0, float(r.score) * 100.0))
+                    scores[jid] = round(score_pct, 2)
+            return scores
+        except Exception as e:
+            logger.error(f"Failed to search jobs with scores in Qdrant: {e}")
+            return {}
+
+    async def get_candidate_vector(self, candidate_id: int) -> Optional[List[float]]:
+        """Retrieves a candidate's pre-computed embedding vector from Qdrant."""
+        if not self.enabled or not self.client:
+            return None
+        try:
+            import asyncio
+            loop = asyncio.get_running_loop()
+            
+            def _retrieve():
+                return self.client.retrieve(
+                    collection_name="candidate_embeddings",
+                    ids=[candidate_id],
+                    with_vectors=True
+                )
+                
+            results = await loop.run_in_executor(None, _retrieve)
+            if results and results[0].vector:
+                return results[0].vector
+        except Exception as e:
+            logger.error(f"Failed to retrieve vector for candidate {candidate_id}: {e}")
+        return None
+
 # Singleton instance
 vector_store = QdrantVectorStore()

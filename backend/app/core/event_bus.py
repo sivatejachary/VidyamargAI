@@ -41,7 +41,10 @@ class EventBus:
             "job:found", "job:matched",
             "app:sent", "app:otp", "app:complete",
             "track:update", "track:interview",
-            "career:insight"
+            "career:insight",
+            "jobs.persisted.v1", "jobs.embedded.v1",
+            "jobs.matched.v1", "recommendations.created.v1",
+            "jobs.failed.dlq"
         ]
         for stream in streams:
             try:
