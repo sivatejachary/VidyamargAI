@@ -744,32 +744,35 @@ def _build_curriculum_payload(db: Session, course_id: str, user_id: Optional[int
             })
             
     # Fetch lessons (videos) and PDFs for all topics in batch queries
-    lessons_map = {}
-    pdfs_map = {}
+    # Fetch lessons (videos) and PDFs for all topics in batch queries
+    from collections import defaultdict
+    lessons_by_topic = defaultdict(list)
+    pdfs_by_topic = defaultdict(list)
+    
     if topic_ids:
         lessons_res = db.execute(
-            text("SELECT id, topicid, title, youtubeurl, duration, description FROM lessons WHERE topicid IN :topic_ids"),
+            text("SELECT id, topicid, title, youtubeurl, duration, description FROM lessons WHERE topicid IN :topic_ids ORDER BY id"),
             {"topic_ids": tuple(topic_ids)}
         ).fetchall()
         for r in lessons_res:
-            lessons_map[r[1]] = {
+            lessons_by_topic[r[1]].append({
                 "id": r[0],
                 "title": r[2],
                 "youtubeUrl": r[3],
                 "duration": r[4],
                 "description": r[5]
-            }
+            })
             
         pdfs_res = db.execute(
-            text("SELECT id, topicid, title, pdfurl FROM pdfs WHERE topicid IN :topic_ids"),
+            text("SELECT id, topicid, title, pdfurl FROM pdfs WHERE topicid IN :topic_ids ORDER BY id"),
             {"topic_ids": tuple(topic_ids)}
         ).fetchall()
         for r in pdfs_res:
-            pdfs_map[r[1]] = {
+            pdfs_by_topic[r[1]].append({
                 "id": r[0],
                 "title": r[2],
                 "pdfUrl": r[3]
-            }
+            })
             
     # Fetch quizzes, written assessments, and AI interviews in batch queries
     quizzes_map = {}
@@ -824,40 +827,42 @@ def _build_curriculum_payload(db: Session, course_id: str, user_id: Optional[int
         topics = []
         for t in module_topics.get(mod_id, []):
             t_id = t["topicId"]
+            vids = lessons_by_topic.get(t_id, [])
+            pdfs = pdfs_by_topic.get(t_id, [])
             
-            # Video
-            video_data = None
-            raw_les = lessons_map.get(t_id)
-            if raw_les:
-                video_data = {
-                    "id": raw_les["id"],
-                    "title": raw_les["title"],
-                    "youtubeUrl": raw_les["youtubeUrl"],
-                    "duration": raw_les["duration"],
-                    "description": raw_les.get("description"),
-                    "completed": False
-                }
+            max_instances = max(len(vids), len(pdfs), 1)
+            for i in range(max_instances):
+                video_data = None
+                if i < len(vids):
+                    video_data = {
+                        "id": vids[i]["id"],
+                        "title": vids[i]["title"],
+                        "youtubeUrl": vids[i]["youtubeUrl"],
+                        "duration": vids[i]["duration"],
+                        "description": vids[i].get("description"),
+                        "completed": False
+                    }
                 
-            # PDF
-            pdf_data = None
-            raw_pdf = pdfs_map.get(t_id)
-            if raw_pdf:
-                pdf_data = {
-                    "id": raw_pdf["id"],
-                    "title": raw_pdf["title"],
-                    "pdfUrl": raw_pdf["pdfUrl"],
-                    "completed": False
-                }
+                pdf_data = None
+                if i < len(pdfs):
+                    pdf_data = {
+                        "id": pdfs[i]["id"],
+                        "title": pdfs[i]["title"],
+                        "pdfUrl": pdfs[i]["pdfUrl"],
+                        "completed": False
+                    }
                 
-            topics.append({
-                "topicId": t_id,
-                "title": t["title"],
-                "description": t["description"],
-                "topicNo": t["topicNo"],
-                "duration": t["duration"],
-                "video": video_data,
-                "pdf": pdf_data
-            })
+                virtual_t_id = f"{t_id}_{i}" if max_instances > 1 else t_id
+                title_suffix = f" - Part {i+1}" if max_instances > 1 else ""
+                topics.append({
+                    "topicId": virtual_t_id,
+                    "title": f"{t['title']}{title_suffix}",
+                    "description": t["description"],
+                    "topicNo": t["topicNo"],
+                    "duration": t["duration"],
+                    "video": video_data,
+                    "pdf": pdf_data
+                })
             
         # Quiz
         quiz_data = None
