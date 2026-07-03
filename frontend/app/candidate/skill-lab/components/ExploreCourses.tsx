@@ -495,8 +495,8 @@ export default function ExploreCourses({
                           <h4 className="text-xs font-bold text-foreground line-clamp-1 leading-snug">
                             {course.title}
                           </h4>
-                          <p className="text-[9px] text-muted-foreground">
-                            Estimated {remainingHours} hrs remaining
+                          <p className="text-[9px] text-muted-foreground line-clamp-1">
+                            {enrollment.last_lesson_title ? `Last lesson: ${enrollment.last_lesson_title}` : `Estimated ${remainingHours} hrs remaining`}
                           </p>
                         </div>
                         

@@ -12,7 +12,8 @@
     - [x] Add `useWebSockets` hook with `candidate_{candidate_id}` connection
     - [x] Handle real-time WebSocket progress/failure events
     - [x] Implement adaptive fallback polling
-    - [x] Build the new **Resume Analysis** dashboard section rendering extracted summary, experience, projects, and education
+    - [x] Build the new **Resume Analysis** dashboard- [x] Step 2: Update backend `learning.py` with get_resume_lesson_id, enroll_course redesign, get_enrollments, and module completion hooks
+- [/] Step 3: Update frontend `CourseCard.tsx` button labels to "Continue Learning" and "Enroll Now"
 - [x] 4. Update frontend profile page
     - [x] Add `summary` and `projects` states and input/display sections
     - [x] Wire up with `apiService.updateProfile`

@@ -206,7 +206,7 @@ export function CourseCard({
               aria-label={`Resume ${course.title}`}
             >
               <Play size={13} aria-hidden="true" />
-              Resume
+              Continue Learning
             </Button>
           ) : (
             <Button
@@ -216,7 +216,7 @@ export function CourseCard({
               onClick={() => onEnroll?.(course.id)}
               aria-label={`Enroll in ${course.title}`}
             >
-              Enroll
+              Enroll Now
             </Button>
           )}
         </div>

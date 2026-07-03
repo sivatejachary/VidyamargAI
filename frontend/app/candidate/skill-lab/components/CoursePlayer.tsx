@@ -927,6 +927,14 @@ export default function CoursePlayer({
     return activeSection ? activeSection.title : "";
   }, [curriculum, currentLesson]);
 
+  const activeModuleGoal = useMemo(() => {
+    if (!curriculum?.sections || !currentLesson) return "";
+    const activeSection = curriculum.sections.find((s: any) => 
+      s.lessons?.some((l: any) => l.id === currentLesson.id)
+    );
+    return activeSection ? activeSection.goal : "";
+  }, [curriculum, currentLesson]);
+
   const formatTime = (seconds: number) => {
     if (isNaN(seconds)) return "00:00";
     const mins = Math.floor(seconds / 60);
@@ -1691,8 +1699,14 @@ export default function CoursePlayer({
               <div className="text-xs text-slate-650 dark:text-slate-400 space-y-3 leading-relaxed font-semibold">
                 <h4 className="text-slate-800 dark:text-white font-bold text-xs">About this Session</h4>
                 <p>
-                  This session forms part of the module curriculum. Watching video materials completely, studying PDFs, and completing quizzes validates the learning requirements to unlock certifications.
+                  {currentLesson.description || "This session forms part of the module curriculum. Watching video materials completely, studying PDFs, and completing quizzes validates the learning requirements to unlock certifications."}
                 </p>
+                {activeModuleGoal && (
+                  <div className="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-850 mt-2">
+                    <h5 className="text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 font-mono tracking-wider">Module Goal</h5>
+                    <p className="text-[11px] mt-1 text-slate-500 dark:text-slate-400 font-normal leading-normal">{activeModuleGoal}</p>
+                  </div>
+                )}
                 <div className="flex gap-4.5 text-[10px] text-slate-500 border-t border-slate-100 dark:border-slate-800/40 pt-3.5 mt-3 w-full font-mono">
                   <span>Module Progress: {moduleProgressPercent}%</span>
                   <span>Rating: {selectedCourse.rating || "4.8"} ★</span>

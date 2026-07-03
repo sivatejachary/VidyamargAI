@@ -37,6 +37,7 @@ function transformNewCurriculumToOld(newCur: any) {
             duration: topic.video.duration || "15 min",
             is_locked: !mod.unlocked, // will compute sequentially later
             video_url: topic.video.youtubeUrl,
+            description: topic.video.description,
           });
           if (topic.video.completed) {
             completedLessonIds.push(vidId);
@@ -142,6 +143,7 @@ function transformNewCurriculumToOld(newCur: any) {
     sections.push({
       id: mod.moduleId,
       title: `Module ${mod.moduleNo}: ${mod.moduleName}`,
+      goal: mod.goal,
       lessons: sectionLessons
     });
   });
@@ -382,25 +384,57 @@ export default function SkillLab() {
 
   const handleEnrollCourse = async (id: string | number) => {
     try {
-      await apiService.enrollCourse(id);
+      const res = await apiService.enrollCourse(id);
       setXp(prev => prev + 50);
       queryClient.invalidateQueries({ queryKey: ["enrollments", email] });
+      return res;
     } catch (err) {
       console.error("Failed to enroll in course:", err);
+      return null;
     }
   };
 
   const handleStartCourse = async (course: any) => {
     setSelectedCourse(course);
-    await handleEnrollCourse(course.id);
+    const isEnrolled = enrolledCourseIds.includes(course.id);
+    if (!isEnrolled) {
+      const res = await handleEnrollCourse(course.id);
+      if (res && res.already_enrolled && res.resume_lesson) {
+        setAutoSelectLessonId(res.resume_lesson);
+      }
+    } else {
+      try {
+        const res = await apiService.getResumeLearning(course.id);
+        if (res && res.lessonId) {
+          setAutoSelectLessonId(res.lessonId);
+        }
+      } catch (err) {
+        console.error("Failed to fetch resume lesson:", err);
+      }
+    }
     setActiveView("course-player");
   };
 
   const handleGoToLesson = async (course: any, lessonType: string) => {
     setSelectedCourse(course);
     setAutoSelectType(lessonType);
+    const isEnrolled = enrolledCourseIds.includes(course.id);
+    if (!isEnrolled) {
+      const res = await handleEnrollCourse(course.id);
+      if (res && res.already_enrolled && res.resume_lesson) {
+        setAutoSelectLessonId(res.resume_lesson);
+      }
+    } else {
+      try {
+        const res = await apiService.getResumeLearning(course.id);
+        if (res && res.lessonId) {
+          setAutoSelectLessonId(res.lessonId);
+        }
+      } catch (err) {
+        console.error("Failed to fetch resume lesson:", err);
+      }
+    }
     setActiveView("course-player");
-    await handleEnrollCourse(course.id);
   };
 
   const isAiMentor = activeView === "ai-mentor";

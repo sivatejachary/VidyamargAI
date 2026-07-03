@@ -83,6 +83,186 @@ def recalculate_progress(db: Session, user_id: int, course_id: str):
     db.commit()
 
 
+def check_and_unlock_next_module(db: Session, user_id: int, course_id: str, mod_id: str):
+    # 1. Query requirements for this module
+    has_videos = db.execute(
+        text("SELECT COUNT(*) FROM lessons l JOIN topics t ON l.topicid = t.id WHERE t.moduleid = :mod_id"),
+        {"mod_id": mod_id}
+    ).scalar() > 0
+
+    has_pdfs = db.execute(
+        text("SELECT COUNT(*) FROM pdfs p JOIN topics t ON p.topicid = t.id WHERE t.moduleid = :mod_id"),
+        {"mod_id": mod_id}
+    ).scalar() > 0
+
+    has_quizzes = db.execute(
+        text('SELECT COUNT(*) FROM quizzes WHERE "moduleId" = :mod_id'),
+        {"mod_id": mod_id}
+    ).scalar() > 0
+
+    has_written = db.execute(
+        text('SELECT COUNT(*) FROM written_assessments WHERE moduleid = :mod_id'),
+        {"mod_id": mod_id}
+    ).scalar() > 0
+
+    has_interviews = db.execute(
+        text('SELECT COUNT(*) FROM ai_interviews WHERE moduleid = :mod_id'),
+        {"mod_id": mod_id}
+    ).scalar() > 0
+
+    # 2. Get user progress
+    prog = db.execute(
+        text('SELECT "videoCompleted", "pdfCompleted", "quizCompleted", "writtenCompleted", "interviewCompleted" FROM user_progress WHERE "userId"=:user_id AND "moduleId"=:mod_id'),
+        {"user_id": user_id, "mod_id": mod_id}
+    ).fetchone()
+
+    if not prog:
+        return False
+
+    video_completed, pdf_completed, quiz_completed, written_completed, interview_completed = prog
+
+    # 3. Verify that all existing elements are completed
+    if has_videos and not video_completed:
+        return False
+    if has_pdfs and not pdf_completed:
+        return False
+    if has_quizzes and not quiz_completed:
+        return False
+    if has_written and not written_completed:
+        return False
+    if has_interviews and not interview_completed:
+        return False
+
+    # All elements are completed! Update current module nextModuleUnlocked
+    db.execute(
+        text('UPDATE user_progress SET "nextModuleUnlocked"=true WHERE "userId"=:user_id AND "moduleId"=:mod_id'),
+        {"user_id": user_id, "mod_id": mod_id}
+    )
+
+    # Find the next module
+    mod_row = db.execute(
+        text("SELECT unlockOrder FROM modules WHERE id=:mod_id"),
+        {"mod_id": mod_id}
+    ).fetchone()
+    if not mod_row:
+        return False
+    unlock_order = mod_row[0]
+
+    next_mod = db.execute(
+        text("SELECT id FROM modules WHERE courseId=:course_id AND unlockOrder=:next_order"),
+        {"course_id": course_id, "next_order": unlock_order + 1}
+    ).fetchone()
+
+    if next_mod:
+        next_mod_id = next_mod[0]
+        existing_prog = db.execute(
+            text('SELECT id FROM user_progress WHERE "userId"=:user_id AND "moduleId"=:next_mod_id'),
+            {"user_id": user_id, "next_mod_id": next_mod_id}
+        ).fetchone()
+        if not existing_prog:
+            db.execute(
+                text('INSERT INTO user_progress ("userId", "courseId", "moduleId", "videoCompleted", "pdfCompleted", "quizCompleted", "writtenCompleted", "interviewCompleted", "moduleUnlocked", "nextModuleUnlocked") VALUES (:user_id, :course_id, :next_mod_id, false, false, false, false, false, true, false)'),
+                {"user_id": user_id, "course_id": course_id, "next_mod_id": next_mod_id}
+            )
+        else:
+            db.execute(
+                text('UPDATE user_progress SET "moduleUnlocked"=true WHERE "userId"=:user_id AND "moduleId"=:next_mod_id'),
+                {"user_id": user_id, "next_mod_id": next_mod_id}
+            )
+    else:
+        # course completed! create certificate
+        cert = db.execute(
+            text("SELECT id FROM certificates WHERE course_id=:course_id AND user_id=:user_id"),
+            {"course_id": course_id, "user_id": user_id}
+        ).fetchone()
+        
+        if not cert:
+            import random
+            import string
+            code = "CERT-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
+            
+            try:
+                cols_res = db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name = 'certificates'")).fetchall()
+                cols = {r[0] for r in cols_res}
+            except Exception:
+                cols = {"code"}
+            
+            code_col = "certificate_code" if "certificate_code" in cols else "code"
+            now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S.%f")
+            sql = f"INSERT INTO certificates (course_id, user_id, {code_col}, readiness_score, interview_score, earned_at) VALUES (:course_id, :user_id, :code, 85, 80, :earned_at)"
+            
+            db.execute(
+                text(sql),
+                {"course_id": course_id, "user_id": user_id, "code": code, "earned_at": now_str}
+            )
+            db.execute(
+                text("UPDATE enrollments SET status='completed', progress=100.0 WHERE course_id=:course_id AND user_id=:user_id"),
+                {"course_id": course_id, "user_id": user_id}
+            )
+    db.commit()
+    return True
+
+
+def get_resume_lesson_id(db: Session, user_id: int, course_id: str) -> Optional[str]:
+    cp = db.execute(
+        text("SELECT last_lesson_id FROM course_progress WHERE user_id=:user_id AND course_id=:course_id"),
+        {"user_id": user_id, "course_id": course_id}
+    ).fetchone()
+    if cp and cp[0]:
+        return cp[0]
+        
+    payload = _build_curriculum_payload(db, course_id)
+    if not payload or "modules" not in payload:
+        return None
+        
+    prog_res = db.execute(
+        text('SELECT "moduleId", "videoCompleted", "pdfCompleted", "quizCompleted", "writtenCompleted", "interviewCompleted" FROM user_progress WHERE "userId"=:user_id AND "courseId"=:course_id'),
+        {"user_id": user_id, "course_id": course_id}
+    ).fetchall()
+    
+    progress_map = {}
+    for r in prog_res:
+        progress_map[r[0]] = {
+            "video_completed": bool(r[1]),
+            "pdf_completed": bool(r[2]),
+            "quiz_completed": bool(r[3]),
+            "written_completed": bool(r[4]),
+            "interview_completed": bool(r[5])
+        }
+        
+    for mod in payload["modules"]:
+        mod_id = mod["moduleId"]
+        prog = progress_map.get(mod_id, {
+            "video_completed": False,
+            "pdf_completed": False,
+            "quiz_completed": False,
+            "written_completed": False,
+            "interview_completed": False
+        })
+        
+        for t in mod.get("topics", []):
+            if t.get("video") and not prog["video_completed"]:
+                return t["video"]["id"]
+            if t.get("pdf") and not prog["pdf_completed"]:
+                return t["pdf"]["id"]
+                
+        if mod.get("quiz") and not prog["quiz_completed"]:
+            return mod["quiz"]["id"]
+            
+        if mod.get("writtenAssessment") and not prog["written_completed"]:
+            return mod["writtenAssessment"]["id"]
+            
+        if mod.get("aiInterview") and not prog["interview_completed"]:
+            return mod["aiInterview"]["id"]
+            
+    if payload["modules"]:
+        first_mod = payload["modules"][0]
+        if first_mod.get("topics"):
+            first_topic = first_mod["topics"][0]
+            if first_topic.get("video"):
+                return first_topic["video"]["id"]
+    return None
+
 
 @router.get("/courses")
 def get_courses(db: Session = Depends(get_db)):
@@ -533,7 +713,7 @@ def _build_curriculum_payload(db: Session, course_id: str, user_id: Optional[int
 
     # Fetch modules
     modules_res = db.execute(
-        text("SELECT id, title, moduleNo, unlockOrder FROM modules WHERE courseId=:course_id ORDER BY unlockOrder"),
+        text("SELECT id, title, moduleNo, unlockOrder, goal FROM modules WHERE courseId=:course_id ORDER BY unlockOrder"),
         {"course_id": course_id}
     ).fetchall()
     
@@ -568,7 +748,7 @@ def _build_curriculum_payload(db: Session, course_id: str, user_id: Optional[int
     pdfs_map = {}
     if topic_ids:
         lessons_res = db.execute(
-            text("SELECT id, topicid, title, youtubeurl, duration FROM lessons WHERE topicid IN :topic_ids"),
+            text("SELECT id, topicid, title, youtubeurl, duration, description FROM lessons WHERE topicid IN :topic_ids"),
             {"topic_ids": tuple(topic_ids)}
         ).fetchall()
         for r in lessons_res:
@@ -576,7 +756,8 @@ def _build_curriculum_payload(db: Session, course_id: str, user_id: Optional[int
                 "id": r[0],
                 "title": r[2],
                 "youtubeUrl": r[3],
-                "duration": r[4]
+                "duration": r[4],
+                "description": r[5]
             }
             
         pdfs_res = db.execute(
@@ -653,6 +834,7 @@ def _build_curriculum_payload(db: Session, course_id: str, user_id: Optional[int
                     "title": raw_les["title"],
                     "youtubeUrl": raw_les["youtubeUrl"],
                     "duration": raw_les["duration"],
+                    "description": raw_les.get("description"),
                     "completed": False
                 }
                 
@@ -728,6 +910,7 @@ def _build_curriculum_payload(db: Session, course_id: str, user_id: Optional[int
             "moduleName": mod_title,
             "unlockOrder": unlock_order,
             "unlocked": False,
+            "goal": mod_row[4],
             "topics": topics,
             "quiz": quiz_data,
             "writtenAssessment": written_data,
@@ -987,32 +1170,108 @@ def enroll_course(course_id: str, db: Session = Depends(get_db), current_user: U
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
         
-    enrollment = db.execute(
-        text("SELECT id FROM enrollments WHERE course_id=:course_id AND user_id=:user_id"),
-        {"course_id": course_id, "user_id": current_user.id}
-    ).fetchone()
-    
-    if not enrollment:
+    try:
+        # Check existing enrollment first
+        existing = db.execute(
+            text("SELECT id, progress FROM enrollments WHERE course_id=:course_id AND user_id=:user_id"),
+            {"course_id": course_id, "user_id": current_user.id}
+        ).fetchone()
+        
+        if existing:
+            resume_lesson = get_resume_lesson_id(db, current_user.id, course_id)
+            return {
+                "already_enrolled": True,
+                "enrollment_id": str(existing[0]),
+                "course_id": course_id,
+                "progress": float(existing[1]) if existing[1] is not None else 0.0,
+                "resume_lesson": resume_lesson,
+                "message": "User already enrolled."
+            }
+            
+        # Create enrollment
         now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S.%f")
-        db.execute(
-            text("INSERT INTO enrollments (course_id, user_id, progress, status, enrolled_at) VALUES (:course_id, :user_id, 0.0, 'active', :enrolled_at)"),
+        res = db.execute(
+            text("INSERT INTO enrollments (course_id, user_id, progress, status, enrolled_at) VALUES (:course_id, :user_id, 0.0, 'active', :enrolled_at) RETURNING id"),
             {"course_id": course_id, "user_id": current_user.id, "enrolled_at": now_str}
         )
+        enrollment_id = res.fetchone()[0]
         
+        # Create course progress (if not exists)
+        cp = db.query(CourseProgress).filter(CourseProgress.user_id == current_user.id, CourseProgress.course_id == course_id).first()
+        if not cp:
+            cp = CourseProgress(
+                user_id=current_user.id,
+                course_id=course_id,
+                video_progress=0.0,
+                pdf_progress=0.0,
+                quiz_progress=0.0,
+                overall_progress=0.0,
+                last_activity=datetime.utcnow()
+            )
+            db.add(cp)
+            
+        # Create first module user_progress (if not exists)
         first_mod = db.execute(
             text("SELECT id FROM modules WHERE courseId=:course_id ORDER BY unlockOrder LIMIT 1"),
             {"course_id": course_id}
         ).fetchone()
         
         if first_mod:
-            db.execute(
-                text('INSERT INTO user_progress ("userId", "courseId", "moduleId", "videoCompleted", "pdfCompleted", "quizCompleted", "writtenCompleted", "interviewCompleted", "moduleUnlocked", "nextModuleUnlocked") VALUES (:user_id, :course_id, :module_id, false, false, false, false, false, true, false)'),
-                {"user_id": current_user.id, "course_id": course_id, "module_id": first_mod[0]}
-            )
+            existing_up = db.execute(
+                text('SELECT id FROM user_progress WHERE "userId"=:user_id AND "moduleId"=:module_id'),
+                {"user_id": current_user.id, "module_id": first_mod[0]}
+            ).fetchone()
+            if not existing_up:
+                db.execute(
+                    text('INSERT INTO user_progress ("userId", "courseId", "moduleId", "videoCompleted", "pdfCompleted", "quizCompleted", "writtenCompleted", "interviewCompleted", "moduleUnlocked", "nextModuleUnlocked") VALUES (:user_id, :course_id, :module_id, false, false, false, false, false, true, false)'),
+                    {"user_id": current_user.id, "course_id": course_id, "module_id": first_mod[0]}
+                )
+                
         db.commit()
         invalidate_mentor_profile(current_user.id)
         
-    return {"message": "Enrolled successfully"}
+        # Invalidate curriculum/progress cache
+        try:
+            from app.services.curriculum_cache import invalidate_progress_cache
+            invalidate_progress_cache(current_user.id, course_id)
+        except Exception as e:
+            logger.warning(f"Failed to invalidate curriculum progress cache: {e}")
+            
+        # Delete continue learning cache and resume caches in Redis
+        try:
+            from app.services.job_cache import get_redis_client
+            redis_client = get_redis_client()
+            if redis_client:
+                redis_client.delete(f"continue:user:{current_user.id}")
+                redis_client.delete(f"resume:user:{current_user.id}:course:{course_id}")
+        except Exception as e:
+            logger.warning(f"Failed to clear Redis continue caches: {e}")
+            
+        return {
+            "already_enrolled": False,
+            "enrollment_id": str(enrollment_id),
+            "course_id": course_id,
+            "message": "Enrollment created successfully."
+        }
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error creating enrollment: {e}")
+        # Secondary fallback if unique violation was raised concurrently
+        existing = db.execute(
+            text("SELECT id, progress FROM enrollments WHERE course_id=:course_id AND user_id=:user_id"),
+            {"course_id": course_id, "user_id": current_user.id}
+        ).fetchone()
+        if existing:
+            resume_lesson = get_resume_lesson_id(db, current_user.id, course_id)
+            return {
+                "already_enrolled": True,
+                "enrollment_id": str(existing[0]),
+                "course_id": course_id,
+                "progress": float(existing[1]) if existing[1] is not None else 0.0,
+                "resume_lesson": resume_lesson,
+                "message": "User already enrolled."
+            }
+        raise HTTPException(status_code=500, detail="Failed to create enrollment")
 
 
 @router.post("/lessons/{lesson_id}/complete")
@@ -1044,6 +1303,7 @@ def complete_lesson(lesson_id: str, db: Session = Depends(get_db), current_user:
             {"user_id": current_user.id, "mod_id": mod_id}
         )
     db.commit()
+    check_and_unlock_next_module(db, current_user.id, course_id, mod_id)
     recalculate_progress(db, current_user.id, course_id)
     invalidate_mentor_profile(current_user.id)
     trigger_background_insights(db, current_user.id)
@@ -1087,6 +1347,7 @@ def complete_pdf(pdf_id: str, db: Session = Depends(get_db), current_user: User 
             {"user_id": current_user.id, "mod_id": mod_id}
         )
     db.commit()
+    check_and_unlock_next_module(db, current_user.id, course_id, mod_id)
     recalculate_progress(db, current_user.id, course_id)
     invalidate_mentor_profile(current_user.id)
     trigger_background_insights(db, current_user.id)
@@ -1150,6 +1411,7 @@ def submit_quiz(quiz_id: str, data: dict, db: Session = Depends(get_db), current
             {"user_id": current_user.id, "mod_id": mod_id}
         )
     db.commit()
+    check_and_unlock_next_module(db, current_user.id, course_id, mod_id)
     recalculate_progress(db, current_user.id, course_id)
     invalidate_mentor_profile(current_user.id)
     trigger_background_insights(db, current_user.id)
@@ -1265,6 +1527,7 @@ def submit_written(written_id: str, data: dict, db: Session = Depends(get_db), c
             {"user_id": current_user.id, "mod_id": mod_id}
         )
     db.commit()
+    check_and_unlock_next_module(db, current_user.id, course_id, mod_id)
     recalculate_progress(db, current_user.id, course_id)
     invalidate_mentor_profile(current_user.id)
     trigger_background_insights(db, current_user.id)
@@ -1368,55 +1631,8 @@ def submit_interview(interview_id: str, data: dict, db: Session = Depends(get_db
             text('UPDATE user_progress SET "interviewCompleted"=true WHERE "userId"=:user_id AND "moduleId"=:mod_id'),
             {"user_id": current_user.id, "mod_id": mod_id}
         )
-        
-        # unlock next module
-        next_mod = db.execute(
-            text("SELECT id FROM modules WHERE courseId=:course_id AND unlockOrder=:next_order"),
-            {"course_id": course_id, "next_order": unlock_order + 1}
-        ).fetchone()
-        
-        if next_mod:
-            next_mod_id = next_mod[0]
-            existing_prog = db.execute(
-                text('SELECT id FROM user_progress WHERE "userId"=:user_id AND "moduleId"=:next_mod_id'),
-                {"user_id": current_user.id, "next_mod_id": next_mod_id}
-            ).fetchone()
-            if not existing_prog:
-                db.execute(
-                    text('INSERT INTO user_progress ("userId", "courseId", "moduleId", "videoCompleted", "pdfCompleted", "quizCompleted", "writtenCompleted", "interviewCompleted", "moduleUnlocked", "nextModuleUnlocked") VALUES (:user_id, :course_id, :next_mod_id, false, false, false, false, false, true, false)'),
-                    {"user_id": current_user.id, "course_id": course_id, "next_mod_id": next_mod_id}
-                )
-        else:
-            # course completed! create certificate
-            cert = db.execute(
-                text("SELECT id FROM certificates WHERE course_id=:course_id AND user_id=:user_id"),
-                {"course_id": course_id, "user_id": current_user.id}
-            ).fetchone()
-            
-            if not cert:
-                import random
-                import string
-                code = "CERT-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
-                
-                # Check actual columns in db
-                try:
-                    cols_res = db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name = 'certificates'")).fetchall()
-                    cols = {r[0] for r in cols_res}
-                except Exception:
-                    cols = {"code"}
-                
-                code_col = "certificate_code" if "certificate_code" in cols else "code"
-                sql = f"INSERT INTO certificates (course_id, user_id, {code_col}, readiness_score, interview_score, earned_at) VALUES (:course_id, :user_id, :code, 85, 80, :earned_at)"
-                
-                db.execute(
-                    text(sql),
-                    {"course_id": course_id, "user_id": current_user.id, "code": code, "earned_at": now_str}
-                )
-                db.execute(
-                    text("UPDATE enrollments SET status='completed', progress=100.0 WHERE course_id=:course_id AND user_id=:user_id"),
-                    {"course_id": course_id, "user_id": current_user.id}
-                )
     db.commit()
+    check_and_unlock_next_module(db, current_user.id, course_id, mod_id)
     recalculate_progress(db, current_user.id, course_id)
     invalidate_mentor_profile(current_user.id)
     trigger_background_insights(db, current_user.id)
@@ -1456,6 +1672,21 @@ def get_enrollments(db: Session = Depends(get_db), current_user: User = Depends(
                 "created_at": str(c_row[12])
             }
             
+        # Query last active lesson title from course_progress & lessons
+        cp_row = db.execute(
+            text("SELECT last_lesson_id FROM course_progress WHERE user_id=:user_id AND course_id=:course_id"),
+            {"user_id": current_user.id, "course_id": course_id}
+        ).fetchone()
+        
+        last_lesson_title = None
+        if cp_row and cp_row[0]:
+            les_row = db.execute(
+                text("SELECT title FROM lessons WHERE id=:les_id"),
+                {"les_id": cp_row[0]}
+            ).fetchone()
+            if les_row:
+                last_lesson_title = les_row[0]
+            
         enrollments.append({
             "id": row[0],
             "course_id": row[1],
@@ -1463,7 +1694,8 @@ def get_enrollments(db: Session = Depends(get_db), current_user: User = Depends(
             "progress": row[3],
             "status": row[4],
             "enrolled_at": str(row[5]),
-            "course": course
+            "course": course,
+            "last_lesson_title": last_lesson_title
         })
     return enrollments
 
