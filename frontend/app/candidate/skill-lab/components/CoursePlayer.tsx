@@ -711,8 +711,9 @@ export default function CoursePlayer({
 
   const handleSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseFloat(e.target.value);
-    if (val > currentTime) {
-      console.warn("Seeking forward is disabled");
+    const isCompleted = completedLessonIds.includes(currentLesson?.id);
+    if (val > currentTime && !isCompleted) {
+      console.warn("Seeking forward is disabled for uncompleted videos");
       return;
     }
     setCurrentTime(val);
