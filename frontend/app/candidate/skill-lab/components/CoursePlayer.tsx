@@ -80,6 +80,16 @@ export default function CoursePlayer({
   const ytIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const ytStartedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const pauseActiveVideo = () => {
+    if (ytPlayerRef.current && typeof ytPlayerRef.current.pauseVideo === "function") {
+      try {
+        ytPlayerRef.current.pauseVideo();
+      } catch (e) {
+        console.error("Error pausing video:", e);
+      }
+    }
+  };
+
   // Anti-Cheat & Resume Watching states
   const [watchedSegments, setWatchedSegments] = useState<number[]>([]);
   const [hasReportedLoad, setHasReportedLoad] = useState(false);
@@ -288,11 +298,21 @@ export default function CoursePlayer({
         ytIntervalRef.current = null;
       }
       if (ytPlayerRef.current) {
+        const player = ytPlayerRef.current;
         try {
-          ytPlayerRef.current.destroy();
-        } catch (e) {
-          console.error("Error destroying YT player:", e);
-        }
+          if (typeof player.pauseVideo === "function") {
+            player.pauseVideo();
+          }
+        } catch (e) {}
+        setTimeout(() => {
+          try {
+            if (typeof player.destroy === "function") {
+              player.destroy();
+            }
+          } catch (e) {
+            console.error("Async player destroy failed:", e);
+          }
+        }, 10);
         ytPlayerRef.current = null;
       }
       return;
@@ -440,9 +460,19 @@ export default function CoursePlayer({
       if (ytIntervalRef.current) clearInterval(ytIntervalRef.current);
       if (ytStartedTimeoutRef.current) clearTimeout(ytStartedTimeoutRef.current);
       if (ytPlayerRef.current) {
+        const player = ytPlayerRef.current;
         try {
-          ytPlayerRef.current.destroy();
+          if (typeof player.pauseVideo === "function") {
+            player.pauseVideo();
+          }
         } catch (e) {}
+        setTimeout(() => {
+          try {
+            if (typeof player.destroy === "function") {
+              player.destroy();
+            }
+          } catch (e) {}
+        }, 10);
         ytPlayerRef.current = null;
       }
     };
@@ -1634,6 +1664,7 @@ export default function CoursePlayer({
             <div className="bg-slate-950 px-5 py-4 border-t border-slate-900 flex justify-between items-center gap-3">
               <button
                 onClick={async () => {
+                  pauseActiveVideo();
                   const idx = flatLessons.findIndex(l => l.id === currentLesson.id);
                   if (idx > 0) {
                     setCurrentLesson(flatLessons[idx - 1]);
@@ -1648,6 +1679,7 @@ export default function CoursePlayer({
               <button
                 onClick={async () => {
                   if (nextLesson) {
+                    pauseActiveVideo();
                     // Complete current lesson if not completed yet
                     if (!completedLessonIds.includes(currentLesson.id)) {
                       try {
@@ -1887,6 +1919,7 @@ export default function CoursePlayer({
                           key={less.id}
                           disabled={isLocked}
                           onClick={() => {
+                            pauseActiveVideo();
                             setCurrentLesson(less);
                             setPlayerTab("overview");
                           }}
