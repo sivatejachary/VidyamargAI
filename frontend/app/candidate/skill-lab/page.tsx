@@ -229,6 +229,7 @@ export default function SkillLab() {
     },
     enabled: !!selectedCourse?.id,
     placeholderData: keepPreviousData,
+    staleTime: 1000 * 5, // 5 seconds staleTime to bypass persistent caching
   });
 
   // Local state for current selections
@@ -264,6 +265,7 @@ export default function SkillLab() {
     },
     enabled: !!activeEnrollmentCourse?.id,
     placeholderData: keepPreviousData,
+    staleTime: 1000 * 5, // 5 seconds staleTime to bypass persistent caching
   });
 
   const activeEnrollmentCurriculum = useMemo(() => {
