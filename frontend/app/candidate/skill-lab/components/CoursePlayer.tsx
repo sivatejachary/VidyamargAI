@@ -306,21 +306,13 @@ export default function CoursePlayer({
         ytIntervalRef.current = null;
       }
       if (ytPlayerRef.current) {
-        const player = ytPlayerRef.current;
         try {
-          if (typeof player.pauseVideo === "function") {
-            player.pauseVideo();
+          if (typeof ytPlayerRef.current.destroy === "function") {
+            ytPlayerRef.current.destroy();
           }
-        } catch (e) {}
-        setTimeout(() => {
-          try {
-            if (typeof player.destroy === "function") {
-              player.destroy();
-            }
-          } catch (e) {
-            console.error("Async player destroy failed:", e);
-          }
-        }, 10);
+        } catch (e) {
+          console.error("Error destroying YT player:", e);
+        }
         ytPlayerRef.current = null;
       }
       return;
@@ -487,19 +479,11 @@ export default function CoursePlayer({
       if (ytIntervalRef.current) clearInterval(ytIntervalRef.current);
       if (ytStartedTimeoutRef.current) clearTimeout(ytStartedTimeoutRef.current);
       if (ytPlayerRef.current) {
-        const player = ytPlayerRef.current;
         try {
-          if (typeof player.pauseVideo === "function") {
-            player.pauseVideo();
+          if (typeof ytPlayerRef.current.destroy === "function") {
+            ytPlayerRef.current.destroy();
           }
         } catch (e) {}
-        setTimeout(() => {
-          try {
-            if (typeof player.destroy === "function") {
-              player.destroy();
-            }
-          } catch (e) {}
-        }, 10);
         ytPlayerRef.current = null;
       }
     };
