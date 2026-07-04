@@ -818,11 +818,11 @@ def _build_curriculum_payload(db: Session, course_id: str, user_id: Optional[int
 
     # Assemble static modules list
     modules = []
-    for mod_row in modules_res:
+    for idx, mod_row in enumerate(modules_res):
         mod_id = mod_row[0]
         mod_title = mod_row[1]
-        mod_no = mod_row[2]
-        unlock_order = mod_row[3]
+        mod_no = idx + 1
+        unlock_order = idx + 1
         
         topics = []
         for t in module_topics.get(mod_id, []):
