@@ -272,10 +272,31 @@ export default function SkillLab() {
     return transformNewCurriculumToOld(rawActiveEnrollmentCurriculum, completedLessonIds);
   }, [rawActiveEnrollmentCurriculum, completedLessonIds]);
 
-  // Sync current lesson selection when curriculum changes
+  // Unify and sync completed lesson IDs from rawCurriculum (only runs when raw backend payload changes)
+  useEffect(() => {
+    if (!rawCurriculum) return;
+    
+    const dbCompletedIds: string[] = [];
+    if (rawCurriculum.modules && Array.isArray(rawCurriculum.modules)) {
+      rawCurriculum.modules.forEach((mod: any) => {
+        if (mod.topics && Array.isArray(mod.topics)) {
+          mod.topics.forEach((topic: any) => {
+            if (topic.video?.completed) dbCompletedIds.push(String(topic.video.id));
+            if (topic.pdf?.completed) dbCompletedIds.push(String(topic.pdf.id));
+          });
+        }
+        if (mod.quiz?.completed) dbCompletedIds.push(String(mod.quiz.id));
+        if (mod.writtenAssessment?.completed) dbCompletedIds.push(String(mod.writtenAssessment.id));
+        if (mod.aiInterview?.completed) dbCompletedIds.push(String(mod.aiInterview.id));
+      });
+    }
+    
+    setCompletedLessonIds(dbCompletedIds);
+  }, [rawCurriculum]);
+
+  // Auto-select active lesson when curriculum loads or selection options change
   useEffect(() => {
     if (!curriculum) return;
-    setCompletedLessonIds(curriculum.completed_lesson_ids || []);
     
     const flatLessons: any[] = [];
     curriculum.sections?.forEach((sec: any) => {
