@@ -1225,15 +1225,15 @@ export default function CoursePlayer({
         </div>
       )}
 
-      {/* Course Hero & Progress Card Grid (Row Height Aligned) */}
+      {/* Course Hero & Progress Card Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
         
-        {/* Left Column: Course Hero Details */}
-        <div className="lg:col-span-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 flex flex-col justify-between gap-4 shadow-xs">
-          <div className="space-y-3">
+        {/* Left Column: Course Hero Details (No Continue Learning Button) */}
+        <div className="lg:col-span-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 flex flex-col justify-center gap-4 shadow-xs">
+          <div className="space-y-3.5">
             {/* Metadata Badges */}
             <div className="flex flex-wrap items-center gap-2.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-              <span>HTML5 Development</span>
+              <span>{selectedCourse.title?.toUpperCase().includes("HTML") ? "HTML5 Development" : "Docker Fundamentals"}</span>
               <span>•</span>
               <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">Beginner</span>
               <span>•</span>
@@ -1264,16 +1264,6 @@ export default function CoursePlayer({
               <span className="text-slate-400 dark:text-slate-500">(1.2K ratings)</span>
             </div>
           </div>
-
-          <button 
-            onClick={() => {
-              playerContainerRef.current?.scrollIntoView({ behavior: 'smooth' });
-            }}
-            className="self-start px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-sm cursor-pointer transition-all flex items-center gap-1.5 hover:scale-[1.01]"
-          >
-            <span>Continue Learning</span>
-            <ArrowRight size={13} />
-          </button>
         </div>
 
         {/* Right Column: Progress Card */}
@@ -1285,7 +1275,7 @@ export default function CoursePlayer({
             </div>
             
             {/* Linear Progress Bar */}
-            <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+            <div className="w-full h-1.5 bg-slate-105 dark:bg-slate-800 rounded-full overflow-hidden">
               <div 
                 className="h-full bg-blue-600 dark:bg-blue-500 transition-all duration-300" 
                 style={{ width: `${courseProgressPercent}%` }} 
@@ -1299,7 +1289,7 @@ export default function CoursePlayer({
           </div>
 
           {/* Streak & Stats Row */}
-          <div className="border-t border-slate-100 dark:border-slate-800/80 pt-4 flex items-center justify-between">
+          <div className="border-t border-slate-100 dark:border-slate-805 pt-4 flex items-center justify-between">
             <div className="flex items-center gap-1.5 text-xs font-bold text-orange-500">
               <Flame size={14} className="fill-current" />
               <span>{userStats.streak} Day Streak</span>
@@ -1316,7 +1306,7 @@ export default function CoursePlayer({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
         {/* LEFT PLAYER COLUMN (8/12) */}
-        <div className="lg:col-span-8 flex flex-col gap-6">
+        <div className="lg:col-span-8 flex flex-col gap-8">
           
           {/* Constrained Aspect-Video Player Box */}
           <div className="w-full max-w-[850px] mx-auto lg:mx-0 flex flex-col gap-4">
@@ -1331,7 +1321,7 @@ export default function CoursePlayer({
                 disabled={completedLessonIds.includes(currentLesson.id)}
                 className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer shrink-0 border flex items-center gap-1 ${
                   completedLessonIds.includes(currentLesson.id)
-                    ? "bg-emerald-50 border-emerald-200 text-emerald-650 dark:bg-emerald-950/20 dark:border-emerald-800/40 cursor-not-allowed"
+                    ? "bg-emerald-50 border-emerald-205 text-emerald-650 dark:bg-emerald-950/20 dark:border-emerald-800/40 cursor-not-allowed"
                     : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-200"
                 }`}
               >
@@ -1420,7 +1410,7 @@ export default function CoursePlayer({
                       <Sparkles className="text-blue-400 animate-pulse" size={32} />
                       <div>
                         <h3 className="text-sm font-bold text-white">Video completed!</h3>
-                        <p className="text-[11px] text-slate-400 mt-1">
+                        <p className="text-[11px] text-slate-405 mt-1">
                           Up next: <span className="text-blue-400 font-extrabold">{nextLesson?.title}</span>
                         </p>
                       </div>
@@ -1433,7 +1423,7 @@ export default function CoursePlayer({
                             cancelAutoNext();
                             if (nextLesson) setCurrentLesson(nextLesson);
                           }}
-                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm cursor-pointer"
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-705 text-white text-xs font-bold rounded-lg shadow-sm cursor-pointer"
                         >
                           Open Now
                         </button>
@@ -1488,7 +1478,7 @@ export default function CoursePlayer({
                   )}
                 </>
               ) : currentLesson.type === "pdf" ? (
-                <div className="bg-slate-50 dark:bg-slate-955 p-6 min-h-[350px] flex flex-col justify-between items-center text-center">
+                <div className="bg-slate-50 dark:bg-slate-950 p-6 min-h-[350px] flex flex-col justify-between items-center text-center">
                   <div className="my-auto flex flex-col items-center gap-4">
                     <div className="w-14 h-14 rounded-xl bg-blue-50 dark:bg-blue-955/20 text-blue-600 dark:text-blue-450 border border-blue-105 dark:border-blue-900/30 flex items-center justify-center">
                       <BookOpen size={28} />
@@ -1538,7 +1528,7 @@ export default function CoursePlayer({
                       {currentLesson.quiz.questions.map((q: any, qIdx: number) => (
                         <div key={q.id} className="p-4 bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800 rounded-xl flex flex-col gap-2.5">
                           <span className="text-[8px] font-mono text-slate-400 dark:text-slate-500 uppercase tracking-widest">Question {qIdx + 1}</span>
-                          <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{q.question}</span>
+                          <span className="text-xs font-bold text-slate-805 dark:text-slate-100">{q.question}</span>
                           <div className="grid grid-cols-1 gap-2 mt-1">
                             {q.options?.map((opt: string, optIdx: number) => (
                               <button
@@ -1586,7 +1576,7 @@ export default function CoursePlayer({
                             }
                           }}
                           disabled={Object.keys(quizAnswers).length < currentLesson.quiz.questions.length}
-                          className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white disabled:bg-slate-200 disabled:text-slate-400 dark:disabled:bg-slate-805 dark:disabled:text-slate-600 text-xs font-bold rounded-lg cursor-pointer disabled:cursor-not-allowed shadow-sm"
+                          className="px-5 py-2 bg-blue-600 hover:bg-blue-705 text-white disabled:bg-slate-200 disabled:text-slate-400 dark:disabled:bg-slate-805 dark:disabled:text-slate-600 text-xs font-bold rounded-lg cursor-pointer disabled:cursor-not-allowed shadow-sm"
                         >
                           Submit Answers
                         </button>
@@ -1604,7 +1594,7 @@ export default function CoursePlayer({
                       <div>
                         <h4 className="text-xs font-bold text-slate-900 dark:text-white">Assessment Evaluated!</h4>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                          Best Score: <span className="font-bold text-emerald-600 dark:text-emerald-400">{currentLesson.written_assessment.best_score}%</span>
+                          Best Score: <span className="font-bold text-emerald-600 dark:text-emerald-405">{currentLesson.written_assessment.best_score}%</span>
                         </p>
                       </div>
                     </div>
@@ -1613,13 +1603,13 @@ export default function CoursePlayer({
                       {currentLesson.written_assessment.questions.map((q: any, qIdx: number) => (
                         <div key={q.id} className="p-4 bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800 rounded-xl flex flex-col gap-2">
                           <span className="text-[8px] font-mono text-slate-455 dark:text-slate-505 uppercase tracking-widest">Question {qIdx + 1}</span>
-                          <span className="text-xs font-bold text-slate-805 dark:text-slate-200 leading-relaxed">{q.question_text}</span>
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-relaxed">{q.question_text}</span>
                           <textarea
                             value={writtenAnswers[qIdx] || ""}
                             onChange={(e) => setWrittenAnswers(prev => ({ ...prev, [qIdx]: e.target.value }))}
                             rows={3}
                             placeholder="Write your explanation here..."
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-505 dark:bg-slate-950 dark:border-slate-850 dark:text-slate-200 resize-none font-medium mt-1"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 dark:bg-slate-950 dark:border-slate-850 dark:text-slate-200 resize-none font-medium mt-1"
                           />
                         </div>
                       ))}
@@ -1677,7 +1667,7 @@ export default function CoursePlayer({
             {/* Video Sub-Tabs Content */}
             <div className="mt-4 min-h-[160px]">
               {playerTab === "overview" && (
-                <div className="space-y-4 text-xs font-medium text-slate-650 dark:text-slate-400 leading-relaxed">
+                <div className="space-y-4 text-xs font-medium text-slate-600 dark:text-slate-400 leading-relaxed">
                   <div className="space-y-1">
                     <h4 className="text-slate-900 dark:text-white font-bold text-xs">About this lesson</h4>
                     <p>
@@ -1710,7 +1700,7 @@ export default function CoursePlayer({
                   {!lessonSummaries[currentLesson.id] && !generatingSummary[currentLesson.id] ? (
                     <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-6 rounded-xl text-center space-y-3">
                       <Sparkles className="text-blue-500 mx-auto" size={24} />
-                      <p className="text-xs text-slate-500 dark:text-slate-405 font-semibold">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
                         Get an AI summary for the currently playing lesson video.
                       </p>
                       <button
@@ -1721,7 +1711,7 @@ export default function CoursePlayer({
                       </button>
                     </div>
                   ) : generatingSummary[currentLesson.id] ? (
-                    <div className="bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 p-6 rounded-xl text-center space-y-2">
+                    <div className="bg-slate-50 dark:bg-slate-955 border border-slate-205 dark:border-slate-800 p-6 rounded-xl text-center space-y-2">
                       <RefreshCw className="animate-spin text-blue-500 mx-auto" size={24} />
                       <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                         Analyzing video transcript and generating summary...
@@ -1743,7 +1733,7 @@ export default function CoursePlayer({
                     onChange={(e) => setNotepadText(e.target.value)}
                     rows={4}
                     placeholder="Type lesson notes..."
-                    className="w-full bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-lg p-3 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500 resize-y font-medium"
+                    className="w-full bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-lg p-3 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-505 resize-y font-medium"
                   />
                   <div className="flex justify-end gap-2.5">
                     <button
@@ -1781,8 +1771,8 @@ export default function CoursePlayer({
                             {item.format}
                           </div>
                           <div>
-                            <div className="text-xs font-bold text-slate-800 dark:text-slate-200">{item.title}</div>
-                            <div className="text-[8px] text-slate-400 font-bold font-mono">{item.size}</div>
+                            <div className="text-xs font-bold text-slate-800 dark:text-slate-205">{item.title}</div>
+                            <div className="text-[8px] text-slate-405 font-bold font-mono">{item.size}</div>
                           </div>
                         </div>
                         <button className="text-blue-600 dark:text-blue-400 font-extrabold text-[9px] uppercase hover:underline cursor-pointer">
@@ -1803,10 +1793,10 @@ export default function CoursePlayer({
                       { time: 45, speaker: "Instructor", text: "Let's open VS Code and write our skeleton tags." }
                     ].map((line, idx) => (
                       <div key={idx} className="flex gap-2.5 text-xs">
-                        <span className="font-mono font-bold text-blue-600 dark:text-blue-400 shrink-0 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded text-[9px]">
+                        <span className="font-mono font-bold text-blue-600 dark:text-blue-400 shrink-0 bg-blue-50 dark:bg-blue-955/40 px-1.5 py-0.5 rounded text-[9px]">
                           {formatTime(line.time)}
                         </span>
-                        <p className="text-slate-650 dark:text-slate-400"><span className="font-bold">{line.speaker}:</span> {line.text}</p>
+                        <p className="text-slate-600 dark:text-slate-400"><span className="font-bold">{line.speaker}:</span> {line.text}</p>
                       </div>
                     ))}
                   </div>
@@ -1820,9 +1810,9 @@ export default function CoursePlayer({
                     <input
                       type="text"
                       placeholder="Ask a question..."
-                      className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-202 dark:border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-blue-500 font-medium"
+                      className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-202 dark:border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-405 focus:outline-none focus:border-blue-500 font-medium"
                     />
-                    <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm cursor-pointer animate-transition">
+                    <button className="px-4 py-2 bg-blue-600 hover:bg-blue-705 text-white text-xs font-bold rounded-lg shadow-sm cursor-pointer">
                       Ask
                     </button>
                   </div>
@@ -1833,14 +1823,49 @@ export default function CoursePlayer({
           </div>
         </div>
 
-        {/* RIGHT SIDEBAR WIDGETS COLUMN (4/12) */}
-        <div className="lg:col-span-4 flex flex-col gap-6 lg:sticky lg:top-6 self-start">
+        {/* RIGHT SIDEBAR WIDGETS COLUMN (4/12) - Entire Sidebar is Sticky */}
+        <div className="lg:col-span-4 flex flex-col gap-8 lg:sticky lg:top-6 self-start max-h-[calc(100vh-4rem)] overflow-y-auto pr-1 scrollbar-none">
           
-          {/* Section: Modules Content Roadmap */}
-          <div className="space-y-2.5">
+          {/* Section: Progress Card */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 flex flex-col justify-between gap-5 shadow-xs">
+            <div className="space-y-3">
+              <div className="flex justify-between items-end">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 font-mono">Your Progress</span>
+                <span className="text-xl font-bold text-slate-900 dark:text-white font-mono leading-none">{courseProgressPercent}%</span>
+              </div>
+              
+              {/* Linear Progress Bar */}
+              <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-blue-600 dark:bg-blue-500 transition-all duration-300" 
+                  style={{ width: `${courseProgressPercent}%` }} 
+                />
+              </div>
+
+              <div className="flex justify-between items-center text-[10px] text-slate-500 dark:text-slate-405 font-medium">
+                <span>{completedLessonIds.length} of {curriculum.sections?.flatMap((s: any) => s.lessons || []).length || 48} lessons</span>
+                <span>Today's Goal: 40%</span>
+              </div>
+            </div>
+
+            {/* Streak & Stats Row */}
+            <div className="border-t border-slate-100 dark:border-slate-800/80 pt-4 flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-orange-500">
+                <Flame size={14} className="fill-current" />
+                <span>{userStats.streak} Day Streak</span>
+              </div>
+              <div className="text-xs text-slate-505 dark:text-slate-400 font-bold">
+                Level {1 + Math.floor(userStats.xp / 100)} • {userStats.xp} XP
+              </div>
+            </div>
+          </div>
+
+          {/* Section: Modules Content Roadmap (Fixed Height scroll container) */}
+          <div className="space-y-3 flex flex-col">
             <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 font-mono tracking-wider">Modules Content</span>
             
-            <div className="flex flex-col gap-2 max-h-[480px] overflow-y-auto pr-1 scrollbar-thin">
+            {/* Independently Scrollable Container */}
+            <div className="flex flex-col gap-2 h-[500px] max-h-[550px] overflow-y-auto pr-1.5 custom-scrollbar bg-slate-50/20 dark:bg-slate-950/10 p-1 rounded-lg border border-slate-100 dark:border-slate-850">
               {curriculum?.sections?.map((section: any, secIdx: number) => {
                 const totalInSec = section.lessons?.length || 0;
                 const completedInSec = section.lessons?.filter((l: any) => completedLessonIds.includes(l.id))?.length || 0;
@@ -1848,7 +1873,7 @@ export default function CoursePlayer({
                 const isExpanded = expandedModules.includes(section.id);
                 
                 return (
-                  <div key={section.id} className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden bg-white dark:bg-slate-900 shadow-xs">
+                  <div key={section.id} className="border border-slate-202 dark:border-slate-800 rounded-lg overflow-hidden bg-white dark:bg-slate-900 shadow-xs">
                     <button
                       onClick={() => toggleModule(section.id)}
                       className="w-full px-3.5 py-3 flex justify-between items-center text-left text-xs font-bold text-slate-800 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-850/50 transition-colors cursor-pointer"
@@ -1857,13 +1882,13 @@ export default function CoursePlayer({
                         <span className="text-[8px] font-mono text-blue-600 dark:text-blue-400 uppercase tracking-widest">
                           Module {sectionNo}
                         </span>
-                        <span className="mt-0.5 text-slate-800 dark:text-slate-100 text-xs font-bold truncate max-w-[170px]">
+                        <span className="mt-0.5 text-slate-808 dark:text-slate-100 text-xs font-bold truncate max-w-[150px]">
                           {section.title.split(":").slice(1).join(":") || section.title}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[8px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded-full">
-                          {completedInSec}/{totalInSec}
+                        <span className="text-[8px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-550 dark:text-slate-400 px-2 py-0.5 rounded-full">
+                          {completedInSec}/{totalInSec} Completed
                         </span>
                         <ChevronRight 
                           size={13} 
@@ -1873,7 +1898,7 @@ export default function CoursePlayer({
                     </button>
 
                     {isExpanded && (
-                      <div className="p-2 border-t border-slate-100 dark:border-slate-800/80 flex flex-col gap-1 bg-white dark:bg-slate-900">
+                      <div className="p-2 border-t border-slate-100 dark:border-slate-800/80 flex flex-col gap-1.5 bg-white dark:bg-slate-900">
                         {section.lessons?.map((less: any) => {
                           const completed = completedLessonIds.includes(less.id);
                           const isLocked = less.is_locked;
@@ -1887,7 +1912,7 @@ export default function CoursePlayer({
                             stateColor = "text-emerald-500 bg-emerald-500/10";
                           } else if (isLocked) {
                             stateLabel = "Locked";
-                            stateColor = "text-slate-400 bg-slate-100 dark:bg-slate-800/40";
+                            stateColor = "text-slate-400 bg-slate-100 dark:bg-slate-805/40";
                           } else if (active) {
                             stateLabel = "In Progress";
                             stateColor = "text-blue-500 bg-blue-500/10 animate-pulse";
@@ -1904,10 +1929,10 @@ export default function CoursePlayer({
                               }}
                               className={`flex items-center justify-between p-2.5 rounded border text-left text-xs transition-all w-full cursor-pointer relative overflow-hidden ${
                                 active
-                                  ? "bg-blue-50/50 border-blue-205 dark:bg-blue-955/20 dark:border-blue-800 text-blue-700 dark:text-blue-300 font-bold shadow-xs"
+                                  ? "bg-blue-50/50 border-blue-200 dark:bg-blue-955/20 dark:border-blue-800 text-blue-700 dark:text-blue-300 font-bold shadow-xs"
                                   : isLocked
                                     ? "bg-slate-50/50 dark:bg-slate-950/60 border-slate-100 dark:border-slate-850 text-slate-400 opacity-60 cursor-not-allowed"
-                                    : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-blue-500/20"
+                                    : "bg-white dark:bg-slate-900 border-slate-202 dark:border-slate-800 text-slate-705 dark:text-slate-300 hover:border-blue-500/20"
                               }`}
                             >
                               <div className="flex items-center justify-between w-full text-xs font-semibold">
@@ -1923,7 +1948,7 @@ export default function CoursePlayer({
                                   )}
                                   <span className="truncate text-slate-800 dark:text-slate-200">{less.title}</span>
                                 </div>
-                                <span className="text-[9px] text-slate-405 dark:text-slate-550 font-mono font-bold shrink-0">{less.duration || "10 min"}</span>
+                                <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono font-bold shrink-0">{less.duration || "10 min"}</span>
                               </div>
                             </button>
                           );
@@ -1942,7 +1967,7 @@ export default function CoursePlayer({
             
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex flex-col gap-3.5 shadow-sm">
               <div className="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-800/80">
-                <span className="text-xs font-bold text-slate-805 dark:text-white">Study Helper</span>
+                <span className="text-xs font-bold text-slate-800 dark:text-white">Study Helper</span>
                 <div className="w-6 h-6 rounded-full bg-blue-50 dark:bg-blue-955/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
                   <Brain size={12} />
                 </div>
@@ -1971,7 +1996,7 @@ export default function CoursePlayer({
                   </div>
                 </div>
               ) : (
-                <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 rounded-lg p-2.5 flex flex-col gap-2.5 h-[200px] overflow-y-auto pr-1">
+                <div className="bg-slate-50 dark:bg-slate-955 border border-slate-200/60 dark:border-slate-800 rounded-lg p-2.5 flex flex-col gap-2.5 h-[200px] overflow-y-auto pr-1">
                   {mentorMessages.map((msg: any) => {
                     const isUser = msg.sender === "user";
                     return (
@@ -1980,7 +2005,7 @@ export default function CoursePlayer({
                         className={`flex flex-col max-w-[85%] rounded-lg px-2.5 py-1.5 text-xs leading-relaxed font-medium ${
                           isUser
                             ? "bg-blue-600 text-white self-end rounded-br-none shadow-xs"
-                            : "bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800 text-slate-800 dark:text-slate-200 self-start rounded-bl-none shadow-xs"
+                            : "bg-white border border-slate-202 dark:bg-slate-900 dark:border-slate-800 text-slate-805 dark:text-slate-200 self-start rounded-bl-none shadow-xs"
                         }`}
                       >
                         <span>{msg.message}</span>
@@ -2001,7 +2026,7 @@ export default function CoursePlayer({
               )}
 
               {/* Input & Send controls */}
-              <div className="flex gap-2 border border-slate-200 dark:border-slate-800 p-1 rounded-lg bg-slate-50 dark:bg-slate-950">
+              <div className="flex gap-2 border border-slate-202 dark:border-slate-800 p-1 rounded-lg bg-slate-50 dark:bg-slate-950">
                 <input
                   type="text"
                   value={mentorInput}
@@ -2012,7 +2037,7 @@ export default function CoursePlayer({
                     }
                   }}
                   placeholder="Ask AI Mentor..."
-                  className="flex-1 bg-transparent text-xs text-slate-850 dark:text-slate-200 placeholder-slate-400 outline-none px-2 font-medium"
+                  className="flex-1 bg-transparent text-xs text-slate-805 dark:text-slate-200 placeholder-slate-400 outline-none px-2 font-medium"
                 />
                 <button
                   onClick={() => {
@@ -2021,7 +2046,7 @@ export default function CoursePlayer({
                     }
                   }}
                   disabled={!mentorInput.trim() || loadingMentor}
-                  className="w-7 h-7 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:bg-slate-250 disabled:text-slate-400 dark:disabled:bg-slate-800 dark:disabled:text-slate-600 flex items-center justify-center cursor-pointer disabled:cursor-not-allowed shadow-sm transition-all"
+                  className="w-7 h-7 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:bg-slate-250 disabled:text-slate-400 dark:disabled:bg-slate-800 dark:disabled:text-slate-650 flex items-center justify-center cursor-pointer disabled:cursor-not-allowed shadow-sm transition-all"
                 >
                   <ArrowRight size={12} />
                 </button>
