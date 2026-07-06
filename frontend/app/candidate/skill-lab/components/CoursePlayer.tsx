@@ -1099,7 +1099,7 @@ export default function CoursePlayer({
                     {/* Transparent Click Overlay to intercept pointer events and toggle play/pause */}
                     <div 
                       onClick={togglePlay}
-                      className="absolute inset-0 w-full h-full cursor-pointer z-15 bg-transparent pointer-events-auto"
+                      className="absolute inset-0 w-full h-full cursor-pointer z-20 bg-transparent pointer-events-auto"
                     />
                   </div>
                 ) : (
@@ -1121,7 +1121,7 @@ export default function CoursePlayer({
 
                 {/* Loading State Overlay */}
                 {isLoading && (
-                  <div className="absolute inset-0 bg-slate-955/80 flex flex-col items-center justify-center gap-3">
+                  <div className="absolute inset-0 bg-slate-950/80 flex flex-col items-center justify-center gap-3 z-40">
                     <RefreshCw className="animate-spin text-indigo-500" size={32} />
                     <span className="text-xs text-slate-300 font-bold uppercase tracking-wider">Streaming Video...</span>
                   </div>
@@ -1129,7 +1129,7 @@ export default function CoursePlayer({
 
                 {/* Custom Error Overlay */}
                 {videoError && (
-                  <div className="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center gap-3.5 text-center p-6">
+                  <div className="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center gap-3.5 text-center p-6 z-40">
                     <ShieldAlert size={44} className="text-red-500" />
                     <div>
                       <h4 className="text-sm font-black text-white">Unable to load lesson video</h4>
@@ -1150,7 +1150,7 @@ export default function CoursePlayer({
                 {!isPlaying && !videoError && !isLoading && (
                   <button 
                     onClick={togglePlay}
-                    className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/35 transition-all cursor-pointer animate-fade-in z-20 pointer-events-auto"
+                    className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/35 transition-all cursor-pointer animate-fade-in z-30 pointer-events-auto"
                   >
                     <div className="w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 border border-white/30 text-white flex items-center justify-center shadow-lg backdrop-blur-sm transition-transform hover:scale-110">
                       <Play size={24} className="fill-current ml-1" />
