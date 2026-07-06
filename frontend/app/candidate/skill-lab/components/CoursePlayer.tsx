@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import Script from "next/script";
 import { apiService } from "@/services/api";
 import { useAuthStore } from "@/store/authStore";
 import { 
@@ -457,14 +458,7 @@ export default function CoursePlayer({
       }
     };
 
-    // Load YouTube iframe API script if not present
-    if (!(window as any).YT) {
-      const tag = document.createElement('script');
-      tag.src = 'https://www.youtube.com/iframe_api';
-      const firstScriptTag = document.getElementsByTagName('script')[0];
-      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
-    }
-
+    // Load YouTube iframe API statically in the JSX return using next/script.
     const previousCallback = (window as any).onYouTubeIframeAPIReady;
     (window as any).onYouTubeIframeAPIReady = () => {
       if (previousCallback) previousCallback();
@@ -1973,6 +1967,12 @@ export default function CoursePlayer({
           </div>
         </div>
 
+        {isYouTube && (
+          <Script 
+            src="https://www.youtube.com/iframe_api" 
+            strategy="afterInteractive"
+          />
+        )}
       </div>
 
     </div>
