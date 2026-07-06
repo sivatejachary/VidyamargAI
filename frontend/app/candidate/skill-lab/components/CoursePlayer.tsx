@@ -445,7 +445,7 @@ export default function CoursePlayer({
               },
               onError: (event: any) => {
                 console.error("YouTube Player error:", event.data);
-                setVideoError("Unable to load YouTube video");
+                setVideoError(`Unable to load YouTube video (Error: ${event.data})`);
                 setIsLoading(false);
               }
             }
