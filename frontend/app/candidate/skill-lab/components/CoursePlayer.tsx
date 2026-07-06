@@ -1132,9 +1132,11 @@ export default function CoursePlayer({
                   <div className="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center gap-3.5 text-center p-6 z-40">
                     <ShieldAlert size={44} className="text-red-500" />
                     <div>
-                      <h4 className="text-sm font-black text-white">Unable to load lesson video</h4>
+                      <h4 className="text-sm font-black text-white">{videoError}</h4>
                       <p className="text-[11px] text-slate-450 mt-1 max-w-xs mx-auto">
-                        We had trouble fetching the video from the CDN edge server.
+                        {videoError.toLowerCase().includes("youtube") || videoError.toLowerCase().includes("initialize")
+                          ? "This can happen in Incognito Mode or if adblockers/privacy shields block YouTube embeds. Please try disabling shields or check your connection."
+                          : "There was an issue playing this content. Please check your connection or try again."}
                       </p>
                     </div>
                     <button 
