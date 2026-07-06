@@ -8,7 +8,7 @@ import {
   Play, Pause, BookOpen, Brain, Trash2, ArrowRight, Clock, ShieldAlert, 
   RefreshCw, Upload, Code, CheckCircle, Volume2, VolumeX, Maximize2, 
   Minimize2, Lock, Sparkles, Award, FileText, CheckCircle2, ChevronRight,
-  MessageSquare, Loader2, Flame, HelpCircle
+  MessageSquare, Loader2, Flame, HelpCircle, Star
 } from "lucide-react";
 // Removed framer-motion
 
@@ -157,6 +157,7 @@ export default function CoursePlayer({
 
   // Redesign Layout and state variables
   const [expandedModules, setExpandedModules] = useState<string[]>([]);
+  const [isChatActive, setIsChatActive] = useState(false);
 
   // AI Mentor Sidebar Chat Widget States
   const [mentorSessionId, setMentorSessionId] = useState<string | null>(null);
@@ -193,6 +194,9 @@ export default function CoursePlayer({
           setMentorSessionId(sessions[0].id);
           const msgs = await apiService.getAIMentorMessages(sessions[0].id);
           setMentorMessages(msgs || []);
+          if (msgs && msgs.length > 0) {
+            setIsChatActive(true);
+          }
         } else {
           const newSession = await apiService.createAIMentorSession("Skill Lab Quick Chat");
           setMentorSessionId(newSession.id);
@@ -207,6 +211,7 @@ export default function CoursePlayer({
   const handleSendMentorMessage = async (textToSend: string) => {
     if (!textToSend.trim() || !mentorSessionId || loadingMentor) return;
     
+    setIsChatActive(true);
     // Add user message locally
     const userMsg = {
       id: Math.random().toString(),
@@ -1104,14 +1109,14 @@ export default function CoursePlayer({
   }
 
   return (
-    <div className="w-full flex flex-col gap-5 text-slate-800 dark:text-slate-100">
+    <div className="w-full flex flex-col gap-8 text-slate-800 dark:text-slate-100">
       
       {/* Dynamic Success Overlay */}
       {showSuccessOverlay && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm transition-all duration-300"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm transition-all duration-300"
         >
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 max-w-md text-center shadow-xl flex flex-col items-center gap-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-8 max-w-md text-center shadow-xl flex flex-col items-center gap-4">
             <div className="w-16 h-16 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center animate-bounce shadow-sm">
               <Award size={32} />
             </div>
@@ -1127,83 +1132,124 @@ export default function CoursePlayer({
         </div>
       )}
 
-      {/* Top Header & Breadcrumbs Area */}
-      <div className="flex flex-col gap-3">
-        {/* Breadcrumbs */}
-        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-          <button onClick={() => setActiveView("explore")} className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer">My Learning</button>
-          <span>/</span>
-          <span className="truncate max-w-[150px]">{selectedCourse.title}</span>
-          <span>/</span>
-          <span className="text-blue-600 dark:text-blue-400 truncate max-w-[150px]">{activeModuleTitle}</span>
-        </div>
-
-        {/* Course Header Card */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30 flex items-center justify-center text-xl font-black shrink-0">
-              {selectedCourse.title?.toUpperCase().includes("HTML") ? "5" : "D"}
+      {/* Course Hero & Progress Card Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+        
+        {/* Left Column: Course Hero Details */}
+        <div className="lg:col-span-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 flex flex-col justify-between gap-4 shadow-sm">
+          <div className="space-y-3">
+            {/* Metadata Badges */}
+            <div className="flex flex-wrap items-center gap-2.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              <span>HTML5 Development</span>
+              <span>•</span>
+              <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">Beginner</span>
+              <span>•</span>
+              <span>{curriculum?.sections?.length || 0} Modules</span>
+              <span>•</span>
+              <span>4.5 Hours</span>
+              <span>•</span>
+              <span>12K Learners</span>
+              <span>•</span>
+              <span>Updated Jun 2026</span>
             </div>
-            <div className="space-y-0.5">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white leading-tight">{selectedCourse.title}</h2>
-              <div className="flex flex-wrap items-center gap-2 text-[9px] font-bold tracking-wide uppercase">
-                <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">Beginner</span>
-                <span className="text-slate-300 dark:text-slate-700">•</span>
-                <span className="text-slate-500 dark:text-slate-400">{curriculum?.sections?.length || 0} Modules</span>
-                <span className="text-slate-300 dark:text-slate-700">•</span>
-                <span className="text-slate-500 dark:text-slate-400">4.5 Hrs</span>
-                <span className="text-slate-300 dark:text-slate-700">•</span>
-                <span className="text-slate-500 dark:text-slate-400">Updated Jun 2026</span>
+
+            {/* Course Title */}
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white leading-tight">
+              {selectedCourse.title}
+            </h2>
+
+            {/* Rating */}
+            <div className="flex items-center gap-1.5 text-xs text-amber-500 font-semibold">
+              <div className="flex items-center gap-0.5">
+                <Star size={13} className="fill-current" />
+                <Star size={13} className="fill-current" />
+                <Star size={13} className="fill-current" />
+                <Star size={13} className="fill-current" />
+                <Star size={13} className="fill-current opacity-40" />
               </div>
+              <span className="text-slate-700 dark:text-slate-300 font-bold">4.8</span>
+              <span className="text-slate-400 dark:text-slate-500">(1.2K ratings)</span>
             </div>
           </div>
+
           <button 
             onClick={() => {
               playerContainerRef.current?.scrollIntoView({ behavior: 'smooth' });
             }}
-            className="w-full md:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-sm cursor-pointer transition-all hover:scale-[1.01] flex items-center justify-center gap-2"
+            className="self-start px-5 py-2.5 bg-blue-600 hover:bg-blue-705 text-white font-bold text-xs rounded-lg shadow-sm cursor-pointer transition-all flex items-center gap-1.5 hover:scale-[1.01]"
           >
             <span>Continue Learning</span>
             <ArrowRight size={13} />
           </button>
         </div>
+
+        {/* Right Column: Progress Card */}
+        <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 flex flex-col justify-between gap-5 shadow-sm">
+          <div className="space-y-3">
+            <div className="flex justify-between items-end">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 font-mono">Your Progress</span>
+              <span className="text-xl font-bold text-slate-900 dark:text-white font-mono leading-none">{courseProgressPercent}%</span>
+            </div>
+            
+            {/* Linear Progress Bar */}
+            <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-blue-600 dark:bg-blue-500 transition-all duration-300" 
+                style={{ width: `${courseProgressPercent}%` }} 
+              />
+            </div>
+
+            <div className="flex justify-between items-center text-[10px] text-slate-500 dark:text-slate-405 font-medium">
+              <span>{completedLessonIds.length} of {curriculum.sections?.flatMap((s: any) => s.lessons || []).length || 48} lessons</span>
+              <span>Today's Goal: 40%</span>
+            </div>
+          </div>
+
+          {/* Streak & Stats Row */}
+          <div className="border-t border-slate-100 dark:border-slate-800/80 pt-4 flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-orange-500">
+              <Flame size={14} className="fill-current" />
+              <span>{userStats.streak} Day Streak</span>
+            </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400 font-bold">
+              Level {1 + Math.floor(userStats.xp / 100)} • {userStats.xp} XP
+            </div>
+          </div>
+        </div>
+
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+      {/* Main Content Layout Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
         {/* LEFT PLAYER COLUMN (8/12) */}
-        <div className="lg:col-span-8 flex flex-col gap-5">
+        <div className="lg:col-span-8 flex flex-col gap-6">
           
-          {/* Lesson Title & Video Player Area */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col gap-4">
+          {/* Constrained Aspect-Video Player Box */}
+          <div className="w-full max-w-[850px] mx-auto lg:mx-0">
             
-            {/* Title Header Row */}
-            <div className="flex justify-between items-start gap-4">
-              <div className="space-y-0.5">
-                <div className="text-[9px] font-extrabold uppercase text-blue-600 dark:text-blue-400 tracking-wider">
-                  {activeModuleTitle.split(":")[0]} • Lesson {1 + (curriculum.sections?.flatMap((s: any) => s.lessons || []).findIndex((l: any) => l.id === currentLesson.id) || 0)}
-                </div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white leading-snug">{currentLesson.title}</h3>
-              </div>
+            {/* Breadcrumb line for lesson context */}
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                {activeModuleTitle.split(":")[0]} • Lesson {1 + (curriculum.sections?.flatMap((s: any) => s.lessons || []).findIndex((l: any) => l.id === currentLesson.id) || 0)}
+              </span>
               <button 
                 onClick={triggerLessonCompletion}
                 disabled={completedLessonIds.includes(currentLesson.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 border flex items-center gap-1.5 ${
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer shrink-0 border flex items-center gap-1 ${
                   completedLessonIds.includes(currentLesson.id)
                     ? "bg-emerald-50 border-emerald-200 text-emerald-650 dark:bg-emerald-950/20 dark:border-emerald-800/40 cursor-not-allowed"
-                    : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 dark:bg-slate-900 dark:border-slate-805 dark:text-slate-200"
+                    : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-200"
                 }`}
               >
-                <CheckCircle size={13} className={completedLessonIds.includes(currentLesson.id) ? "text-emerald-500" : "text-slate-400"} />
+                <CheckCircle size={11} className={completedLessonIds.includes(currentLesson.id) ? "text-emerald-500" : "text-slate-400"} />
                 <span>{completedLessonIds.includes(currentLesson.id) ? "Completed" : "Mark as Complete"}</span>
               </button>
             </div>
 
-            {/* Video Player Box */}
             <div 
               ref={playerContainerRef}
-              className="relative aspect-video w-full bg-black rounded-xl overflow-hidden shadow-sm select-none group border border-slate-200 dark:border-slate-800"
+              className="relative aspect-video w-full bg-black rounded-xl overflow-hidden shadow-xs select-none group border border-slate-200 dark:border-slate-800/80"
             >
               {currentLesson.type === "video" ? (
                 <>
@@ -1242,8 +1288,8 @@ export default function CoursePlayer({
 
                   {isLoading && (
                     <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-3 z-40">
-                      <RefreshCw className="animate-spin text-blue-500" size={28} />
-                      <span className="text-[9px] text-slate-300 font-bold uppercase tracking-wider">Loading video player...</span>
+                      <RefreshCw className="animate-spin text-blue-500" size={24} />
+                      <span className="text-[9px] text-slate-300 font-bold uppercase tracking-wider">Streaming Video...</span>
                     </div>
                   )}
 
@@ -1253,7 +1299,7 @@ export default function CoursePlayer({
                       <div>
                         <h4 className="text-xs font-bold text-white">{videoError}</h4>
                         <p className="text-[9px] text-slate-400 mt-1 max-w-xs mx-auto leading-normal">
-                          YouTube API is loading. If it fails, please check your network or refresh the page.
+                          YouTube Embed failed to initialize. If issues persist, verify shields or privacy extensions.
                         </p>
                       </div>
                       <button 
@@ -1271,7 +1317,7 @@ export default function CoursePlayer({
                       className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-all cursor-pointer z-30 pointer-events-auto"
                     >
                       <div className="w-14 h-14 rounded-full bg-white/10 hover:bg-white/20 border border-white/30 text-white flex items-center justify-center shadow-lg backdrop-blur-sm transition-transform hover:scale-105">
-                        <Play size={20} className="fill-current ml-1" />
+                        <Play size={20} className="fill-current ml-0.5" />
                       </div>
                     </button>
                   )}
@@ -1309,10 +1355,10 @@ export default function CoursePlayer({
                   )}
 
                   {!videoError && !isLoading && (
-                    <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col gap-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-300 z-20">
+                    <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 via-black/30 to-transparent flex flex-col gap-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-300 z-20">
                       <div className="flex items-center gap-2.5 w-full">
                         <span className="text-[9px] text-slate-300 font-mono font-bold">{formatTime(currentTime)}</span>
-                        <div className="flex-1 h-1 rounded bg-slate-800/60 relative overflow-hidden select-none pointer-events-none">
+                        <div className="flex-1 h-1 rounded bg-slate-805/60 relative overflow-hidden select-none pointer-events-none">
                           <div 
                             className="absolute top-0 left-0 h-full bg-blue-500 transition-all duration-100"
                             style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
@@ -1351,7 +1397,7 @@ export default function CoursePlayer({
               ) : currentLesson.type === "pdf" ? (
                 <div className="bg-slate-50 dark:bg-slate-950 p-6 min-h-[350px] flex flex-col justify-between items-center text-center">
                   <div className="my-auto flex flex-col items-center gap-4">
-                    <div className="w-14 h-14 rounded-xl bg-blue-50 dark:bg-blue-955/20 text-blue-600 dark:text-blue-450 border border-blue-100 dark:border-blue-900/30 flex items-center justify-center">
+                    <div className="w-14 h-14 rounded-xl bg-blue-50 dark:bg-blue-955/20 text-blue-600 dark:text-blue-450 border border-blue-105 dark:border-blue-900/30 flex items-center justify-center">
                       <BookOpen size={28} />
                     </div>
                     <div>
@@ -1374,7 +1420,7 @@ export default function CoursePlayer({
                 <div className="bg-slate-50 dark:bg-slate-950 p-5 flex flex-col gap-4 max-h-[480px] overflow-y-auto">
                   {quizSubmitted ? (
                     <div className="my-auto text-center flex flex-col items-center gap-4 py-8">
-                      <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center text-lg font-bold">
+                      <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-505 border border-emerald-500/20 flex items-center justify-center text-lg font-bold">
                         ✓
                       </div>
                       <div>
@@ -1389,7 +1435,7 @@ export default function CoursePlayer({
                           setQuizSubmitted(false);
                           setQuizScore(null);
                         }}
-                        className="px-4 py-2 bg-white border border-slate-200 text-slate-700 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-200 text-xs font-bold rounded-lg cursor-pointer"
+                        className="px-4 py-2 bg-white border border-slate-202 text-slate-700 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-200 text-xs font-bold rounded-lg cursor-pointer"
                       >
                         Retry Quiz
                       </button>
@@ -1407,7 +1453,7 @@ export default function CoursePlayer({
                                 onClick={() => setQuizAnswers(prev => ({ ...prev, [qIdx]: optIdx }))}
                                 className={`p-2.5 rounded-lg border text-left text-xs font-medium transition-all cursor-pointer ${
                                   quizAnswers[qIdx] === optIdx
-                                    ? "bg-blue-50 border-blue-400 text-blue-700 dark:bg-blue-950/20 dark:border-blue-800 dark:text-blue-300"
+                                    ? "bg-blue-50 border-blue-400 text-blue-700 dark:bg-blue-955/20 dark:border-blue-800 dark:text-blue-300"
                                     : "bg-slate-50 border-slate-200 hover:border-slate-300 dark:bg-slate-950 dark:border-slate-850 dark:text-slate-400 dark:hover:border-slate-700"
                                 }`}
                               >
@@ -1480,7 +1526,7 @@ export default function CoursePlayer({
                             onChange={(e) => setWrittenAnswers(prev => ({ ...prev, [qIdx]: e.target.value }))}
                             rows={3}
                             placeholder="Write your explanation here..."
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 dark:bg-slate-950 dark:border-slate-850 dark:text-slate-200 resize-none font-medium mt-1"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-805 placeholder-slate-400 focus:outline-none focus:border-blue-500 dark:bg-slate-955 dark:border-slate-850 dark:text-slate-200 resize-none font-medium mt-1"
                           />
                         </div>
                       ))}
@@ -1512,10 +1558,10 @@ export default function CoursePlayer({
             </div>
 
             {/* Video Sub-Tabs Navigation */}
-            <div className="flex gap-4 border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto scrollbar-hide shrink-0 mt-2">
+            <div className="flex gap-5 border-b border-slate-200 dark:border-slate-800 pb-2 mt-4 overflow-x-auto scrollbar-hide shrink-0">
               {[
                 { id: "overview", label: "Overview" },
-                { id: "notes", label: "AI Notes" },
+                { id: "notes", label: "Notes" },
                 { id: "resources", label: "Resources" },
                 { id: "transcript", label: "Transcript" },
                 { id: "discussion", label: "Discussion" }
@@ -1525,8 +1571,8 @@ export default function CoursePlayer({
                   onClick={() => setPlayerTab(tab.id as any)}
                   className={`text-xs font-bold pb-2 transition-all border-b-2 cursor-pointer ${
                     playerTab === tab.id
-                      ? "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400 font-bold"
-                      : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white"
+                      ? "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400 font-extrabold"
+                      : "border-transparent text-slate-500 hover:text-slate-800"
                   }`}
                 >
                   {tab.label}
@@ -1535,110 +1581,33 @@ export default function CoursePlayer({
             </div>
 
             {/* Video Sub-Tabs Content */}
-            <div className="mt-1 min-h-[200px]">
+            <div className="mt-4 min-h-[160px]">
               {playerTab === "overview" && (
-                <div className="space-y-4">
-                  <div className="text-xs leading-relaxed text-slate-600 dark:text-slate-400 space-y-1">
+                <div className="space-y-4 text-xs font-medium text-slate-600 dark:text-slate-400 leading-relaxed">
+                  <div className="space-y-1">
                     <h4 className="text-slate-900 dark:text-white font-bold text-xs">About this lesson</h4>
-                    <p className="font-medium">
+                    <p>
                       {currentLesson.description || "Learn the concepts of HTML5 Development. This lesson goes through basic syntax, configurations, and core workflows inside candidates' skill labs."}
                     </p>
                   </div>
-
-                  {/* Metadata Stats Grid */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
-                    <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-850 p-3 rounded-xl flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                        <Clock size={15} />
-                      </div>
-                      <div>
-                        <div className="text-[8px] text-slate-400 uppercase font-mono font-bold">Duration</div>
-                        <div className="text-xs font-bold text-slate-800 dark:text-slate-200">{currentLesson.duration || "10 min"}</div>
-                      </div>
+                  {activeModuleGoal && (
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 font-mono">Module Goal</span>
+                      <p className="text-[11px] text-slate-500 mt-0.5 leading-normal">{activeModuleGoal}</p>
                     </div>
-
-                    <div className="bg-slate-50 dark:bg-slate-955 border border-slate-200/60 dark:border-slate-850 p-3 rounded-xl flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                        <FileText size={15} />
-                      </div>
-                      <div>
-                        <div className="text-[8px] text-slate-400 uppercase font-mono font-bold">Type</div>
-                        <div className="text-xs font-bold text-slate-800 dark:text-slate-200">Video Lesson</div>
-                      </div>
-                    </div>
-
-                    <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-850 p-3 rounded-xl flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                        <Award size={15} />
-                      </div>
-                      <div>
-                        <div className="text-[8px] text-slate-400 uppercase font-mono font-bold">Difficulty</div>
-                        <div className="text-xs font-bold text-slate-800 dark:text-slate-200">Easy</div>
-                      </div>
-                    </div>
-
-                    <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-850 p-3 rounded-xl flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-955 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                        <ChevronRight size={15} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-[8px] text-slate-400 uppercase font-mono font-bold">Next Up</div>
-                        <div className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate pr-1">
-                          {nextLesson?.title || "End of course"}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Checklist & AI Summary grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-                    <div className="space-y-2">
-                      <h4 className="text-slate-900 dark:text-white font-bold text-xs">What you'll learn</h4>
-                      <div className="flex flex-col gap-1.5">
-                        {[
-                          "Fundamental structures & tags",
-                          "Working with browser viewports",
-                          "Hands-on workspace playgrounds",
-                          "Validating HTML5 markup standards"
-                        ].map((item, idx) => (
-                          <div key={idx} className="flex items-center gap-2 text-xs text-slate-650 dark:text-slate-400 font-medium">
-                            <CheckCircle2 size={13} className="text-blue-600 dark:text-blue-400 shrink-0" />
-                            <span>{item}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-4 rounded-xl flex flex-col justify-between gap-3">
-                      <div>
-                        <h4 className="text-blue-650 dark:text-blue-400 font-bold text-xs flex items-center gap-1.5">
-                          <Sparkles size={13} />
-                          <span>AI Summary</span>
-                        </h4>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-normal mt-1 font-medium">
-                          Get an instantaneous AI summary of this lesson context including code playground references.
-                        </p>
-                      </div>
-                      <button 
-                        onClick={() => handleAIClick("AI Summary")}
-                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] rounded-lg shadow-sm cursor-pointer transition-all hover:scale-[1.01]"
-                      >
-                        Generate Summary
-                      </button>
-                    </div>
-                  </div>
+                  )}
                 </div>
               )}
 
               {playerTab === "notes" && (
                 <div className="space-y-3">
-                  <h4 className="text-slate-905 dark:text-white font-bold text-xs">Interactive Notebook</h4>
+                  <h4 className="text-slate-900 dark:text-white font-bold text-xs">Class Notes</h4>
                   <textarea
                     value={notepadText}
                     onChange={(e) => setNotepadText(e.target.value)}
                     rows={4}
-                    placeholder="Capture your class notes here. Notes are saved to your candidate dashboard..."
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg p-3 text-xs text-slate-805 dark:text-slate-200 focus:outline-none focus:border-blue-500 resize-y font-medium"
+                    placeholder="Type lesson notes..."
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-3 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500 resize-y font-medium"
                   />
                   <div className="flex justify-end gap-2.5">
                     <button
@@ -1654,42 +1623,25 @@ export default function CoursePlayer({
                           setNotepadText("");
                         }
                       }}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm cursor-pointer"
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-705 text-white text-xs font-bold rounded-lg shadow-sm cursor-pointer"
                     >
                       Save Note
                     </button>
                   </div>
-                  {savedNotes.length > 0 && (
-                    <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-2">
-                      <span className="text-[9px] text-slate-400 font-bold uppercase font-mono">Saved Notes</span>
-                      {savedNotes.map((note, idx) => (
-                        <div key={idx} className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-xs text-slate-700 dark:text-slate-300 font-medium leading-normal relative group">
-                          {note}
-                          <button 
-                            onClick={() => setSavedNotes(savedNotes.filter((_, i) => i !== idx))}
-                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 transition-opacity cursor-pointer"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
               )}
 
               {playerTab === "resources" && (
-                <div className="space-y-3">
-                  <h4 className="text-slate-900 dark:text-white font-bold text-xs">Resources & Downloads</h4>
+                <div className="space-y-2">
+                  <h4 className="text-slate-900 dark:text-white font-bold text-xs">Resources & Assets</h4>
                   <div className="grid grid-cols-1 gap-2">
                     {[
                       { title: "HTML5 Official Cheatsheet (W3C)", format: "PDF", size: "1.2 MB" },
-                      { title: "Sample HTML5 Practice Workspace Setup", format: "ZIP", size: "4.5 MB" },
-                      { title: "Candidate Lab Workbook - Lesson 1", format: "PDF", size: "850 KB" }
+                      { title: "Sample HTML5 Practice Workspace Setup", format: "ZIP", size: "4.5 MB" }
                     ].map((item, idx) => (
                       <div key={idx} className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded bg-blue-50 dark:bg-blue-950/45 text-blue-600 dark:text-blue-450 flex items-center justify-center font-bold text-[9px] shrink-0">
+                          <div className="w-8 h-8 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-450 flex items-center justify-center font-bold text-[9px] shrink-0">
                             {item.format}
                           </div>
                           <div>
@@ -1697,7 +1649,7 @@ export default function CoursePlayer({
                             <div className="text-[8px] text-slate-400 font-bold font-mono">{item.size}</div>
                           </div>
                         </div>
-                        <button className="text-blue-600 dark:text-blue-400 font-extrabold text-[9px] uppercase hover:underline cursor-pointer">
+                        <button className="text-blue-605 dark:text-blue-400 font-extrabold text-[9px] uppercase hover:underline cursor-pointer">
                           Download
                         </button>
                       </div>
@@ -1707,22 +1659,18 @@ export default function CoursePlayer({
               )}
 
               {playerTab === "transcript" && (
-                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
-                  <h4 className="text-slate-900 dark:text-white font-bold text-xs">Video Transcription</h4>
-                  <div className="space-y-2.5 leading-relaxed">
+                <div className="space-y-3 max-h-[250px] overflow-y-auto pr-1">
+                  <h4 className="text-slate-900 dark:text-white font-bold text-xs">Transcription</h4>
+                  <div className="space-y-2.5">
                     {[
-                      { time: 0, speaker: "Instructor", text: "Welcome to this HTML5 course. In this first lesson, we will focus on understanding the basics and setting up the local coding workspace." },
-                      { time: 45, speaker: "Instructor", text: "We need an editor like VS Code or another IDE. Let's write our first skeleton index.html file." },
-                      { time: 120, speaker: "Instructor", text: "HTML5 introduces semantic structures. This defines explicit blocks like header, footer, article, and section..." }
+                      { time: 0, speaker: "Instructor", text: "Welcome to this course. Today we are setting up our local workspace." },
+                      { time: 45, speaker: "Instructor", text: "Let's open VS Code and write our skeleton tags." }
                     ].map((line, idx) => (
-                      <div key={idx} className="flex gap-2.5 text-xs leading-normal">
+                      <div key={idx} className="flex gap-2.5 text-xs">
                         <span className="font-mono font-bold text-blue-600 dark:text-blue-400 shrink-0 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded text-[9px]">
                           {formatTime(line.time)}
                         </span>
-                        <div>
-                          <span className="font-extrabold text-slate-800 dark:text-slate-200">{line.speaker}: </span>
-                          <span className="text-slate-600 dark:text-slate-400 font-medium">{line.text}</span>
-                        </div>
+                        <p className="text-slate-600 dark:text-slate-400"><span className="font-bold">{line.speaker}:</span> {line.text}</p>
                       </div>
                     ))}
                   </div>
@@ -1730,53 +1678,42 @@ export default function CoursePlayer({
               )}
 
               {playerTab === "discussion" && (
-                <div className="space-y-3">
-                  <h4 className="text-slate-900 dark:text-white font-bold text-xs font-black">Student Forum Q&A</h4>
+                <div className="space-y-2">
+                  <h4 className="text-slate-900 dark:text-white font-bold text-xs font-black">Student Q&A</h4>
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      placeholder="Ask a question about this lesson..."
-                      className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-blue-500 font-medium"
+                      placeholder="Ask a question..."
+                      className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-202 dark:border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-805 dark:text-slate-205 placeholder-slate-400 focus:outline-none focus:border-blue-500 font-medium"
                     />
-                    <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm cursor-pointer whitespace-nowrap">
-                      Post Question
+                    <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm cursor-pointer">
+                      Ask
                     </button>
-                  </div>
-                  <div className="pt-1 space-y-2">
-                    <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg space-y-1">
-                      <div className="flex justify-between items-center text-[9px]">
-                        <span className="font-extrabold text-slate-800 dark:text-slate-200">Siva Kumar</span>
-                        <span className="text-slate-400 font-bold">2 hours ago</span>
-                      </div>
-                      <p className="text-xs text-slate-655 dark:text-slate-400 font-medium">
-                        What's the keyboard shortcut in VS Code to auto-fill the skeleton HTML structure?
-                      </p>
-                    </div>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Bottom AI Study Tools Row */}
-            <div className="border-t border-slate-200 dark:border-slate-800 pt-3 mt-1">
-              <span className="text-[9px] text-slate-400 font-bold uppercase font-mono tracking-wider">AI Study Companions</span>
+            {/* AI Tools Accent Actions Row */}
+            <div className="border-t border-slate-200 dark:border-slate-800/80 pt-4 mt-6">
+              <span className="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase font-mono tracking-wider">AI Study Tools</span>
               <div className="flex flex-wrap gap-2 mt-2">
                 {[
-                  { name: "AI Summary", icon: Sparkles, color: "text-blue-600 bg-blue-50 border-blue-100 dark:text-blue-400 dark:bg-blue-950/20 dark:border-blue-900/30" },
-                  { name: "Explain Like I'm 10", icon: Brain, color: "text-purple-650 bg-purple-50 border-purple-100 dark:text-purple-400 dark:bg-purple-950/20 dark:border-purple-900/30" },
-                  { name: "Generate Quiz", icon: CheckCircle2, color: "text-emerald-600 bg-emerald-50 border-emerald-100 dark:text-emerald-400 dark:bg-emerald-950/20 dark:border-emerald-900/30" },
-                  { name: "Code Playground", icon: Code, color: "text-amber-600 bg-amber-50 border-amber-100 dark:text-amber-400 dark:bg-amber-950/20 dark:border-amber-900/30" },
-                  { name: "Flashcards", icon: FileText, color: "text-blue-600 bg-blue-50 border-blue-100 dark:text-blue-400 dark:bg-blue-950/20 dark:border-blue-900/30" },
-                  { name: "Interview Q&A", icon: HelpCircle, color: "text-rose-600 bg-rose-50 border-rose-100 dark:text-rose-400 dark:bg-rose-950/20 dark:border-rose-900/30" },
-                  { name: "Career Tips", icon: Award, color: "text-teal-600 bg-teal-50 border-teal-100 dark:text-teal-400 dark:bg-teal-950/20 dark:border-teal-900/30" }
+                  { name: "AI Summary", icon: Sparkles },
+                  { name: "Explain Like I'm 10", icon: Brain },
+                  { name: "Generate Quiz", icon: CheckCircle2 },
+                  { name: "Code Playground", icon: Code },
+                  { name: "Flashcards", icon: FileText },
+                  { name: "Interview Q&A", icon: HelpCircle },
+                  { name: "Career Tips", icon: Award }
                 ].map((item, idx) => (
                   <button
                     key={idx}
                     onClick={() => handleAIClick(item.name)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 border rounded-lg text-xs font-semibold cursor-pointer transition-all hover:scale-102 active:scale-95 ${item.color}`}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:border-blue-500 dark:hover:border-blue-400 hover:text-blue-650 dark:hover:text-blue-400 transition-all cursor-pointer"
                   >
-                    <item.icon size={12} className="shrink-0" />
-                    <span>{item.name}</span>
+                    <item.icon size={12} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                    <span>{item.name === "Explain Like I'm 10" ? "Explain Concept" : item.name}</span>
                   </button>
                 ))}
               </div>
@@ -1786,83 +1723,12 @@ export default function CoursePlayer({
         </div>
 
         {/* RIGHT SIDEBAR WIDGETS COLUMN (4/12) */}
-        <div className="lg:col-span-4 flex flex-col gap-5">
+        <div className="lg:col-span-4 flex flex-col gap-6">
           
-          {/* Progress ring Card */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col gap-4">
-            <div>
-              <span className="text-[9px] font-bold uppercase text-slate-400 dark:text-slate-500 font-mono tracking-wider">Your Stats</span>
-              <h3 className="text-xs font-bold text-slate-800 dark:text-white mt-0.5">Overall Progress</h3>
-            </div>
+          {/* Section: Modules Content Roadmap */}
+          <div className="space-y-2">
+            <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 font-mono tracking-wider">Modules Content</span>
             
-            {/* SVG Ring Row */}
-            <div className="flex items-center gap-4">
-              <div className="relative shrink-0 flex items-center justify-center">
-                <svg className="w-14 h-14 transform -rotate-90">
-                  <circle
-                    cx="28"
-                    cy="28"
-                    r="24"
-                    className="stroke-slate-100 dark:stroke-slate-800"
-                    strokeWidth="5"
-                    fill="transparent"
-                  />
-                  <circle
-                    cx="28"
-                    cy="28"
-                    r="24"
-                    className="stroke-blue-600 dark:stroke-blue-400 transition-all duration-500"
-                    strokeWidth="5"
-                    fill="transparent"
-                    strokeDasharray={2 * Math.PI * 24}
-                    strokeDashoffset={2 * Math.PI * 24 * (1 - courseProgressPercent / 100)}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="absolute text-xs font-bold text-slate-855 dark:text-white font-mono">
-                  {courseProgressPercent}%
-                </div>
-              </div>
-              <div>
-                <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">Lessons Completed</h4>
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
-                  {completedLessonIds.length} of {curriculum.sections?.flatMap((s: any) => s.lessons || []).length || 48} sessions
-                </p>
-              </div>
-            </div>
-
-            {/* Streak & Stats Footer grid */}
-            <div className="grid grid-cols-3 gap-2 border-t border-slate-100 dark:border-slate-800 pt-3">
-              <div className="text-center space-y-0.5 border-r border-slate-100 dark:border-slate-800">
-                <div className="text-[8px] text-slate-400 uppercase font-mono font-bold">Streak</div>
-                <div className="text-xs font-bold text-orange-500 flex items-center justify-center gap-0.5">
-                  <Flame size={11} className="fill-current" />
-                  <span>{userStats.streak} Days</span>
-                </div>
-              </div>
-              <div className="text-center space-y-0.5 border-r border-slate-100 dark:border-slate-800">
-                <div className="text-[8px] text-slate-400 uppercase font-mono font-bold">Level</div>
-                <div className="text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center justify-center gap-0.5">
-                  <Award size={11} />
-                  <span>{1 + Math.floor(userStats.xp / 100)}</span>
-                </div>
-              </div>
-              <div className="text-center space-y-0.5">
-                <div className="text-[8px] text-slate-400 uppercase font-mono font-bold">XP</div>
-                <div className="text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center justify-center gap-0.5 font-mono">
-                  <span>{userStats.xp}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Module Collapsible Dropdown Roadmap Card */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col gap-3">
-            <div>
-              <span className="text-[9px] font-bold uppercase text-slate-400 dark:text-slate-500 font-mono tracking-wider">Syllabus Navigation</span>
-              <h3 className="text-xs font-bold text-slate-800 dark:text-white mt-0.5">Modules Roadmap</h3>
-            </div>
-
             <div className="flex flex-col gap-2 max-h-[480px] overflow-y-auto pr-1 scrollbar-thin">
               {curriculum?.sections?.map((section: any, secIdx: number) => {
                 const totalInSec = section.lessons?.length || 0;
@@ -1871,16 +1737,16 @@ export default function CoursePlayer({
                 const isExpanded = expandedModules.includes(section.id);
                 
                 return (
-                  <div key={section.id} className="border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden bg-slate-50/50 dark:bg-slate-950/20">
+                  <div key={section.id} className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden bg-white dark:bg-slate-900 shadow-xs">
                     <button
                       onClick={() => toggleModule(section.id)}
-                      className="w-full px-3 py-3 flex justify-between items-center text-left text-xs font-bold text-slate-800 dark:text-white hover:bg-slate-100/50 dark:hover:bg-slate-850/50 transition-colors cursor-pointer"
+                      className="w-full px-3.5 py-3 flex justify-between items-center text-left text-xs font-bold text-slate-800 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-850/50 transition-colors cursor-pointer"
                     >
                       <div className="flex flex-col pr-2">
                         <span className="text-[8px] font-mono text-blue-600 dark:text-blue-400 uppercase tracking-widest">
                           Module {sectionNo}
                         </span>
-                        <span className="mt-0.5 text-slate-800 dark:text-slate-100 text-xs font-extrabold truncate max-w-[170px]">
+                        <span className="mt-0.5 text-slate-800 dark:text-slate-100 text-xs font-bold truncate max-w-[170px]">
                           {section.title.split(":").slice(1).join(":") || section.title}
                         </span>
                       </div>
@@ -1896,7 +1762,7 @@ export default function CoursePlayer({
                     </button>
 
                     {isExpanded && (
-                      <div className="p-2.5 border-t border-slate-100 dark:border-slate-800/80 flex flex-col gap-1.5 bg-white dark:bg-slate-900">
+                      <div className="p-2 border-t border-slate-100 dark:border-slate-800/80 flex flex-col gap-1 bg-white dark:bg-slate-900">
                         {section.lessons?.map((less: any) => {
                           const completed = completedLessonIds.includes(less.id);
                           const isLocked = less.is_locked;
@@ -1925,9 +1791,9 @@ export default function CoursePlayer({
                                 setCurrentLesson(less);
                                 setPlayerTab("overview");
                               }}
-                              className={`flex items-center justify-between p-2.5 rounded-lg border text-left text-xs transition-all w-full cursor-pointer relative overflow-hidden ${
+                              className={`flex items-center justify-between p-2 rounded border text-left text-xs transition-all w-full cursor-pointer relative overflow-hidden ${
                                 active
-                                  ? "bg-blue-50/50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-800 text-blue-700 dark:text-blue-300 font-bold shadow-sm"
+                                  ? "bg-blue-50/50 border-blue-205 dark:bg-blue-955/20 dark:border-blue-800 text-blue-700 dark:text-blue-300 font-bold shadow-xs"
                                   : isLocked
                                     ? "bg-slate-50/50 dark:bg-slate-950/60 border-slate-100 dark:border-slate-850 text-slate-400 opacity-60 cursor-not-allowed"
                                     : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-blue-500/20"
@@ -1935,19 +1801,19 @@ export default function CoursePlayer({
                             >
                               <div className="flex items-center gap-2 min-w-0 pr-1.5 relative z-10">
                                 {completed ? (
-                                  <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
+                                  <CheckCircle2 size={11} className="text-emerald-500 shrink-0" />
                                 ) : isLocked ? (
-                                  <Lock size={11} className="text-slate-400 shrink-0" />
+                                  <Lock size={10} className="text-slate-400 shrink-0" />
                                 ) : active ? (
-                                  <Play size={11} className="text-blue-500 shrink-0 animate-bounce" />
+                                  <Play size={10} className="text-blue-500 shrink-0 animate-bounce" />
                                 ) : (
-                                  <ChevronRight size={11} className="text-blue-500 shrink-0" />
+                                  <ChevronRight size={10} className="text-blue-500 shrink-0" />
                                 )}
                                 <span className="truncate font-medium text-slate-800 dark:text-slate-205">{less.title}</span>
                               </div>
 
-                              <div className="flex items-center gap-1 shrink-0 relative z-10 font-mono text-[7px] font-bold">
-                                <span className={`px-1.5 py-0.5 rounded-full uppercase ${stateColor}`}>
+                              <div className="flex items-center gap-1 shrink-0 relative z-10 font-mono text-[6px] font-bold">
+                                <span className={`px-1 py-0.5 rounded-full uppercase ${stateColor}`}>
                                   {stateLabel}
                                 </span>
                               </div>
@@ -1962,100 +1828,96 @@ export default function CoursePlayer({
             </div>
           </div>
 
-          {/* AI Mentor Sidebar Chat Widget Card */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col gap-3">
-            <div className="flex justify-between items-center">
-              <div>
-                <span className="text-[9px] font-bold uppercase text-blue-600 dark:text-blue-400 font-mono tracking-wider">AI Mentor Widget</span>
-                <h3 className="text-xs font-bold text-slate-800 dark:text-white mt-0.5">Study Helper</h3>
+          {/* AI Mentor Box */}
+          <div className="space-y-2">
+            <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 font-mono tracking-wider">Ask AI Mentor</span>
+            
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex flex-col gap-3.5 shadow-sm">
+              <div className="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-800/80">
+                <span className="text-xs font-bold text-slate-800 dark:text-white">Study Helper</span>
+                <div className="w-6 h-6 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                  <Brain size={12} />
+                </div>
               </div>
-              <div className="w-7 h-7 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-105 dark:border-blue-900/30 flex items-center justify-center relative animate-pulse shrink-0">
-                <Brain size={14} />
-              </div>
-            </div>
 
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-normal bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 p-2.5 rounded-xl font-medium">
-              Ask questions about the current lesson. I can summarize topics, generate custom quizzes, or show practical code examples!
-            </p>
-
-            {/* Dynamic Message Panel */}
-            <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 rounded-xl p-3 flex flex-col gap-2.5 h-[200px] overflow-y-auto pr-1">
-              {mentorMessages.length === 0 ? (
-                <div className="my-auto text-center flex flex-col items-center gap-1.5 p-3 text-slate-400">
-                  <MessageSquare size={20} className="opacity-30 animate-pulse text-blue-500" />
-                  <span className="text-[9px] font-bold">Ask anything to initiate chat...</span>
+              {!isChatActive && mentorMessages.length === 0 ? (
+                <div className="space-y-3">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+                    Need help? Ask AI to explain concepts, generate quick practice questions, or give career applications.
+                  </p>
+                  
+                  <div className="flex flex-col gap-2">
+                    {[
+                      "Explain this lesson in simple terms",
+                      "Generate a quick quiz for me",
+                      "Career applications for this topic"
+                    ].map((prompt, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleSendMentorMessage(prompt)}
+                        className="w-full text-left text-xs bg-slate-50 dark:bg-slate-950 hover:bg-blue-50/50 dark:hover:bg-blue-955/20 border border-slate-100 dark:border-slate-850 p-2.5 rounded-lg text-slate-600 dark:text-slate-300 font-medium transition-colors cursor-pointer"
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               ) : (
-                mentorMessages.map((msg: any) => {
-                  const isUser = msg.sender === "user";
-                  return (
-                    <div 
-                      key={msg.id}
-                      className={`flex flex-col max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed font-medium ${
-                        isUser
-                          ? "bg-blue-600 text-white self-end rounded-br-none shadow-sm"
-                          : "bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800 text-slate-800 dark:text-slate-200 self-start rounded-bl-none shadow-xs"
-                      }`}
-                    >
-                      <span>{msg.message}</span>
-                      <span className={`text-[7px] font-mono mt-1 ${isUser ? "text-blue-200 self-end" : "text-slate-400"}`}>
-                        {msg.created_at ? new Date(msg.created_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : ""}
-                      </span>
-                    </div>
-                  );
-                })
-              )}
+                <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 rounded-lg p-2.5 flex flex-col gap-2.5 h-[200px] overflow-y-auto pr-1">
+                  {mentorMessages.map((msg: any) => {
+                    const isUser = msg.sender === "user";
+                    return (
+                      <div 
+                        key={msg.id}
+                        className={`flex flex-col max-w-[85%] rounded-lg px-2.5 py-1.5 text-xs leading-relaxed font-medium ${
+                          isUser
+                            ? "bg-blue-600 text-white self-end rounded-br-none shadow-xs"
+                            : "bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800 text-slate-800 dark:text-slate-200 self-start rounded-bl-none shadow-xs"
+                        }`}
+                      >
+                        <span>{msg.message}</span>
+                        <span className={`text-[7px] font-mono mt-1 ${isUser ? "text-blue-200 self-end" : "text-slate-400"}`}>
+                          {msg.created_at ? new Date(msg.created_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : ""}
+                        </span>
+                      </div>
+                    );
+                  })}
 
-              {loadingMentor && (
-                <div className="bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800 text-slate-400 self-start rounded-xl rounded-bl-none px-3.5 py-2 text-xs leading-normal font-semibold shadow-xs flex items-center gap-1.5">
-                  <Loader2 size={12} className="animate-spin text-blue-500" />
-                  <span className="text-[9px] font-mono uppercase tracking-wider font-bold">Thinking...</span>
+                  {loadingMentor && (
+                    <div className="bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800 text-slate-400 self-start rounded-lg rounded-bl-none px-2.5 py-1.5 text-[10px] leading-normal font-semibold shadow-xs flex items-center gap-1.5">
+                      <Loader2 size={11} className="animate-spin text-blue-500" />
+                      <span className="text-[8px] font-mono uppercase tracking-wider font-bold">Thinking...</span>
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
 
-            {/* Quick Prompts Chips */}
-            <div className="flex flex-wrap gap-1">
-              {[
-                `What is ${selectedCourse.title?.split(" ")[0]}?`,
-                "Give me an example",
-                "Summarize key terms"
-              ].map((chip, idx) => (
+              {/* Input & Send controls */}
+              <div className="flex gap-2 border border-slate-200 dark:border-slate-800 p-1 rounded-lg bg-slate-50 dark:bg-slate-950">
+                <input
+                  type="text"
+                  value={mentorInput}
+                  onChange={(e) => setMentorInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && mentorInput.trim()) {
+                      handleSendMentorMessage(mentorInput);
+                    }
+                  }}
+                  placeholder="Ask AI Mentor..."
+                  className="flex-1 bg-transparent text-xs text-slate-850 dark:text-slate-200 placeholder-slate-400 outline-none px-2 font-medium"
+                />
                 <button
-                  key={idx}
-                  onClick={() => handleSendMentorMessage(chip)}
-                  className="bg-slate-50 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 dark:bg-slate-950 dark:border-slate-850 dark:hover:bg-blue-955/25 text-[9px] font-semibold text-slate-500 px-2 py-1 rounded-md transition-colors cursor-pointer"
+                  onClick={() => {
+                    if (mentorInput.trim()) {
+                      handleSendMentorMessage(mentorInput);
+                    }
+                  }}
+                  disabled={!mentorInput.trim() || loadingMentor}
+                  className="w-7 h-7 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:bg-slate-250 disabled:text-slate-400 dark:disabled:bg-slate-800 dark:disabled:text-slate-600 flex items-center justify-center cursor-pointer disabled:cursor-not-allowed shadow-sm transition-all"
                 >
-                  {chip}
+                  <ArrowRight size={12} />
                 </button>
-              ))}
-            </div>
-
-            {/* Input & Send controls */}
-            <div className="flex gap-2 border border-slate-200 dark:border-slate-800 p-1.5 rounded-xl bg-slate-50 dark:bg-slate-950">
-              <input
-                type="text"
-                value={mentorInput}
-                onChange={(e) => setMentorInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && mentorInput.trim()) {
-                    handleSendMentorMessage(mentorInput);
-                  }
-                }}
-                placeholder="Ask AI Mentor..."
-                className="flex-1 bg-transparent text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 outline-none px-1.5 font-medium"
-              />
-              <button
-                onClick={() => {
-                  if (mentorInput.trim()) {
-                    handleSendMentorMessage(mentorInput);
-                  }
-                }}
-                disabled={!mentorInput.trim() || loadingMentor}
-                className="w-7 h-7 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:bg-slate-200 disabled:text-slate-400 dark:disabled:bg-slate-800 dark:disabled:text-slate-600 flex items-center justify-center cursor-pointer disabled:cursor-not-allowed shadow-sm transition-all"
-              >
-                <ArrowRight size={13} />
-              </button>
+              </div>
             </div>
           </div>
 
