@@ -1104,22 +1104,22 @@ export default function CoursePlayer({
   }
 
   return (
-    <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full px-4 md:px-8 py-6 bg-slate-50 dark:bg-slate-955 text-slate-855 dark:text-slate-100">
+    <div className="w-full flex flex-col gap-5 text-slate-800 dark:text-slate-100">
       
       {/* Dynamic Success Overlay */}
       {showSuccessOverlay && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md transition-all duration-300"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm transition-all duration-300"
         >
-          <div className="bg-gradient-to-br from-indigo-900 to-slate-900 border border-indigo-500/30 rounded-3xl p-8 max-w-md text-center shadow-2xl flex flex-col items-center gap-4">
-            <div className="w-20 h-20 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center animate-bounce shadow-inner">
-              <Award size={40} />
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 max-w-md text-center shadow-xl flex flex-col items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center animate-bounce shadow-sm">
+              <Award size={32} />
             </div>
-            <h3 className="text-xl font-black text-white">Lesson Completed!</h3>
-            <p className="text-xs text-slate-355 leading-relaxed">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Lesson Completed!</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
               You've successfully validated this lesson with strict watch compliance.
             </p>
-            <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-xl text-emerald-405 font-extrabold text-sm">
+            <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-xl text-emerald-600 dark:text-emerald-400 font-extrabold text-sm">
               <Sparkles size={16} />
               <span>+{xpEarnedAlert} XP Earned</span>
             </div>
@@ -1128,32 +1128,32 @@ export default function CoursePlayer({
       )}
 
       {/* Top Header & Breadcrumbs Area */}
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         {/* Breadcrumbs */}
-        <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500 dark:text-slate-455 uppercase tracking-wider">
-          <button onClick={() => setActiveView("explore")} className="hover:text-indigo-655 transition-colors cursor-pointer">My Learning</button>
+        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+          <button onClick={() => setActiveView("explore")} className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer">My Learning</button>
           <span>/</span>
           <span className="truncate max-w-[150px]">{selectedCourse.title}</span>
           <span>/</span>
-          <span className="text-indigo-600 dark:text-indigo-400 truncate max-w-[150px]">{activeModuleTitle}</span>
+          <span className="text-blue-600 dark:text-blue-400 truncate max-w-[150px]">{activeModuleTitle}</span>
         </div>
 
         {/* Course Header Card */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 md:p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div className="flex items-center gap-5">
-            <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-955/40 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800/40 flex items-center justify-center text-3xl font-black shadow-inner shrink-0">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30 flex items-center justify-center text-xl font-black shrink-0">
               {selectedCourse.title?.toUpperCase().includes("HTML") ? "5" : "D"}
             </div>
-            <div className="space-y-1">
-              <h2 className="text-xl font-black text-slate-855 dark:text-white leading-tight">{selectedCourse.title}</h2>
-              <div className="flex flex-wrap items-center gap-2 text-[10px] font-extrabold tracking-wide uppercase">
-                <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-md">Beginner</span>
-                <span className="text-slate-400">•</span>
-                <span className="text-slate-500 dark:text-slate-455">{curriculum?.sections?.length || 0} Modules</span>
-                <span className="text-slate-400">•</span>
-                <span className="text-slate-500 dark:text-slate-455">4.5 Hrs</span>
-                <span className="text-slate-400">•</span>
-                <span className="text-slate-500 dark:text-slate-455">Updated Jun 2026</span>
+            <div className="space-y-0.5">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white leading-tight">{selectedCourse.title}</h2>
+              <div className="flex flex-wrap items-center gap-2 text-[9px] font-bold tracking-wide uppercase">
+                <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">Beginner</span>
+                <span className="text-slate-300 dark:text-slate-700">•</span>
+                <span className="text-slate-500 dark:text-slate-400">{curriculum?.sections?.length || 0} Modules</span>
+                <span className="text-slate-300 dark:text-slate-700">•</span>
+                <span className="text-slate-500 dark:text-slate-400">4.5 Hrs</span>
+                <span className="text-slate-300 dark:text-slate-700">•</span>
+                <span className="text-slate-500 dark:text-slate-400">Updated Jun 2026</span>
               </div>
             </div>
           </div>
@@ -1161,41 +1161,41 @@ export default function CoursePlayer({
             onClick={() => {
               playerContainerRef.current?.scrollIntoView({ behavior: 'smooth' });
             }}
-            className="w-full md:w-auto px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-md cursor-pointer transition-all hover:scale-[1.02] flex items-center justify-center gap-2"
+            className="w-full md:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-sm cursor-pointer transition-all hover:scale-[1.01] flex items-center justify-center gap-2"
           >
             <span>Continue Learning</span>
-            <ArrowRight size={14} />
+            <ArrowRight size={13} />
           </button>
         </div>
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mt-2">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         
         {/* LEFT PLAYER COLUMN (8/12) */}
-        <div className="lg:col-span-8 flex flex-col gap-6">
+        <div className="lg:col-span-8 flex flex-col gap-5">
           
           {/* Lesson Title & Video Player Area */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 md:p-6 shadow-sm flex flex-col gap-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col gap-4">
             
             {/* Title Header Row */}
             <div className="flex justify-between items-start gap-4">
-              <div className="space-y-1">
-                <div className="text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-wider">
+              <div className="space-y-0.5">
+                <div className="text-[9px] font-extrabold uppercase text-blue-600 dark:text-blue-400 tracking-wider">
                   {activeModuleTitle.split(":")[0]} • Lesson {1 + (curriculum.sections?.flatMap((s: any) => s.lessons || []).findIndex((l: any) => l.id === currentLesson.id) || 0)}
                 </div>
-                <h3 className="text-base font-black text-slate-855 dark:text-white leading-snug">{currentLesson.title}</h3>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white leading-snug">{currentLesson.title}</h3>
               </div>
               <button 
                 onClick={triggerLessonCompletion}
                 disabled={completedLessonIds.includes(currentLesson.id)}
-                className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer shrink-0 border flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 border flex items-center gap-1.5 ${
                   completedLessonIds.includes(currentLesson.id)
-                    ? "bg-emerald-55 border-emerald-200 text-emerald-600 dark:bg-emerald-950/20 dark:border-emerald-800/40 cursor-not-allowed"
-                    : "bg-white border-slate-202 text-slate-705 hover:border-slate-350 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-200"
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-650 dark:bg-emerald-950/20 dark:border-emerald-800/40 cursor-not-allowed"
+                    : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 dark:bg-slate-900 dark:border-slate-805 dark:text-slate-200"
                 }`}
               >
-                <CheckCircle size={14} className={completedLessonIds.includes(currentLesson.id) ? "text-emerald-500" : "text-slate-400"} />
+                <CheckCircle size={13} className={completedLessonIds.includes(currentLesson.id) ? "text-emerald-500" : "text-slate-400"} />
                 <span>{completedLessonIds.includes(currentLesson.id) ? "Completed" : "Mark as Complete"}</span>
               </button>
             </div>
@@ -1203,7 +1203,7 @@ export default function CoursePlayer({
             {/* Video Player Box */}
             <div 
               ref={playerContainerRef}
-              className="relative aspect-video w-full bg-slate-955 rounded-2xl overflow-hidden shadow-md select-none group border border-slate-850"
+              className="relative aspect-video w-full bg-black rounded-xl overflow-hidden shadow-sm select-none group border border-slate-200 dark:border-slate-800"
             >
               {currentLesson.type === "video" ? (
                 <>
@@ -1241,26 +1241,24 @@ export default function CoursePlayer({
                   )}
 
                   {isLoading && (
-                    <div className="absolute inset-0 bg-slate-955/80 flex flex-col items-center justify-center gap-3 z-40">
-                      <RefreshCw className="animate-spin text-indigo-500" size={32} />
-                      <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Streaming Video...</span>
+                    <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-3 z-40">
+                      <RefreshCw className="animate-spin text-blue-500" size={28} />
+                      <span className="text-[9px] text-slate-300 font-bold uppercase tracking-wider">Loading video player...</span>
                     </div>
                   )}
 
                   {videoError && (
-                    <div className="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center gap-3.5 text-center p-6 z-40">
-                      <ShieldAlert size={44} className="text-red-500" />
+                    <div className="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center gap-3 text-center p-6 z-40">
+                      <ShieldAlert size={36} className="text-red-500" />
                       <div>
-                        <h4 className="text-sm font-black text-white">{videoError}</h4>
-                        <p className="text-[10px] text-slate-455 mt-1 max-w-xs mx-auto leading-normal">
-                          {videoError.toLowerCase().includes("youtube") || videoError.toLowerCase().includes("initialize")
-                            ? "This can happen in Incognito Mode or if adblockers/privacy shields block YouTube embeds. Please try disabling shields or check your connection."
-                            : "There was an issue playing this content. Please check your connection or try again."}
+                        <h4 className="text-xs font-bold text-white">{videoError}</h4>
+                        <p className="text-[9px] text-slate-400 mt-1 max-w-xs mx-auto leading-normal">
+                          YouTube API is loading. If it fails, please check your network or refresh the page.
                         </p>
                       </div>
                       <button 
                         onClick={handleReloadVideo}
-                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md"
+                        className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm"
                       >
                         Retry Load
                       </button>
@@ -1270,39 +1268,39 @@ export default function CoursePlayer({
                   {!isPlaying && !videoError && !isLoading && (
                     <button 
                       onClick={togglePlay}
-                      className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/35 transition-all cursor-pointer z-30 pointer-events-auto"
+                      className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-all cursor-pointer z-30 pointer-events-auto"
                     >
-                      <div className="w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 border border-white/30 text-white flex items-center justify-center shadow-lg backdrop-blur-sm transition-transform hover:scale-105">
-                        <Play size={24} className="fill-current ml-1" />
+                      <div className="w-14 h-14 rounded-full bg-white/10 hover:bg-white/20 border border-white/30 text-white flex items-center justify-center shadow-lg backdrop-blur-sm transition-transform hover:scale-105">
+                        <Play size={20} className="fill-current ml-1" />
                       </div>
                     </button>
                   )}
 
                   {autoNextCount !== null && (
-                    <div className="absolute inset-0 bg-slate-955/95 flex flex-col items-center justify-center gap-5 text-center p-6 z-40">
-                      <Sparkles className="text-indigo-400 animate-pulse" size={40} />
+                    <div className="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center gap-4 text-center p-6 z-40">
+                      <Sparkles className="text-blue-400 animate-pulse" size={32} />
                       <div>
-                        <h3 className="text-base font-black text-white">Video completed!</h3>
-                        <p className="text-xs text-slate-400 mt-1">
-                          Up next: <span className="text-indigo-400 font-extrabold">{nextLesson?.title}</span>
+                        <h3 className="text-sm font-bold text-white">Video completed!</h3>
+                        <p className="text-[11px] text-slate-400 mt-1">
+                          Up next: <span className="text-blue-400 font-extrabold">{nextLesson?.title}</span>
                         </p>
                       </div>
-                      <div className="text-2xl font-black text-white font-mono bg-indigo-950/40 border border-indigo-900/30 px-5 py-2.5 rounded-2xl">
+                      <div className="text-lg font-bold text-white font-mono bg-slate-800/40 border border-slate-700/30 px-4 py-2 rounded-xl">
                         Starting in {autoNextCount}s...
                       </div>
-                      <div className="flex gap-3">
+                      <div className="flex gap-2.5">
                         <button 
                           onClick={() => {
                             cancelAutoNext();
                             if (nextLesson) setCurrentLesson(nextLesson);
                           }}
-                          className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md cursor-pointer"
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm cursor-pointer"
                         >
                           Open Now
                         </button>
                         <button 
                           onClick={cancelAutoNext}
-                          className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-355 text-xs font-bold rounded-xl border border-slate-700 cursor-pointer"
+                          className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-355 text-xs font-bold rounded-lg border border-slate-700 cursor-pointer"
                         >
                           Cancel
                         </button>
@@ -1311,39 +1309,39 @@ export default function CoursePlayer({
                   )}
 
                   {!videoError && !isLoading && (
-                    <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-955 via-slate-955/60 to-transparent flex flex-col gap-2.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-300 z-20">
-                      <div className="flex items-center gap-3 w-full">
-                        <span className="text-[10px] text-slate-300 font-mono font-bold">{formatTime(currentTime)}</span>
-                        <div className="flex-1 h-1 rounded bg-slate-800 relative overflow-hidden select-none pointer-events-none">
+                    <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col gap-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-300 z-20">
+                      <div className="flex items-center gap-2.5 w-full">
+                        <span className="text-[9px] text-slate-300 font-mono font-bold">{formatTime(currentTime)}</span>
+                        <div className="flex-1 h-1 rounded bg-slate-800/60 relative overflow-hidden select-none pointer-events-none">
                           <div 
-                            className="absolute top-0 left-0 h-full bg-indigo-500 transition-all duration-100"
+                            className="absolute top-0 left-0 h-full bg-blue-500 transition-all duration-100"
                             style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
                           />
                         </div>
-                        <span className="text-[10px] text-slate-300 font-mono font-bold">{formatTime(duration)}</span>
+                        <span className="text-[9px] text-slate-300 font-mono font-bold">{formatTime(duration)}</span>
                       </div>
 
                       <div className="flex justify-between items-center w-full">
-                        <div className="flex items-center gap-4 text-white">
-                          <button onClick={togglePlay} className="hover:text-indigo-400 transition-colors cursor-pointer outline-none">
-                            {isPlaying ? <Pause size={15} /> : <Play size={15} />}
+                        <div className="flex items-center gap-3.5 text-white">
+                          <button onClick={togglePlay} className="hover:text-blue-400 transition-colors cursor-pointer outline-none">
+                            {isPlaying ? <Pause size={14} /> : <Play size={14} />}
                           </button>
-                          <button onClick={toggleMute} className="hover:text-indigo-400 transition-colors cursor-pointer outline-none">
-                            {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
+                          <button onClick={toggleMute} className="hover:text-blue-400 transition-colors cursor-pointer outline-none">
+                            {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
                           </button>
-                          <span className="text-[10px] text-slate-400 font-mono">
+                          <span className="text-[9px] text-slate-400 font-mono">
                             {playbackRate !== 1 ? `${playbackRate}x` : "Normal"}
                           </span>
                         </div>
-                        <div className="flex items-center gap-4 text-white">
+                        <div className="flex items-center gap-3.5 text-white">
                           <button 
                             onClick={togglePlaybackRate} 
-                            className="hover:text-indigo-400 transition-colors cursor-pointer outline-none text-[10px] font-bold border border-slate-700 px-1.5 py-0.5 rounded"
+                            className="hover:text-blue-400 transition-colors cursor-pointer outline-none text-[9px] font-bold border border-slate-700 px-1.5 py-0.5 rounded"
                           >
                             Speed
                           </button>
-                          <button onClick={toggleFullscreen} className="hover:text-indigo-400 transition-colors cursor-pointer outline-none">
-                            <Maximize2 size={15} />
+                          <button onClick={toggleFullscreen} className="hover:text-blue-400 transition-colors cursor-pointer outline-none">
+                            <Maximize2 size={14} />
                           </button>
                         </div>
                       </div>
@@ -1351,15 +1349,15 @@ export default function CoursePlayer({
                   )}
                 </>
               ) : currentLesson.type === "pdf" ? (
-                <div className="bg-slate-955 p-6 min-h-[350px] flex flex-col justify-between items-center text-center">
+                <div className="bg-slate-50 dark:bg-slate-950 p-6 min-h-[350px] flex flex-col justify-between items-center text-center">
                   <div className="my-auto flex flex-col items-center gap-4">
-                    <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center">
-                      <BookOpen size={32} />
+                    <div className="w-14 h-14 rounded-xl bg-blue-50 dark:bg-blue-955/20 text-blue-600 dark:text-blue-450 border border-blue-100 dark:border-blue-900/30 flex items-center justify-center">
+                      <BookOpen size={28} />
                     </div>
                     <div>
-                      <h4 className="text-sm font-black text-white">{currentLesson.title}</h4>
-                      <p className="text-[11px] text-slate-455 mt-1.5 max-w-xs mx-auto leading-normal">
-                        We have auto-completed this reading workbook for you on load. Click below to download the study guide PDF.
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">{currentLesson.title}</h4>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto leading-normal">
+                        Click below to open and study the handbook PDF for this module.
                       </p>
                     </div>
                   </div>
@@ -1367,22 +1365,22 @@ export default function CoursePlayer({
                     href={currentLesson.pdf_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="px-6 py-2.8 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black shadow-md cursor-pointer transition-all hover:scale-105"
+                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-sm cursor-pointer transition-all hover:scale-105"
                   >
                     Download Handbook PDF
                   </a>
                 </div>
               ) : currentLesson.type === "quiz" && currentLesson.quiz ? (
-                <div className="bg-slate-955 p-6 flex flex-col gap-5 max-h-[480px] overflow-y-auto">
+                <div className="bg-slate-50 dark:bg-slate-950 p-5 flex flex-col gap-4 max-h-[480px] overflow-y-auto">
                   {quizSubmitted ? (
                     <div className="my-auto text-center flex flex-col items-center gap-4 py-8">
-                      <div className="w-14 h-14 rounded-full bg-emerald-500/10 text-emerald-450 border border-emerald-500/20 flex items-center justify-center text-xl font-bold">
+                      <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center text-lg font-bold">
                         ✓
                       </div>
                       <div>
-                        <h4 className="text-sm font-black text-white">Quiz Completed!</h4>
-                        <p className="text-xs text-slate-400 mt-1">
-                          Your Score: <span className="font-extrabold text-emerald-500">{quizScore}%</span>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">Quiz Completed!</h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                          Your Score: <span className="font-extrabold text-emerald-600 dark:text-emerald-400">{quizScore}%</span>
                         </p>
                       </div>
                       <button
@@ -1391,26 +1389,26 @@ export default function CoursePlayer({
                           setQuizSubmitted(false);
                           setQuizScore(null);
                         }}
-                        className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-750 text-xs font-bold rounded-xl cursor-pointer"
+                        className="px-4 py-2 bg-white border border-slate-200 text-slate-700 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-200 text-xs font-bold rounded-lg cursor-pointer"
                       >
                         Retry Quiz
                       </button>
                     </div>
                   ) : (
-                    <div className="space-y-5">
+                    <div className="space-y-4">
                       {currentLesson.quiz.questions.map((q: any, qIdx: number) => (
-                        <div key={q.id} className="p-4 bg-slate-900 border border-slate-850 rounded-2xl flex flex-col gap-3">
-                          <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Question {qIdx + 1}</span>
-                          <span className="text-xs font-bold text-slate-100">{q.question}</span>
+                        <div key={q.id} className="p-4 bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800 rounded-xl flex flex-col gap-2.5">
+                          <span className="text-[8px] font-mono text-slate-400 dark:text-slate-500 uppercase tracking-widest">Question {qIdx + 1}</span>
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{q.question}</span>
                           <div className="grid grid-cols-1 gap-2 mt-1">
                             {q.options?.map((opt: string, optIdx: number) => (
                               <button
                                 key={optIdx}
                                 onClick={() => setQuizAnswers(prev => ({ ...prev, [qIdx]: optIdx }))}
-                                className={`p-3 rounded-xl border text-left text-xs font-semibold transition-all cursor-pointer ${
+                                className={`p-2.5 rounded-lg border text-left text-xs font-medium transition-all cursor-pointer ${
                                   quizAnswers[qIdx] === optIdx
-                                    ? "bg-indigo-950 border-indigo-500 text-indigo-350"
-                                    : "bg-slate-955 border-slate-855 text-slate-400 hover:border-slate-700"
+                                    ? "bg-blue-50 border-blue-400 text-blue-700 dark:bg-blue-950/20 dark:border-blue-800 dark:text-blue-300"
+                                    : "bg-slate-50 border-slate-200 hover:border-slate-300 dark:bg-slate-950 dark:border-slate-850 dark:text-slate-400 dark:hover:border-slate-700"
                                 }`}
                               >
                                 {opt}
@@ -1419,7 +1417,7 @@ export default function CoursePlayer({
                           </div>
                         </div>
                       ))}
-                      <div className="flex justify-end pt-3">
+                      <div className="flex justify-end pt-2">
                         <button
                           onClick={async () => {
                             let correctCount = 0;
@@ -1449,7 +1447,7 @@ export default function CoursePlayer({
                             }
                           }}
                           disabled={Object.keys(quizAnswers).length < currentLesson.quiz.questions.length}
-                          className="px-6 py-2.8 bg-indigo-600 hover:bg-indigo-700 text-white disabled:bg-slate-800 disabled:text-slate-505 text-xs font-black rounded-xl cursor-pointer disabled:cursor-not-allowed shadow-md"
+                          className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white disabled:bg-slate-200 disabled:text-slate-400 dark:disabled:bg-slate-805 dark:disabled:text-slate-600 text-xs font-bold rounded-lg cursor-pointer disabled:cursor-not-allowed shadow-sm"
                         >
                           Submit Answers
                         </button>
@@ -1458,31 +1456,31 @@ export default function CoursePlayer({
                   )}
                 </div>
               ) : currentLesson.type === "written_assessment" && currentLesson.written_assessment ? (
-                <div className="bg-slate-955 p-6 flex flex-col gap-5 max-h-[480px] overflow-y-auto">
+                <div className="bg-slate-50 dark:bg-slate-950 p-5 flex flex-col gap-4 max-h-[480px] overflow-y-auto">
                   {currentLesson.written_assessment.passed ? (
                     <div className="my-auto text-center flex flex-col items-center gap-4 py-8">
-                      <div className="w-14 h-14 rounded-full bg-emerald-500/10 text-emerald-455 border border-emerald-500/20 flex items-center justify-center text-xl font-bold">
+                      <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center text-lg font-bold">
                         ✓
                       </div>
                       <div>
-                        <h4 className="text-sm font-black text-white">Assessment Evaluated!</h4>
-                        <p className="text-xs text-slate-400 mt-1">
-                          Best Score: <span className="font-extrabold text-emerald-400">{currentLesson.written_assessment.best_score}%</span>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">Assessment Evaluated!</h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                          Best Score: <span className="font-bold text-emerald-600 dark:text-emerald-400">{currentLesson.written_assessment.best_score}%</span>
                         </p>
                       </div>
                     </div>
                   ) : (
                     <div className="space-y-4">
                       {currentLesson.written_assessment.questions.map((q: any, qIdx: number) => (
-                        <div key={q.id} className="p-4 bg-slate-900 border border-slate-850 rounded-2xl flex flex-col gap-2">
-                          <span className="text-[9px] font-black text-indigo-455 uppercase tracking-widest font-mono">Question {qIdx + 1}</span>
-                          <span className="text-xs font-bold text-slate-250 leading-relaxed">{q.question_text}</span>
+                        <div key={q.id} className="p-4 bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800 rounded-xl flex flex-col gap-2">
+                          <span className="text-[8px] font-mono text-slate-405 dark:text-slate-505 uppercase tracking-widest">Question {qIdx + 1}</span>
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-relaxed">{q.question_text}</span>
                           <textarea
                             value={writtenAnswers[qIdx] || ""}
                             onChange={(e) => setWrittenAnswers(prev => ({ ...prev, [qIdx]: e.target.value }))}
                             rows={3}
                             placeholder="Write your explanation here..."
-                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-655 resize-none font-semibold mt-1"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 dark:bg-slate-950 dark:border-slate-850 dark:text-slate-200 resize-none font-medium mt-1"
                           />
                         </div>
                       ))}
@@ -1502,7 +1500,7 @@ export default function CoursePlayer({
                               console.error(err);
                             }
                           }}
-                          className="px-6 py-2.8 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black rounded-xl cursor-pointer shadow-md"
+                          className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg cursor-pointer shadow-sm"
                         >
                           Submit Response
                         </button>
@@ -1514,7 +1512,7 @@ export default function CoursePlayer({
             </div>
 
             {/* Video Sub-Tabs Navigation */}
-            <div className="flex gap-5 border-b border-slate-100 dark:border-slate-800/40 pb-2.5 overflow-x-auto scrollbar-hide shrink-0 mt-3">
+            <div className="flex gap-4 border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto scrollbar-hide shrink-0 mt-2">
               {[
                 { id: "overview", label: "Overview" },
                 { id: "notes", label: "AI Notes" },
@@ -1525,10 +1523,10 @@ export default function CoursePlayer({
                 <button
                   key={tab.id}
                   onClick={() => setPlayerTab(tab.id as any)}
-                  className={`text-xs font-bold pb-1.5 transition-all border-b-2 cursor-pointer ${
+                  className={`text-xs font-bold pb-2 transition-all border-b-2 cursor-pointer ${
                     playerTab === tab.id
-                      ? "border-indigo-600 text-indigo-600 dark:border-indigo-405 dark:text-indigo-405 font-extrabold"
-                      : "border-transparent text-slate-500 hover:text-slate-850 dark:hover:text-white"
+                      ? "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400 font-bold"
+                      : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white"
                   }`}
                 >
                   {tab.label}
@@ -1537,55 +1535,55 @@ export default function CoursePlayer({
             </div>
 
             {/* Video Sub-Tabs Content */}
-            <div className="mt-2 min-h-[220px]">
+            <div className="mt-1 min-h-[200px]">
               {playerTab === "overview" && (
-                <div className="space-y-5">
-                  <div className="text-xs leading-relaxed text-slate-600 dark:text-slate-405">
-                    <h4 className="text-slate-855 dark:text-white font-bold text-xs mb-1.5">About this lesson</h4>
-                    <p className="font-semibold">
+                <div className="space-y-4">
+                  <div className="text-xs leading-relaxed text-slate-600 dark:text-slate-400 space-y-1">
+                    <h4 className="text-slate-900 dark:text-white font-bold text-xs">About this lesson</h4>
+                    <p className="font-medium">
                       {currentLesson.description || "Learn the concepts of HTML5 Development. This lesson goes through basic syntax, configurations, and core workflows inside candidates' skill labs."}
                     </p>
                   </div>
 
                   {/* Metadata Stats Grid */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-855 p-3 rounded-2xl flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-650 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                        <Clock size={16} />
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+                    <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-850 p-3 rounded-xl flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                        <Clock size={15} />
                       </div>
                       <div>
-                        <div className="text-[9px] text-slate-400 uppercase font-mono font-bold">Duration</div>
-                        <div className="text-xs font-extrabold text-slate-800 dark:text-slate-200">{currentLesson.duration || "10 min"}</div>
+                        <div className="text-[8px] text-slate-400 uppercase font-mono font-bold">Duration</div>
+                        <div className="text-xs font-bold text-slate-800 dark:text-slate-200">{currentLesson.duration || "10 min"}</div>
                       </div>
                     </div>
 
-                    <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-855 p-3 rounded-2xl flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-650 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                        <FileText size={16} />
+                    <div className="bg-slate-50 dark:bg-slate-955 border border-slate-200/60 dark:border-slate-850 p-3 rounded-xl flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                        <FileText size={15} />
                       </div>
                       <div>
-                        <div className="text-[9px] text-slate-400 uppercase font-mono font-bold">Type</div>
-                        <div className="text-xs font-extrabold text-slate-800 dark:text-slate-205">Video Lesson</div>
+                        <div className="text-[8px] text-slate-400 uppercase font-mono font-bold">Type</div>
+                        <div className="text-xs font-bold text-slate-800 dark:text-slate-200">Video Lesson</div>
                       </div>
                     </div>
 
-                    <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-855 p-3 rounded-2xl flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-650 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                        <Award size={16} />
+                    <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-850 p-3 rounded-xl flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                        <Award size={15} />
                       </div>
                       <div>
-                        <div className="text-[9px] text-slate-400 uppercase font-mono font-bold">Difficulty</div>
-                        <div className="text-xs font-extrabold text-slate-800 dark:text-slate-200">Easy</div>
+                        <div className="text-[8px] text-slate-400 uppercase font-mono font-bold">Difficulty</div>
+                        <div className="text-xs font-bold text-slate-800 dark:text-slate-200">Easy</div>
                       </div>
                     </div>
 
-                    <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-855 p-3 rounded-2xl flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-650 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                        <ChevronRight size={16} />
+                    <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-850 p-3 rounded-xl flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-955 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                        <ChevronRight size={15} />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="text-[9px] text-slate-400 uppercase font-mono font-bold">Next Up</div>
-                        <div className="text-xs font-extrabold text-slate-800 dark:text-slate-200 truncate pr-1">
+                        <div className="text-[8px] text-slate-400 uppercase font-mono font-bold">Next Up</div>
+                        <div className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate pr-1">
                           {nextLesson?.title || "End of course"}
                         </div>
                       </div>
@@ -1593,37 +1591,37 @@ export default function CoursePlayer({
                   </div>
 
                   {/* Checklist & AI Summary grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
-                    <div className="space-y-3">
-                      <h4 className="text-slate-850 dark:text-white font-bold text-xs">What you'll learn</h4>
-                      <div className="flex flex-col gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                    <div className="space-y-2">
+                      <h4 className="text-slate-900 dark:text-white font-bold text-xs">What you'll learn</h4>
+                      <div className="flex flex-col gap-1.5">
                         {[
                           "Fundamental structures & tags",
                           "Working with browser viewports",
                           "Hands-on workspace playgrounds",
                           "Validating HTML5 markup standards"
                         ].map((item, idx) => (
-                          <div key={idx} className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-405">
-                            <CheckCircle2 size={14} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                          <div key={idx} className="flex items-center gap-2 text-xs text-slate-650 dark:text-slate-400 font-medium">
+                            <CheckCircle2 size={13} className="text-blue-600 dark:text-blue-400 shrink-0" />
                             <span>{item}</span>
                           </div>
                         ))}
                       </div>
                     </div>
 
-                    <div className="bg-indigo-50/40 dark:bg-indigo-950/10 border border-indigo-100/50 dark:border-indigo-900/20 p-4 rounded-2xl flex flex-col justify-between gap-3">
+                    <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-4 rounded-xl flex flex-col justify-between gap-3">
                       <div>
-                        <h4 className="text-indigo-955 dark:text-indigo-400 font-bold text-xs flex items-center gap-1.5">
-                          <Sparkles size={14} />
+                        <h4 className="text-blue-650 dark:text-blue-400 font-bold text-xs flex items-center gap-1.5">
+                          <Sparkles size={13} />
                           <span>AI Summary</span>
                         </h4>
-                        <p className="text-[11px] text-indigo-905/70 dark:text-slate-400 leading-normal mt-1.5 font-bold">
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-normal mt-1 font-medium">
                           Get an instantaneous AI summary of this lesson context including code playground references.
                         </p>
                       </div>
                       <button 
                         onClick={() => handleAIClick("AI Summary")}
-                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm cursor-pointer transition-all hover:scale-[1.01]"
+                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] rounded-lg shadow-sm cursor-pointer transition-all hover:scale-[1.01]"
                       >
                         Generate Summary
                       </button>
@@ -1633,19 +1631,19 @@ export default function CoursePlayer({
               )}
 
               {playerTab === "notes" && (
-                <div className="space-y-4">
-                  <h4 className="text-slate-850 dark:text-white font-bold text-xs">Interactive Notebook</h4>
+                <div className="space-y-3">
+                  <h4 className="text-slate-905 dark:text-white font-bold text-xs">Interactive Notebook</h4>
                   <textarea
                     value={notepadText}
                     onChange={(e) => setNotepadText(e.target.value)}
                     rows={4}
                     placeholder="Capture your class notes here. Notes are saved to your candidate dashboard..."
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-202 dark:border-slate-855 rounded-xl p-3 text-xs text-slate-800 dark:text-slate-205 focus:outline-none focus:border-indigo-650 resize-y font-semibold"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg p-3 text-xs text-slate-805 dark:text-slate-200 focus:outline-none focus:border-blue-500 resize-y font-medium"
                   />
-                  <div className="flex justify-end gap-3">
+                  <div className="flex justify-end gap-2.5">
                     <button
                       onClick={() => setNotepadText("")}
-                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-355 text-xs font-bold rounded-xl cursor-pointer"
+                      className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-bold rounded-lg cursor-pointer"
                     >
                       Clear
                     </button>
@@ -1656,20 +1654,20 @@ export default function CoursePlayer({
                           setNotepadText("");
                         }
                       }}
-                      className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-sm cursor-pointer"
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm cursor-pointer"
                     >
                       Save Note
                     </button>
                   </div>
                   {savedNotes.length > 0 && (
-                    <div className="pt-3 border-t border-slate-100 dark:border-slate-850 space-y-2">
-                      <span className="text-[10px] text-slate-400 font-bold uppercase font-mono">Saved Notes</span>
+                    <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-2">
+                      <span className="text-[9px] text-slate-400 font-bold uppercase font-mono">Saved Notes</span>
                       {savedNotes.map((note, idx) => (
-                        <div key={idx} className="p-3 bg-slate-50 dark:bg-slate-955 border border-slate-100 dark:border-slate-850 rounded-xl text-xs text-slate-700 dark:text-slate-350 font-bold leading-normal relative group">
+                        <div key={idx} className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-xs text-slate-700 dark:text-slate-300 font-medium leading-normal relative group">
                           {note}
                           <button 
                             onClick={() => setSavedNotes(savedNotes.filter((_, i) => i !== idx))}
-                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-750 transition-opacity cursor-pointer"
+                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 transition-opacity cursor-pointer"
                           >
                             <Trash2 size={12} />
                           </button>
@@ -1682,24 +1680,24 @@ export default function CoursePlayer({
 
               {playerTab === "resources" && (
                 <div className="space-y-3">
-                  <h4 className="text-slate-855 dark:text-white font-bold text-xs">Resources & Downloads</h4>
-                  <div className="grid grid-cols-1 gap-2.5">
+                  <h4 className="text-slate-900 dark:text-white font-bold text-xs">Resources & Downloads</h4>
+                  <div className="grid grid-cols-1 gap-2">
                     {[
                       { title: "HTML5 Official Cheatsheet (W3C)", format: "PDF", size: "1.2 MB" },
                       { title: "Sample HTML5 Practice Workspace Setup", format: "ZIP", size: "4.5 MB" },
                       { title: "Candidate Lab Workbook - Lesson 1", format: "PDF", size: "850 KB" }
                     ].map((item, idx) => (
-                      <div key={idx} className="p-3.5 bg-slate-50 dark:bg-slate-955 border border-slate-100 dark:border-slate-850 rounded-xl flex items-center justify-between">
+                      <div key={idx} className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded bg-indigo-50 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-400 flex items-center justify-center font-bold text-[10px] shrink-0">
+                          <div className="w-8 h-8 rounded bg-blue-50 dark:bg-blue-950/45 text-blue-600 dark:text-blue-450 flex items-center justify-center font-bold text-[9px] shrink-0">
                             {item.format}
                           </div>
                           <div>
                             <div className="text-xs font-bold text-slate-800 dark:text-slate-200">{item.title}</div>
-                            <div className="text-[9px] text-slate-400 font-bold font-mono">{item.size}</div>
+                            <div className="text-[8px] text-slate-400 font-bold font-mono">{item.size}</div>
                           </div>
                         </div>
-                        <button className="text-indigo-600 dark:text-indigo-400 font-extrabold text-[10px] uppercase hover:underline cursor-pointer">
+                        <button className="text-blue-600 dark:text-blue-400 font-extrabold text-[9px] uppercase hover:underline cursor-pointer">
                           Download
                         </button>
                       </div>
@@ -1709,21 +1707,21 @@ export default function CoursePlayer({
               )}
 
               {playerTab === "transcript" && (
-                <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
-                  <h4 className="text-slate-855 dark:text-white font-bold text-xs font-black">Video Transcription</h4>
-                  <div className="space-y-3 leading-relaxed">
+                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                  <h4 className="text-slate-900 dark:text-white font-bold text-xs">Video Transcription</h4>
+                  <div className="space-y-2.5 leading-relaxed">
                     {[
                       { time: 0, speaker: "Instructor", text: "Welcome to this HTML5 course. In this first lesson, we will focus on understanding the basics and setting up the local coding workspace." },
                       { time: 45, speaker: "Instructor", text: "We need an editor like VS Code or another IDE. Let's write our first skeleton index.html file." },
                       { time: 120, speaker: "Instructor", text: "HTML5 introduces semantic structures. This defines explicit blocks like header, footer, article, and section..." }
                     ].map((line, idx) => (
-                      <div key={idx} className="flex gap-3 text-xs leading-normal">
-                        <span className="font-mono font-black text-indigo-605 dark:text-indigo-405 shrink-0 bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.5 rounded text-[10px]">
+                      <div key={idx} className="flex gap-2.5 text-xs leading-normal">
+                        <span className="font-mono font-bold text-blue-600 dark:text-blue-400 shrink-0 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded text-[9px]">
                           {formatTime(line.time)}
                         </span>
                         <div>
                           <span className="font-extrabold text-slate-800 dark:text-slate-200">{line.speaker}: </span>
-                          <span className="text-slate-650 dark:text-slate-400 font-semibold">{line.text}</span>
+                          <span className="text-slate-600 dark:text-slate-400 font-medium">{line.text}</span>
                         </div>
                       </div>
                     ))}
@@ -1732,25 +1730,25 @@ export default function CoursePlayer({
               )}
 
               {playerTab === "discussion" && (
-                <div className="space-y-4">
-                  <h4 className="text-slate-855 dark:text-white font-bold text-xs font-black">Student Forum Q&A</h4>
-                  <div className="flex gap-3">
+                <div className="space-y-3">
+                  <h4 className="text-slate-900 dark:text-white font-bold text-xs font-black">Student Forum Q&A</h4>
+                  <div className="flex gap-2">
                     <input
                       type="text"
                       placeholder="Ask a question about this lesson..."
-                      className="flex-1 bg-slate-50 dark:bg-slate-955 border border-slate-202 dark:border-slate-855 rounded-xl px-4 py-2.5 text-xs text-slate-805 dark:text-slate-205 placeholder-slate-500 focus:outline-none focus:border-indigo-655 font-semibold"
+                      className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-blue-500 font-medium"
                     />
-                    <button className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-sm cursor-pointer whitespace-nowrap">
+                    <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm cursor-pointer whitespace-nowrap">
                       Post Question
                     </button>
                   </div>
-                  <div className="pt-2 space-y-3">
-                    <div className="p-3 bg-slate-50 dark:bg-slate-955 border border-slate-100 dark:border-slate-855 rounded-xl space-y-1">
-                      <div className="flex justify-between items-center text-[10px]">
-                        <span className="font-extrabold text-slate-800 dark:text-slate-250">Siva Kumar</span>
+                  <div className="pt-1 space-y-2">
+                    <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg space-y-1">
+                      <div className="flex justify-between items-center text-[9px]">
+                        <span className="font-extrabold text-slate-800 dark:text-slate-200">Siva Kumar</span>
                         <span className="text-slate-400 font-bold">2 hours ago</span>
                       </div>
-                      <p className="text-xs text-slate-600 dark:text-slate-400 font-semibold">
+                      <p className="text-xs text-slate-655 dark:text-slate-400 font-medium">
                         What's the keyboard shortcut in VS Code to auto-fill the skeleton HTML structure?
                       </p>
                     </div>
@@ -1760,24 +1758,24 @@ export default function CoursePlayer({
             </div>
 
             {/* Bottom AI Study Tools Row */}
-            <div className="border-t border-slate-100 dark:border-slate-855 pt-4 mt-2">
-              <span className="text-[10px] text-slate-400 font-bold uppercase font-mono tracking-wider">AI Study Companions</span>
-              <div className="flex flex-wrap gap-2.5 mt-2.5">
+            <div className="border-t border-slate-200 dark:border-slate-800 pt-3 mt-1">
+              <span className="text-[9px] text-slate-400 font-bold uppercase font-mono tracking-wider">AI Study Companions</span>
+              <div className="flex flex-wrap gap-2 mt-2">
                 {[
-                  { name: "AI Summary", icon: Sparkles, color: "text-indigo-600 bg-indigo-50 border-indigo-100 dark:text-indigo-400 dark:bg-indigo-950/20 dark:border-indigo-900/30" },
-                  { name: "Explain Like I'm 10", icon: Brain, color: "text-purple-600 bg-purple-50 border-purple-100 dark:text-purple-400 dark:bg-purple-950/20 dark:border-purple-900/30" },
+                  { name: "AI Summary", icon: Sparkles, color: "text-blue-600 bg-blue-50 border-blue-100 dark:text-blue-400 dark:bg-blue-950/20 dark:border-blue-900/30" },
+                  { name: "Explain Like I'm 10", icon: Brain, color: "text-purple-650 bg-purple-50 border-purple-100 dark:text-purple-400 dark:bg-purple-950/20 dark:border-purple-900/30" },
                   { name: "Generate Quiz", icon: CheckCircle2, color: "text-emerald-600 bg-emerald-50 border-emerald-100 dark:text-emerald-400 dark:bg-emerald-950/20 dark:border-emerald-900/30" },
                   { name: "Code Playground", icon: Code, color: "text-amber-600 bg-amber-50 border-amber-100 dark:text-amber-400 dark:bg-amber-950/20 dark:border-amber-900/30" },
                   { name: "Flashcards", icon: FileText, color: "text-blue-600 bg-blue-50 border-blue-100 dark:text-blue-400 dark:bg-blue-950/20 dark:border-blue-900/30" },
                   { name: "Interview Q&A", icon: HelpCircle, color: "text-rose-600 bg-rose-50 border-rose-100 dark:text-rose-400 dark:bg-rose-950/20 dark:border-rose-900/30" },
-                  { name: "Career Tips", icon: Award, color: "text-teal-605 bg-teal-50 border-teal-100 dark:text-teal-400 dark:bg-teal-950/20 dark:border-teal-900/30" }
+                  { name: "Career Tips", icon: Award, color: "text-teal-600 bg-teal-50 border-teal-100 dark:text-teal-400 dark:bg-teal-950/20 dark:border-teal-900/30" }
                 ].map((item, idx) => (
                   <button
                     key={idx}
                     onClick={() => handleAIClick(item.name)}
-                    className={`flex items-center gap-2 px-3 py-2 border rounded-xl text-xs font-bold cursor-pointer transition-all hover:scale-105 active:scale-95 ${item.color}`}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 border rounded-lg text-xs font-semibold cursor-pointer transition-all hover:scale-102 active:scale-95 ${item.color}`}
                   >
-                    <item.icon size={13} className="shrink-0" />
+                    <item.icon size={12} className="shrink-0" />
                     <span>{item.name}</span>
                   </button>
                 ))}
@@ -1788,70 +1786,70 @@ export default function CoursePlayer({
         </div>
 
         {/* RIGHT SIDEBAR WIDGETS COLUMN (4/12) */}
-        <div className="lg:col-span-4 flex flex-col gap-6">
+        <div className="lg:col-span-4 flex flex-col gap-5">
           
           {/* Progress ring Card */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 md:p-6 shadow-sm flex flex-col gap-5">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col gap-4">
             <div>
-              <span className="text-[10px] font-black uppercase text-slate-400 font-mono tracking-wider">Your Stats</span>
-              <h3 className="text-sm font-black text-slate-850 dark:text-white mt-0.5">Overall Progress</h3>
+              <span className="text-[9px] font-bold uppercase text-slate-400 dark:text-slate-500 font-mono tracking-wider">Your Stats</span>
+              <h3 className="text-xs font-bold text-slate-800 dark:text-white mt-0.5">Overall Progress</h3>
             </div>
             
             {/* SVG Ring Row */}
-            <div className="flex items-center gap-5">
+            <div className="flex items-center gap-4">
               <div className="relative shrink-0 flex items-center justify-center">
-                <svg className="w-18 h-18 transform -rotate-90">
+                <svg className="w-14 h-14 transform -rotate-90">
                   <circle
-                    cx="36"
-                    cy="36"
-                    r="30"
+                    cx="28"
+                    cy="28"
+                    r="24"
                     className="stroke-slate-100 dark:stroke-slate-800"
-                    strokeWidth="6.5"
+                    strokeWidth="5"
                     fill="transparent"
                   />
                   <circle
-                    cx="36"
-                    cy="36"
-                    r="30"
-                    className="stroke-indigo-600 transition-all duration-500"
-                    strokeWidth="6.5"
+                    cx="28"
+                    cy="28"
+                    r="24"
+                    className="stroke-blue-600 dark:stroke-blue-400 transition-all duration-500"
+                    strokeWidth="5"
                     fill="transparent"
-                    strokeDasharray={2 * Math.PI * 30}
-                    strokeDashoffset={2 * Math.PI * 30 * (1 - courseProgressPercent / 100)}
+                    strokeDasharray={2 * Math.PI * 24}
+                    strokeDashoffset={2 * Math.PI * 24 * (1 - courseProgressPercent / 100)}
                     strokeLinecap="round"
                   />
                 </svg>
-                <div className="absolute text-sm font-black text-slate-855 dark:text-white font-mono">
+                <div className="absolute text-xs font-bold text-slate-855 dark:text-white font-mono">
                   {courseProgressPercent}%
                 </div>
               </div>
               <div>
-                <h4 className="text-xs font-extrabold text-slate-800 dark:text-slate-205">You've completed</h4>
-                <p className="text-[11px] text-slate-500 font-bold mt-0.5">
-                  {completedLessonIds.length} of {curriculum.sections?.flatMap((s: any) => s.lessons || []).length || 48} lessons
+                <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">Lessons Completed</h4>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                  {completedLessonIds.length} of {curriculum.sections?.flatMap((s: any) => s.lessons || []).length || 48} sessions
                 </p>
               </div>
             </div>
 
             {/* Streak & Stats Footer grid */}
-            <div className="grid grid-cols-3 gap-3 border-t border-slate-100 dark:border-slate-855 pt-4">
-              <div className="text-center space-y-0.5 border-r border-slate-100 dark:border-slate-855">
-                <div className="text-[9px] text-slate-400 uppercase font-mono font-bold">Streak</div>
-                <div className="text-xs font-extrabold text-orange-500 flex items-center justify-center gap-1">
-                  <Flame size={12} className="fill-current" />
+            <div className="grid grid-cols-3 gap-2 border-t border-slate-100 dark:border-slate-800 pt-3">
+              <div className="text-center space-y-0.5 border-r border-slate-100 dark:border-slate-800">
+                <div className="text-[8px] text-slate-400 uppercase font-mono font-bold">Streak</div>
+                <div className="text-xs font-bold text-orange-500 flex items-center justify-center gap-0.5">
+                  <Flame size={11} className="fill-current" />
                   <span>{userStats.streak} Days</span>
                 </div>
               </div>
-              <div className="text-center space-y-0.5 border-r border-slate-100 dark:border-slate-855">
-                <div className="text-[9px] text-slate-400 uppercase font-mono font-bold">Level</div>
-                <div className="text-xs font-extrabold text-indigo-600 dark:text-indigo-405 flex items-center justify-center gap-1">
-                  <Award size={12} />
+              <div className="text-center space-y-0.5 border-r border-slate-100 dark:border-slate-800">
+                <div className="text-[8px] text-slate-400 uppercase font-mono font-bold">Level</div>
+                <div className="text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center justify-center gap-0.5">
+                  <Award size={11} />
                   <span>{1 + Math.floor(userStats.xp / 100)}</span>
                 </div>
               </div>
               <div className="text-center space-y-0.5">
-                <div className="text-[9px] text-slate-400 uppercase font-mono font-bold">XP Earned</div>
-                <div className="text-xs font-extrabold text-indigo-650 dark:text-indigo-405 flex items-center justify-center gap-1 font-mono">
+                <div className="text-[8px] text-slate-400 uppercase font-mono font-bold">XP</div>
+                <div className="text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center justify-center gap-0.5 font-mono">
                   <span>{userStats.xp}</span>
                 </div>
               </div>
@@ -1859,13 +1857,13 @@ export default function CoursePlayer({
           </div>
 
           {/* Module Collapsible Dropdown Roadmap Card */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-202 dark:border-slate-800 rounded-3xl p-5 md:p-6 shadow-sm flex flex-col gap-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col gap-3">
             <div>
-              <span className="text-[10px] font-black uppercase text-slate-400 font-mono tracking-wider">Syllabus Navigation</span>
-              <h3 className="text-sm font-black text-slate-855 dark:text-white mt-0.5">Modules Roadmap</h3>
+              <span className="text-[9px] font-bold uppercase text-slate-400 dark:text-slate-500 font-mono tracking-wider">Syllabus Navigation</span>
+              <h3 className="text-xs font-bold text-slate-800 dark:text-white mt-0.5">Modules Roadmap</h3>
             </div>
 
-            <div className="flex flex-col gap-2.5 max-h-[480px] overflow-y-auto pr-1 scrollbar-thin">
+            <div className="flex flex-col gap-2 max-h-[480px] overflow-y-auto pr-1 scrollbar-thin">
               {curriculum?.sections?.map((section: any, secIdx: number) => {
                 const totalInSec = section.lessons?.length || 0;
                 const completedInSec = section.lessons?.filter((l: any) => completedLessonIds.includes(l.id))?.length || 0;
@@ -1873,39 +1871,39 @@ export default function CoursePlayer({
                 const isExpanded = expandedModules.includes(section.id);
                 
                 return (
-                  <div key={section.id} className="border border-slate-100 dark:border-slate-850 rounded-2xl overflow-hidden bg-slate-50/40 dark:bg-slate-950/20">
+                  <div key={section.id} className="border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden bg-slate-50/50 dark:bg-slate-950/20">
                     <button
                       onClick={() => toggleModule(section.id)}
-                      className="w-full px-4 py-3.5 flex justify-between items-center text-left text-xs font-black text-slate-800 dark:text-white hover:bg-slate-100/50 dark:hover:bg-slate-855/50 transition-colors cursor-pointer"
+                      className="w-full px-3 py-3 flex justify-between items-center text-left text-xs font-bold text-slate-800 dark:text-white hover:bg-slate-100/50 dark:hover:bg-slate-850/50 transition-colors cursor-pointer"
                     >
                       <div className="flex flex-col pr-2">
-                        <span className="text-[9px] font-mono text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
+                        <span className="text-[8px] font-mono text-blue-600 dark:text-blue-400 uppercase tracking-widest">
                           Module {sectionNo}
                         </span>
-                        <span className="mt-0.5 text-slate-800 dark:text-slate-100 text-xs font-extrabold truncate max-w-[180px]">
+                        <span className="mt-0.5 text-slate-800 dark:text-slate-100 text-xs font-extrabold truncate max-w-[170px]">
                           {section.title.split(":").slice(1).join(":") || section.title}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2.5 shrink-0">
-                        <span className="text-[9px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-550 dark:text-slate-400 px-2 py-0.5 rounded-full">
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[8px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded-full">
                           {completedInSec}/{totalInSec}
                         </span>
                         <ChevronRight 
-                          size={14} 
+                          size={13} 
                           className={`text-slate-400 transition-transform duration-300 ${isExpanded ? "transform rotate-90" : ""}`} 
                         />
                       </div>
                     </button>
 
                     {isExpanded && (
-                      <div className="p-3 border-t border-slate-100 dark:border-slate-855 flex flex-col gap-2 bg-white dark:bg-slate-900">
+                      <div className="p-2.5 border-t border-slate-100 dark:border-slate-800/80 flex flex-col gap-1.5 bg-white dark:bg-slate-900">
                         {section.lessons?.map((less: any) => {
                           const completed = completedLessonIds.includes(less.id);
                           const isLocked = less.is_locked;
                           const active = currentLesson.id === less.id;
 
                           let stateLabel = "Available";
-                          let stateColor = "text-indigo-500 bg-indigo-500/10";
+                          let stateColor = "text-blue-500 bg-blue-500/10";
                           
                           if (completed) {
                             stateLabel = "Completed";
@@ -1927,29 +1925,29 @@ export default function CoursePlayer({
                                 setCurrentLesson(less);
                                 setPlayerTab("overview");
                               }}
-                              className={`flex items-center justify-between p-3 rounded-xl border text-left text-xs transition-all w-full cursor-pointer relative overflow-hidden ${
+                              className={`flex items-center justify-between p-2.5 rounded-lg border text-left text-xs transition-all w-full cursor-pointer relative overflow-hidden ${
                                 active
-                                  ? "bg-indigo-50 border-indigo-200 dark:bg-indigo-950/20 dark:border-indigo-800/60 text-indigo-650 dark:text-indigo-400 font-extrabold shadow-sm"
+                                  ? "bg-blue-50/50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-800 text-blue-700 dark:text-blue-300 font-bold shadow-sm"
                                   : isLocked
-                                    ? "bg-slate-50 dark:bg-slate-955 border-slate-100 dark:border-slate-900 text-slate-400 opacity-60 cursor-not-allowed"
-                                    : "bg-white dark:bg-slate-900 border-slate-202 dark:border-slate-800 text-slate-750 dark:text-slate-355 hover:border-indigo-500/20"
+                                    ? "bg-slate-50/50 dark:bg-slate-950/60 border-slate-100 dark:border-slate-850 text-slate-400 opacity-60 cursor-not-allowed"
+                                    : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-blue-500/20"
                               }`}
                             >
-                              <div className="flex items-center gap-2.5 min-w-0 pr-2 relative z-10">
+                              <div className="flex items-center gap-2 min-w-0 pr-1.5 relative z-10">
                                 {completed ? (
-                                  <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
+                                  <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
                                 ) : isLocked ? (
-                                  <Lock size={12} className="text-slate-400 shrink-0" />
+                                  <Lock size={11} className="text-slate-400 shrink-0" />
                                 ) : active ? (
-                                  <Play size={12} className="text-blue-500 shrink-0 animate-bounce" />
+                                  <Play size={11} className="text-blue-500 shrink-0 animate-bounce" />
                                 ) : (
-                                  <ChevronRight size={12} className="text-indigo-500 shrink-0" />
+                                  <ChevronRight size={11} className="text-blue-500 shrink-0" />
                                 )}
-                                <span className="truncate font-semibold text-slate-855 dark:text-slate-200">{less.title}</span>
+                                <span className="truncate font-medium text-slate-800 dark:text-slate-205">{less.title}</span>
                               </div>
 
-                              <div className="flex items-center gap-1.5 shrink-0 relative z-10">
-                                <span className={`text-[7px] font-mono font-bold px-1.5 py-0.5 rounded-full uppercase ${stateColor}`}>
+                              <div className="flex items-center gap-1 shrink-0 relative z-10 font-mono text-[7px] font-bold">
+                                <span className={`px-1.5 py-0.5 rounded-full uppercase ${stateColor}`}>
                                   {stateLabel}
                                 </span>
                               </div>
@@ -1965,27 +1963,27 @@ export default function CoursePlayer({
           </div>
 
           {/* AI Mentor Sidebar Chat Widget Card */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-202 dark:border-slate-800 rounded-3xl p-5 md:p-6 shadow-sm flex flex-col gap-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col gap-3">
             <div className="flex justify-between items-center">
               <div>
-                <span className="text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 font-mono tracking-wider">AI Mentor Widget</span>
-                <h3 className="text-sm font-black text-slate-850 dark:text-white mt-0.5">Study Helper</h3>
+                <span className="text-[9px] font-bold uppercase text-blue-600 dark:text-blue-400 font-mono tracking-wider">AI Mentor Widget</span>
+                <h3 className="text-xs font-bold text-slate-800 dark:text-white mt-0.5">Study Helper</h3>
               </div>
-              <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-950/40 text-indigo-605 dark:text-indigo-405 border border-indigo-100 dark:border-indigo-900/30 flex items-center justify-center relative animate-pulse shrink-0">
-                <Brain size={16} />
+              <div className="w-7 h-7 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-105 dark:border-blue-900/30 flex items-center justify-center relative animate-pulse shrink-0">
+                <Brain size={14} />
               </div>
             </div>
 
-            <p className="text-[11px] text-slate-500 font-bold leading-normal bg-indigo-50/20 dark:bg-slate-955/30 p-2.5 rounded-xl border border-indigo-100/10">
-              Ask me anything about this lesson. I can summarize, explain concepts, generate quick practice quiz questions, or share tips!
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-normal bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 p-2.5 rounded-xl font-medium">
+              Ask questions about the current lesson. I can summarize topics, generate custom quizzes, or show practical code examples!
             </p>
 
             {/* Dynamic Message Panel */}
-            <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-855 rounded-2xl p-3 flex flex-col gap-3 h-[240px] overflow-y-auto pr-1">
+            <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 rounded-xl p-3 flex flex-col gap-2.5 h-[200px] overflow-y-auto pr-1">
               {mentorMessages.length === 0 ? (
-                <div className="my-auto text-center flex flex-col items-center gap-2 p-4 text-slate-400">
-                  <MessageSquare size={24} className="opacity-40 animate-pulse text-indigo-500" />
-                  <span className="text-[10px] font-bold">Ask anything to initiate session chat...</span>
+                <div className="my-auto text-center flex flex-col items-center gap-1.5 p-3 text-slate-400">
+                  <MessageSquare size={20} className="opacity-30 animate-pulse text-blue-500" />
+                  <span className="text-[9px] font-bold">Ask anything to initiate chat...</span>
                 </div>
               ) : (
                 mentorMessages.map((msg: any) => {
@@ -1993,14 +1991,14 @@ export default function CoursePlayer({
                   return (
                     <div 
                       key={msg.id}
-                      className={`flex flex-col max-w-[85%] rounded-2xl px-3 py-2.5 text-xs leading-normal font-semibold ${
+                      className={`flex flex-col max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed font-medium ${
                         isUser
-                          ? "bg-indigo-600 text-white self-end rounded-br-none"
-                          : "bg-white border border-slate-100 dark:bg-slate-900 dark:border-slate-800 text-slate-800 dark:text-slate-200 self-start rounded-bl-none shadow-sm"
+                          ? "bg-blue-600 text-white self-end rounded-br-none shadow-sm"
+                          : "bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800 text-slate-800 dark:text-slate-200 self-start rounded-bl-none shadow-xs"
                       }`}
                     >
                       <span>{msg.message}</span>
-                      <span className={`text-[7px] font-mono mt-1 ${isUser ? "text-indigo-200 self-end" : "text-slate-405"}`}>
+                      <span className={`text-[7px] font-mono mt-1 ${isUser ? "text-blue-200 self-end" : "text-slate-400"}`}>
                         {msg.created_at ? new Date(msg.created_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : ""}
                       </span>
                     </div>
@@ -2009,15 +2007,15 @@ export default function CoursePlayer({
               )}
 
               {loadingMentor && (
-                <div className="bg-white border border-slate-100 dark:bg-slate-900 dark:border-slate-800 text-slate-400 self-start rounded-2xl rounded-bl-none px-4 py-3 text-xs leading-normal font-semibold shadow-sm flex items-center gap-2">
-                  <Loader2 size={13} className="animate-spin text-indigo-500" />
-                  <span className="text-[10px] font-mono uppercase tracking-wider font-bold">Mentor thinking...</span>
+                <div className="bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800 text-slate-400 self-start rounded-xl rounded-bl-none px-3.5 py-2 text-xs leading-normal font-semibold shadow-xs flex items-center gap-1.5">
+                  <Loader2 size={12} className="animate-spin text-blue-500" />
+                  <span className="text-[9px] font-mono uppercase tracking-wider font-bold">Thinking...</span>
                 </div>
               )}
             </div>
 
             {/* Quick Prompts Chips */}
-            <div className="flex flex-wrap gap-1.5 pt-1">
+            <div className="flex flex-wrap gap-1">
               {[
                 `What is ${selectedCourse.title?.split(" ")[0]}?`,
                 "Give me an example",
@@ -2026,7 +2024,7 @@ export default function CoursePlayer({
                 <button
                   key={idx}
                   onClick={() => handleSendMentorMessage(chip)}
-                  className="bg-slate-50 hover:bg-indigo-50 hover:text-indigo-600 border border-slate-100 dark:bg-slate-950 dark:border-slate-855 dark:hover:bg-indigo-955/25 text-[10px] font-bold text-slate-500 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+                  className="bg-slate-50 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 dark:bg-slate-950 dark:border-slate-850 dark:hover:bg-blue-955/25 text-[9px] font-semibold text-slate-500 px-2 py-1 rounded-md transition-colors cursor-pointer"
                 >
                   {chip}
                 </button>
@@ -2034,7 +2032,7 @@ export default function CoursePlayer({
             </div>
 
             {/* Input & Send controls */}
-            <div className="flex gap-2 border border-slate-100 dark:border-slate-850 p-1.5 rounded-2xl bg-slate-50 dark:bg-slate-955">
+            <div className="flex gap-2 border border-slate-200 dark:border-slate-800 p-1.5 rounded-xl bg-slate-50 dark:bg-slate-950">
               <input
                 type="text"
                 value={mentorInput}
@@ -2044,8 +2042,8 @@ export default function CoursePlayer({
                     handleSendMentorMessage(mentorInput);
                   }
                 }}
-                placeholder="Ask AI Mentor anything..."
-                className="flex-1 bg-transparent text-xs text-slate-800 dark:text-slate-205 placeholder-slate-500 outline-none px-2 font-semibold"
+                placeholder="Ask AI Mentor..."
+                className="flex-1 bg-transparent text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 outline-none px-1.5 font-medium"
               />
               <button
                 onClick={() => {
@@ -2054,9 +2052,9 @@ export default function CoursePlayer({
                   }
                 }}
                 disabled={!mentorInput.trim() || loadingMentor}
-                className="w-8 h-8 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white disabled:bg-slate-200 disabled:text-slate-400 dark:disabled:bg-slate-855 dark:disabled:text-slate-600 flex items-center justify-center cursor-pointer disabled:cursor-not-allowed shadow-sm transition-all"
+                className="w-7 h-7 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:bg-slate-200 disabled:text-slate-400 dark:disabled:bg-slate-800 dark:disabled:text-slate-600 flex items-center justify-center cursor-pointer disabled:cursor-not-allowed shadow-sm transition-all"
               >
-                <ArrowRight size={14} />
+                <ArrowRight size={13} />
               </button>
             </div>
           </div>
