@@ -125,6 +125,7 @@ export default function Sidebar({ portal }: SidebarProps) {
   const candidateLinks = [
     { name: "Tush AI", href: "/candidate/chat", icon: Sparkles, highlight: true },
     { name: "Jobs Workspace", href: "/candidate/job-agent", icon: Briefcase },
+    { name: "🏢 HR Agent Jobs", href: "/candidate/jobs", icon: Briefcase },
     { name: "Skill Lab Workspace", href: "/candidate/skill-lab", icon: Compass },
     { name: "Resume Workspace", href: "/candidate/resume", icon: FileText },
     { name: "Hackathon Workspace", href: "/candidate/hackathons", icon: Trophy },
@@ -132,6 +133,7 @@ export default function Sidebar({ portal }: SidebarProps) {
     { name: "Messages Workspace", href: "/candidate/messages", icon: MessageSquare },
     { name: "Notification Center", href: "/candidate/notifications", icon: Bell }
   ];
+
 
   const adminLinks = [
     { name: "Overview", href: "/admin", icon: LayoutDashboard },
