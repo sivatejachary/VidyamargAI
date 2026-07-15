@@ -125,7 +125,6 @@ export default function Sidebar({ portal }: SidebarProps) {
   const candidateLinks = [
     { name: "Tush AI", href: "/candidate/chat", icon: Sparkles, highlight: true },
     { name: "Jobs Workspace", href: "/candidate/job-agent", icon: Briefcase },
-    { name: "🏢 HR Agent Jobs", href: "/candidate/job-agent?tab=hr-jobs", icon: Briefcase },
     { name: "Skill Lab Workspace", href: "/candidate/skill-lab", icon: Compass },
     { name: "Resume Workspace", href: "/candidate/resume", icon: FileText },
     { name: "Hackathon Workspace", href: "/candidate/hackathons", icon: Trophy },
