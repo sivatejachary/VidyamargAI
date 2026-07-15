@@ -42,8 +42,14 @@ app.add_middleware(
 app.include_router(legacy_api_router, prefix="/api/v1")
 app.include_router(candidate_router)
 
-# Initialize singletons
-db_url = os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/postgres")
+raw_db_url = os.getenv(
+    "DATABASE_URL",
+    "postgresql+asyncpg://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@thomas.proxy.rlwy.net:20637/Vidyamargai"
+)
+if raw_db_url.startswith("postgresql://"):
+    db_url = raw_db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+else:
+    db_url = raw_db_url
 db_manager = DatabaseManager(database_url=db_url)
 ai_client = AppAIClient(api_key=os.getenv("GROQ_API_KEY", "mock_key"))
 
