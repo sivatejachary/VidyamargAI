@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     # Path to the channels list .txt file (overridable for Docker volume mounts)
     TG_CHANNELS_FILE: str = os.getenv(
         "TG_CHANNELS_FILE",
-        os.path.join(os.path.dirname(__file__), "../job_discovery/telegram_channels.txt")
+        os.path.join(os.path.dirname(__file__), "../job_agent/channel.txt")
     )
     
     # Feature Flags
@@ -122,7 +122,7 @@ except Exception:
         TG_API_HASH = os.getenv("TG_API_HASH", os.getenv("api_hash", ""))
         TG_CHANNELS_FILE = os.getenv(
             "TG_CHANNELS_FILE",
-            os.path.join(os.path.dirname(__file__), "../job_discovery/telegram_channels.txt")
+            os.path.join(os.path.dirname(__file__), "../job_agent/channel.txt")
         )
 
         AI_MENTOR_ENABLED = os.getenv("AI_MENTOR_ENABLED", "True").lower() == "true"

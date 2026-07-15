@@ -505,21 +505,40 @@ class DiscoveryAgent:
             return state  # Skip discovery for pure matching runs
 
         try:
-            from app.services.job_discovery.manager import JobDiscoveryManager
-            manager = JobDiscoveryManager(db)
-            target_roles = state.get("target_roles", [])[:10]
-            profile = state.get("candidate_profile", {})
-            locations = profile.get("locations", []) or ["India", "Remote"]
+            from app.models.job_models import Job
 
-            discovered = manager.discover_jobs(
-                roles=target_roles,
-                locations=locations,
-                skills=profile.get("skills", [])[:20],
-                candidate_id=state["candidate_id"],
-            )
+            target_roles = state.get("target_roles", [])
+            profile = state.get("candidate_profile", {})
+
+            # Jobs are already populated by the Telegram Job Agent (job_agent/).
+            # Simply query the most recent active jobs from the DB.
+            query = db.query(Job).filter(Job.is_active == True)
+
+            # Optionally filter by role keywords if available
+            if target_roles:
+                from sqlalchemy import or_
+                role_filters = [Job.title.ilike(f"%{role}%") for role in target_roles[:5]]
+                query = query.filter(or_(*role_filters))
+
+            discovered_jobs = query.order_by(Job.posted_at.desc()).limit(50).all()
+
+            discovered = [
+                {
+                    "id": j.id,
+                    "title": j.title,
+                    "company": j.company_name,
+                    "location": j.location,
+                    "apply_url": j.apply_url,
+                    "skills": j.required_skills or [],
+                    "salary": j.salary_raw,
+                    "is_remote": j.is_remote,
+                    "posted_at": j.posted_at.isoformat() if j.posted_at else None,
+                }
+                for j in discovered_jobs
+            ]
 
             if not discovered:
-                logger.warning(f"[{self.NAME}] No jobs discovered from sources. Generating mock jobs fallback.")
+                logger.warning(f"[{self.NAME}] No jobs found in DB. Using fallback mock jobs.")
                 discovered = self._generate_fallback_mock_jobs(state, db)
 
             state["discovered_jobs"] = discovered
@@ -536,7 +555,7 @@ class DiscoveryAgent:
                 "action": "discover_jobs",
                 "status": "completed",
                 "duration_ms": int((time.time() - t0) * 1000),
-                "output": f"Discovered {len(discovered)} raw jobs across {len(target_roles)} roles",
+                "output": f"Discovered {len(discovered)} jobs from DB (sourced by Telegram Job Agent)",
             })
 
         except Exception as e:
