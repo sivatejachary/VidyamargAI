@@ -13,19 +13,16 @@ scheduler = AsyncIOScheduler()
 
 async def run_periodic_job_sync():
     """
-    Synchronizes new job postings from the Job Agent database (hayabusa:13794).
+    Runs the native Telegram Job crawler to discover jobs and save them.
     """
-    from app.core.database import SessionLocal
-    from app.job_agent.sync_service import JobSyncService
+    from app.job_agent.agent import run_telegram_crawler
     
-    logger.info("Scheduler: Triggering periodic job sync from Job Agent DB...")
-    with SessionLocal() as db:
-        try:
-            sync_service = JobSyncService(db)
-            synced = sync_service.sync_jobs(limit=100)
-            logger.info(f"Scheduler: Successfully synced {synced} jobs.")
-        except Exception as e:
-            logger.error(f"Scheduler: Failed to sync jobs: {e}")
+    logger.info("Scheduler: Triggering periodic Telegram job crawling...")
+    try:
+        await run_telegram_crawler()
+        logger.info("Scheduler: Job crawling cycle complete.")
+    except Exception as e:
+        logger.error(f"Scheduler: Job crawling failed: {e}")
 
 
 async def run_hourly_recommendation_updates():
@@ -67,6 +64,25 @@ async def run_periodic_alerts():
 
 
 
+async def run_expire_old_telegram_jobs():
+    """
+    Nightly job: marks Telegram-sourced job posts older than 3 days as
+    is_active=FALSE and lifecycle_status='expired' in the main jobs table.
+    """
+    import sys, os
+    job_agent_dir = os.path.join(os.path.dirname(__file__), "..", "job_agent")
+    if job_agent_dir not in sys.path:
+        sys.path.insert(0, os.path.abspath(job_agent_dir))
+
+    logger.info("Scheduler: Running nightly Telegram job expiry (3-day window)...")
+    try:
+        import db as crawler_db
+        expired = crawler_db.expire_old_telegram_jobs(days=3)
+        logger.info(f"Scheduler: Expired {expired} old Telegram job(s).")
+    except Exception as e:
+        logger.error(f"Scheduler: Telegram job expiry failed: {e}")
+
+
 def start_scheduler():
     """Starts the background scheduler and registers cron/interval jobs."""
     try:
@@ -97,8 +113,18 @@ def start_scheduler():
             replace_existing=True
         )
 
+        # 4. Nightly expiry: remove Telegram jobs older than 3 days (runs at 02:00 UTC)
+        scheduler.add_job(
+            run_expire_old_telegram_jobs,
+            'cron',
+            hour=2,
+            minute=0,
+            id='run_expire_old_telegram_jobs',
+            replace_existing=True
+        )
+
         scheduler.start()
-        logger.info("APScheduler AsyncIOScheduler started successfully with job sync, recommendation & alert jobs registered.")
+        logger.info("APScheduler AsyncIOScheduler started successfully with job sync, recommendation, alert & expiry jobs registered.")
     except Exception as e:
         logger.error(f"Failed to start APScheduler: {e}")
 

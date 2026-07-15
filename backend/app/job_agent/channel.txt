@@ -1,0 +1,48 @@
+# Add one Telegram channel per line.
+# Accepts: username, @username, https://t.me/username, or a numeric channel ID.
+# Lines starting with # are ignored.
+
+freshers_opening
+RisersSquad
+DebugDominators
+walkindrive
+freshers_openings
+CorporateIdeas
+jobsvillaa
+jobupdateschannel
+hiringdaily
+engineerjobsindia
+internseeker
+fresher_offcampus_drives
+jobsinternshipshub
+job4fresherss
+freshershunt
+jobseekeras
+careerwithasr
+job4experince
+way2freshers
+Fresherjobsadda
+fresheroffcampus
+oflatestblog
+foundthejob
+work4freshers
+freshersjobs24
+Fresher_Jobs_IT
+rachityoutube
+mohancareers
+gocareers
+
+
+
+
+# TECH JOBS — INDIA
+# ─────────────────────────────────────────────────────────────────
+freshers_jobs_india
+IndiaJobAlerts
+OffCampusJobsIndia
+fresherjobsupdates
+
+# REMOTE JOBS
+# ─────────────────────────────────────────────────────────────────
+RemoteJobsIndia
+workfromhomejobsindia
