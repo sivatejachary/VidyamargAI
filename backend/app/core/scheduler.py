@@ -11,6 +11,22 @@ logger = logging.getLogger("app.scheduler")
 scheduler = AsyncIOScheduler()
 
 
+async def run_periodic_job_sync():
+    """
+    Synchronizes new job postings from the Job Agent database (hayabusa:13794).
+    """
+    from app.core.database import SessionLocal
+    from app.job_agent.sync_service import JobSyncService
+    
+    logger.info("Scheduler: Triggering periodic job sync from Job Agent DB...")
+    with SessionLocal() as db:
+        try:
+            sync_service = JobSyncService(db)
+            synced = sync_service.sync_jobs(limit=100)
+            logger.info(f"Scheduler: Successfully synced {synced} jobs.")
+        except Exception as e:
+            logger.error(f"Scheduler: Failed to sync jobs: {e}")
+
 
 async def run_hourly_recommendation_updates():
     """
@@ -54,7 +70,16 @@ async def run_periodic_alerts():
 def start_scheduler():
     """Starts the background scheduler and registers cron/interval jobs."""
     try:
-        # 1. Recommendation updates (hourly)
+        # 1. Job Sync Agent (every 10 minutes)
+        scheduler.add_job(
+            run_periodic_job_sync,
+            'interval',
+            minutes=10,
+            id='run_periodic_job_sync',
+            replace_existing=True
+        )
+
+        # 2. Recommendation updates (hourly)
         scheduler.add_job(
             run_hourly_recommendation_updates,
             'interval',
@@ -63,7 +88,7 @@ def start_scheduler():
             replace_existing=True
         )
 
-        # 2. Notification alerts check (every 15 minutes)
+        # 3. Notification alerts check (every 15 minutes)
         scheduler.add_job(
             run_periodic_alerts,
             'interval',
@@ -73,7 +98,7 @@ def start_scheduler():
         )
 
         scheduler.start()
-        logger.info("APScheduler AsyncIOScheduler started successfully with recommendation & alert jobs registered.")
+        logger.info("APScheduler AsyncIOScheduler started successfully with job sync, recommendation & alert jobs registered.")
     except Exception as e:
         logger.error(f"Failed to start APScheduler: {e}")
 

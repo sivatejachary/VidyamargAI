@@ -26,6 +26,7 @@ from app.models.job_models import (
     Application, InterviewPreparation,
 )
 from app.models.models import Candidate, CandidateProfile, CandidateResume
+from app.job_agent.agent import JobSyncAgent
 
 logger = logging.getLogger("app.agents.career_supervisor")
 
@@ -1657,12 +1658,12 @@ class CareerIntelligenceSupervisor:
 
     PIPELINE = {
         "full": [
-            ResumeAgent, CareerAgent,
+            ResumeAgent, CareerAgent, JobSyncAgent,
             MatchingAgent, SkillGapAgent, RecommendationAgent,
             InterviewAgent, MarketIntelligenceAgent,
         ],
         "matching": [MatchingAgent, SkillGapAgent, RecommendationAgent],
-        "discovery": [MatchingAgent],
+        "discovery": [JobSyncAgent, MatchingAgent],
         "resume": [ResumeAgent, CareerAgent, SkillGapAgent],
     }
 
