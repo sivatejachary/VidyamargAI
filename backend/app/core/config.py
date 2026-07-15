@@ -34,10 +34,10 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15  # 15 minutes
     
-    # Database (Fallback to PostgreSQL local)
+    # Database (Fallback to production Railway PostgreSQL)
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL", 
-        "postgresql://postgres:postgres@localhost:5432/hireai"
+        "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@thomas.proxy.rlwy.net:20637/Vidyamargai"
     )
     
     # Storage (MinIO / S3)
@@ -103,7 +103,10 @@ except Exception:
         SECRET_KEY = os.getenv("SECRET_KEY", "vidyamarg-ai-secret-key-production-fallback-2026")
         ALGORITHM = "HS256"
         ACCESS_TOKEN_EXPIRE_MINUTES = 15
-        DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/hireai")
+        DATABASE_URL = os.getenv(
+            "DATABASE_URL",
+            "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@thomas.proxy.rlwy.net:20637/Vidyamargai"
+        )
         MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "localhost:9000")
         MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
         MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
