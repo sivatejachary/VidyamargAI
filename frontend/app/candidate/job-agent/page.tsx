@@ -548,10 +548,165 @@ function InterviewPrepPanel({ prep }: { prep: InterviewPrep }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// HR AGENT TYPES & INTEGRATED APPLY MODAL
+// ─────────────────────────────────────────────────────────────────────────────
+
+const HR_AGENT_URL = process.env.NEXT_PUBLIC_HR_AGENT_URL || "http://localhost:3000";
+const TENANT_SLUG = process.env.NEXT_PUBLIC_HR_TENANT_SLUG || "dev-tenant";
+
+interface HRAgentJob {
+  id: string;
+  title: string;
+  description: string;
+  requirements: string[];
+  status: string;
+  employment_type?: string;
+  location_type?: string;
+  salary_min?: number;
+  salary_max?: number;
+  currency?: string;
+  created_at: string;
+  department_id?: string;
+}
+
+function ApplyModal({ job, onClose }: { job: HRAgentJob; onClose: () => void }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [resumeText, setResumeText] = useState("");
+  const [consent, setConsent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  const handleApply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!consent) { setError("Please accept data processing consent."); return; }
+    if (!resumeText.trim()) { setError("Please paste your resume text."); return; }
+    setLoading(true);
+    setError("");
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+      const base = apiBase.replace(/\/api\/v1\/?$/, "");
+
+      const res = await fetch(`${base}/api/v1/public/applications`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Tenant-Slug": TENANT_SLUG },
+        body: JSON.stringify({
+          job_id: job.id,
+          candidate_name: name.trim(),
+          candidate_email: email.trim(),
+          resume_text: resumeText.trim(),
+          resume_url: `https://vidyamargai.app/resumes/${encodeURIComponent(name.replace(" ", "_"))}.pdf`,
+        }),
+      });
+      if (res.ok) {
+        setSuccess(true);
+      } else {
+        const data = await res.json();
+        setError(data.detail || "Application failed. Please try again.");
+      }
+    } catch {
+      setError("Cannot connect to server. Make sure HR Agent backend is running.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[9999] bg-black/75 backdrop-blur-md flex items-center justify-center p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="bg-gradient-to-br from-[#1e1b4b] to-[#1a1a2e] border border-violet-500/30 rounded-2xl w-full max-w-lg p-6 overflow-y-auto max-h-[90vh]">
+        {success ? (
+          <div className="text-center py-8">
+            <div className="text-5xl mb-4">🎉</div>
+            <h2 className="text-violet-300 text-xl font-bold mb-2">Application Submitted!</h2>
+            <p className="text-slate-400 text-sm leading-relaxed mb-6">
+              Your application for <strong className="text-violet-200">{job.title}</strong> has been received.<br />
+              The AI pipeline at HR Agent will now process your profile.
+            </p>
+            <div className="bg-violet-500/10 rounded-xl p-4 text-left mb-6 border border-violet-500/20">
+              <p className="text-slate-400 text-xs mb-1">Track your application status at:</p>
+              <a href={`${HR_AGENT_URL}/dashboard/candidates`} target="_blank" rel="noopener noreferrer"
+                className="text-violet-400 text-xs font-semibold hover:underline">
+                {HR_AGENT_URL}/dashboard/candidates →
+              </a>
+            </div>
+            <button onClick={onClose} className="px-6 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-xl text-white font-bold text-sm">
+              Done
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleApply} className="space-y-4">
+            <div className="flex justify-between items-center pb-2 border-b border-white/10">
+              <div>
+                <h2 className="text-lg font-bold text-white">Apply Now</h2>
+                <p className="text-violet-400 text-xs mt-0.5">{job.title}</p>
+              </div>
+              <button type="button" onClick={onClose} className="p-1 rounded bg-white/5 hover:bg-white/10 text-white">
+                <Icon.X />
+              </button>
+            </div>
+
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl p-3 text-xs">
+                {error}
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Full Name *</label>
+                <input
+                  type="text" required value={name} onChange={e => setName(e.target.value)} placeholder="Alex Johnson"
+                  className="w-full bg-[#0d0d15] border border-white/15 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Email Address *</label>
+                <input
+                  type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="alex@example.com"
+                  className="w-full bg-[#0d0d15] border border-white/15 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Resume / CV (paste text) *</label>
+              <textarea
+                required value={resumeText} onChange={e => setResumeText(e.target.value)}
+                placeholder="Paste your resume here — skills, experience, education, achievements. AI will score it against the role."
+                rows={6}
+                className="w-full bg-[#0d0d15] border border-white/15 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500 font-sans"
+              />
+            </div>
+
+            <div className="bg-violet-500/5 border border-violet-500/20 rounded-xl p-3">
+              <label className="flex gap-2.5 cursor-pointer items-start">
+                <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)}
+                  className="mt-0.5 rounded text-violet-600 focus:ring-violet-500" />
+                <span className="text-[11px] text-slate-400 leading-relaxed">
+                  I consent to my personal data being processed for recruitment purposes under GDPR by <strong className="text-violet-400">{TENANT_SLUG}</strong>. Data deleted after 90 days if unsuccessful.
+                </span>
+              </label>
+            </div>
+
+            <button type="submit" disabled={loading || !consent} className="w-full py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50 text-white font-bold text-sm rounded-xl shadow-lg shadow-violet-500/20">
+              {loading ? "Submitting to AI Pipeline..." : "Submit Application 🚀"}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // MAIN PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 
-type TabId = "feed" | "career" | "applications" | "skills" | "interview" | "market" | "insights";
+type TabId = "feed" | "career" | "applications" | "skills" | "interview" | "market" | "insights" | "hr-jobs";
 
 export default function JobAgentPage() {
   const [activeTab, setActiveTab] = useState<TabId>("feed");
@@ -575,6 +730,51 @@ export default function JobAgentPage() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [fastMode, setFastMode] = useState(false);
+
+  const [hrJobs, setHrJobs] = useState<HRAgentJob[]>([]);
+  const [hrSelectedJob, setHrSelectedJob] = useState<HRAgentJob | null>(null);
+  const [hrJobsLoading, setHrJobsLoading] = useState(false);
+  const [hrSearch, setHrSearch] = useState("");
+  const [hrTypeFilter, setHrTypeFilter] = useState("ALL");
+  const [hrApplyingJob, setHrApplyingJob] = useState<HRAgentJob | null>(null);
+
+  const loadHRAgentJobs = useCallback(async () => {
+    setHrJobsLoading(true);
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+      const base = apiBase.replace(/\/api\/v1\/?$/, "");
+      const res = await fetch(`${base}/api/v1/public/jobs`, {
+        headers: { "X-Tenant-Slug": TENANT_SLUG },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setHrJobs(data || []);
+        if (data && data.length > 0) {
+          setHrSelectedJob(data[0]);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load HR Agent jobs:", err);
+    } finally {
+      setHrJobsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "hr-jobs") {
+      loadHRAgentJobs();
+    }
+  }, [activeTab, loadHRAgentJobs]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("tab");
+      if (tab === "hr-jobs") {
+        setActiveTab("hr-jobs");
+      }
+    }
+  }, []);
 
   const loadDashboard = useCallback(async () => {
     if (typeof window !== "undefined" && !localStorage.getItem("cache_job_agent_dashboard")) {
@@ -764,6 +964,7 @@ export default function JobAgentPage() {
   // ── TAB DEFINITIONS ──────────────────────────────────────────────────────
   const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
     { id: "feed", label: "Job Feed", icon: <Icon.Briefcase /> },
+    { id: "hr-jobs", label: "HR Openings", icon: <Icon.Briefcase /> },
     { id: "career", label: "Career Intel", icon: <Icon.Brain /> },
     { id: "applications", label: "Applications", icon: <Icon.Check /> },
     { id: "skills", label: "Skill Gaps", icon: <Icon.Target /> },
@@ -1207,6 +1408,152 @@ export default function JobAgentPage() {
           </div>
         )}
 
+        {/* ── HR AGENT OPENINGS (INTEGRATED) TAB ──────────────────────── */}
+        {activeTab === "hr-jobs" && (
+          <div className="grid grid-cols-12 gap-6">
+            {/* Left Column: HR Openings List */}
+            <div className="col-span-12 lg:col-span-4 xl:col-span-3">
+              <SectionHeader
+                icon={<Icon.Briefcase />}
+                title="HR Openings"
+                count={hrJobs.length}
+                action={
+                  <select
+                    value={hrTypeFilter}
+                    onChange={e => setHrTypeFilter(e.target.value)}
+                    className="bg-white/5 border border-white/10 text-xs text-slate-400 rounded-lg px-2 py-1"
+                  >
+                    <option value="ALL">All Types</option>
+                    <option value="remote">Remote Only</option>
+                    <option value="onsite">Onsite Only</option>
+                    <option value="hybrid">Hybrid Only</option>
+                    <option value="fulltime">Full-time Only</option>
+                    <option value="internship">Internship Only</option>
+                  </select>
+                }
+              />
+
+              <div className="mb-4">
+                <input
+                  type="text"
+                  placeholder="Search openings..."
+                  value={hrSearch}
+                  onChange={e => setHrSearch(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-slate-300 placeholder-slate-500 text-xs focus:outline-none focus:border-violet-500"
+                />
+              </div>
+
+              {hrJobsLoading ? (
+                <LoadingPulse />
+              ) : hrJobs.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-slate-400 text-sm">No openings available</p>
+                  <p className="text-slate-500 text-xs mt-1">Check back later for new roles</p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[calc(100vh-260px)] overflow-y-auto pr-1">
+                  {hrJobs
+                    .filter(j => {
+                      const matchSearch = j.title.toLowerCase().includes(hrSearch.toLowerCase()) ||
+                        j.description?.toLowerCase().includes(hrSearch.toLowerCase());
+                      const matchType = hrTypeFilter === "ALL" || j.location_type === hrTypeFilter || j.employment_type === hrTypeFilter;
+                      return matchSearch && matchType;
+                    })
+                    .map(job => (
+                      <div
+                        key={job.id}
+                        onClick={() => setHrSelectedJob(job)}
+                        className={`group relative rounded-xl border transition-all duration-200 cursor-pointer p-4 ${
+                          hrSelectedJob?.id === job.id
+                            ? "border-violet-500/60 bg-violet-500/10 shadow-violet-500/20 shadow-lg"
+                            : "border-white/10 bg-white/5 hover:border-violet-500/40 hover:bg-white/8"
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-500/30 to-indigo-500/30 flex items-center justify-center text-sm font-bold text-violet-300 border border-violet-500/20 flex-shrink-0">
+                            {job.title[0]}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-white truncate">{job.title}</p>
+                            <p className="text-xs text-slate-400 mt-0.5 capitalize">
+                              {job.location_type || "Onsite"} · {job.employment_type || "Full-time"}
+                            </p>
+                            {job.salary_min && (
+                              <p className="text-xs text-violet-400 font-medium mt-1">
+                                {job.currency || "$"}{job.salary_min.toLocaleString()} - {job.salary_max ? job.salary_max.toLocaleString() : ""}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            {/* Right Column: HR Opening Details */}
+            <div className="col-span-12 lg:col-span-8 xl:col-span-9">
+              {hrSelectedJob ? (
+                <div className="bg-white/5 rounded-xl border border-white/10 p-6 sticky top-28 space-y-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-violet-500/30 to-indigo-500/30 flex items-center justify-center text-xl font-bold text-violet-300 border border-violet-500/20">
+                      {hrSelectedJob.title[0]}
+                    </div>
+                    <div className="flex-1 col-span-8">
+                      <h2 className="text-xl font-bold text-white">{hrSelectedJob.title}</h2>
+                      <div className="flex items-center gap-3 mt-1 flex-wrap text-sm text-slate-400">
+                        <span className="capitalize">📍 {hrSelectedJob.location_type || "Onsite"}</span>
+                        <span>•</span>
+                        <span className="capitalize">💼 {hrSelectedJob.employment_type || "Full-time"}</span>
+                        {hrSelectedJob.salary_min && (
+                          <>
+                            <span>•</span>
+                            <span className="text-violet-400 font-semibold">
+                              💰 {hrSelectedJob.currency || "$"}{hrSelectedJob.salary_min.toLocaleString()} - {hrSelectedJob.salary_max ? hrSelectedJob.salary_max.toLocaleString() : ""}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setHrApplyingJob(hrSelectedJob)}
+                      className="px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-violet-500/20 flex items-center gap-1.5 flex-shrink-0"
+                    >
+                      🚀 Apply Now
+                    </button>
+                  </div>
+
+                  <div className="border-t border-white/5 pt-6">
+                    <h3 className="text-xs font-semibold text-slate-400 mb-3 tracking-wider uppercase">Requirements</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {hrSelectedJob.requirements && hrSelectedJob.requirements.length > 0 ? (
+                        hrSelectedJob.requirements.map(req => (
+                          <span key={req} className="text-xs text-violet-300 bg-violet-500/10 px-2.5 py-1 rounded-lg border border-violet-500/20 font-medium">
+                            {req}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-xs text-slate-500">None specified</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="border-t border-white/5 pt-6">
+                    <h3 className="text-xs font-semibold text-slate-400 mb-3 tracking-wider uppercase">Job Description</h3>
+                    <div className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap font-sans">
+                      {hrSelectedJob.description || "No description provided."}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-64 text-slate-600 text-sm rounded-xl border border-white/5">
+                  ← Select an opening to view details
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* ── CAREER INTELLIGENCE TAB ──────────────────────────────────── */}
         {activeTab === "career" && (
           <div className="space-y-6">
@@ -1462,6 +1809,12 @@ export default function JobAgentPage() {
           </div>
         )}
       </div>
+      {hrApplyingJob && (
+        <ApplyModal
+          job={hrApplyingJob}
+          onClose={() => setHrApplyingJob(null)}
+        />
+      )}
       <AutonomousWorkflowVisualizer defaultWorkflow="job" isExecuting={runningAgent || initializing} />
     </div>
   );

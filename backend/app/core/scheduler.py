@@ -15,46 +15,56 @@ async def run_periodic_job_discovery():
     """
     Orchestrates job discovery on an interval of 30 minutes.
     Collects roles and locations from active candidate profiles.
+
+    NOTE: DiscoveryOrchestrator is now fully async — no db constructor arg.
     """
+    import json as _json
     from app.core.database import SessionLocal
     from app.models.models import CandidateProfile
     from app.job_discovery.crawler.orchestrator import DiscoveryOrchestrator
-    
+
     logger.info("Scheduler: Triggering periodic job discovery...")
+
+    roles: set = set()
+    locations: set = set()
+    skills: set = set()
+
     with SessionLocal() as db:
-        # Get unique preferred roles and locations across all active candidate profiles
-        profiles = db.query(CandidateProfile).order_by(CandidateProfile.created_at.desc()).limit(50).all()
-        
-        roles = set()
-        locations = set()
-        skills = set()
-        
+        profiles = (
+            db.query(CandidateProfile)
+            .order_by(CandidateProfile.created_at.desc())
+            .limit(50)
+            .all()
+        )
         for p in profiles:
             if p.skills:
                 skills.update(p.skills)
             if hasattr(p, "parsed_metadata") and p.parsed_metadata:
-                import json
                 try:
-                    meta = json.loads(p.parsed_metadata) if isinstance(p.parsed_metadata, str) else p.parsed_metadata
+                    meta = (
+                        _json.loads(p.parsed_metadata)
+                        if isinstance(p.parsed_metadata, str)
+                        else p.parsed_metadata
+                    )
                     if meta.get("preferred_roles"):
                         roles.update(meta["preferred_roles"])
                     if meta.get("locations"):
                         locations.update(meta["locations"])
                 except Exception:
                     pass
-                    
-        role_list = list(roles) if roles else ["Software Engineer", "Full Stack Developer", "Backend Engineer"]
-        location_list = list(locations) if locations else ["India", "Remote"]
-        skill_list = list(skills) if skills else ["Python", "JavaScript", "React"]
-        
-        orchestrator = DiscoveryOrchestrator(db)
-        # Run discovery inside loop
-        orchestrator.run_discovery(
-            roles=role_list,
-            locations=location_list,
-            skills=skill_list,
-            max_per_source=30
-        )
+
+    role_list = list(roles) or ["Software Engineer", "Full Stack Developer", "Backend Engineer"]
+    location_list = list(locations) or ["India", "Remote"]
+    skill_list = list(skills) or ["Python", "JavaScript", "React"]
+
+    # DiscoveryOrchestrator takes NO db arg — manages its own sessions
+    orchestrator = DiscoveryOrchestrator()
+    await orchestrator.run_discovery(
+        roles=role_list,
+        locations=location_list,
+        skills=skill_list,
+        max_per_source=30,
+    )
 
 
 async def run_hourly_recommendation_updates():

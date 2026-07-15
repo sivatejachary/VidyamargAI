@@ -8,14 +8,14 @@ from app.core.monitoring import db_queries_var, db_query_time_var, cache_status_
 
 logger = logging.getLogger("app.db")
 
-# Connection pool settings safe for Railway
+from sqlalchemy.pool import NullPool
+
+# WELL-DOCUMENTED EXCEPTION: Sync engine is ONLY for legacy sync scripts and workers.
+# To prevent PostgreSQL connection pool exhaustion (with asyncpg being the standard async path),
+# the sync engine uses NullPool to avoid maintaining an always-on parallel pool of idle connections.
 engine = create_engine(
     settings.DATABASE_URL,
-    pool_size=20,
-    max_overflow=40,
-    pool_pre_ping=True,
-    pool_recycle=3600,
-    pool_timeout=30,
+    poolclass=NullPool,
     connect_args={
         "options": "-c idle_in_transaction_session_timeout=120000 -c lock_timeout=5000"
     }

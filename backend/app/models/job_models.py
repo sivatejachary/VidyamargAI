@@ -193,6 +193,9 @@ class Job(Base):
         Index("idx_job_country_city", "country", "city"),
         Index("idx_job_company_posted", "company_id", "posted_at"),
         Index("idx_job_external_source", "external_id", "source_id"),
+        # CRITICAL: apply_url must be indexed for O(1) deduplication lookups.
+        # Without this, every dedup check runs a full table scan.
+        Index("idx_job_apply_url", "apply_url"),
         CheckConstraint("trust_score >= 0.0 AND trust_score <= 1.0", name="chk_job_trust_range"),
         CheckConstraint("quality_score >= 0.0 AND quality_score <= 1.0", name="chk_job_quality_range"),
         CheckConstraint("spam_score >= 0.0 AND spam_score <= 1.0", name="chk_job_spam_range"),

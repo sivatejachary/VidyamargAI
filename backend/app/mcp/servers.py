@@ -25,8 +25,8 @@ logger = logging.getLogger("app.mcp.servers")
 # Fallback Embeddings (Pure Python Cosine Similarity)
 # --------------------------------------------------------------------------
 def get_fallback_embedding(text_content: str) -> List[float]:
-    """Generates a deterministic 384-dimensional unit vector from text."""
-    vector = [0.0] * 384
+    """Generates a deterministic 768-dimensional unit vector from text."""
+    vector = [0.0] * 768
     if not text_content:
         return vector
         
@@ -34,7 +34,7 @@ def get_fallback_embedding(text_content: str) -> List[float]:
     for w in words:
         # Deterministic hash to dimension
         h = int(hashlib.md5(w.encode('utf-8')).hexdigest(), 16)
-        idx = h % 384
+        idx = h % 768
         vector[idx] += 1.0
         
     # Calculate magnitude

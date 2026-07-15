@@ -59,10 +59,16 @@ class Settings(BaseSettings):
     SERPER_API_KEY: str = os.getenv("SERPER_API_KEY", "")
     QDRANT_URL: str = os.getenv("QDRANT_URL", "")
     QDRANT_API_KEY: str = os.getenv("QDRANT_API_KEY", "")
+    APIFY_API_TOKEN: str = os.getenv("APIFY_API_TOKEN", "")
     
     # Telegram API
     TG_API_ID: str = os.getenv("TG_API_ID", os.getenv("api_id", ""))
     TG_API_HASH: str = os.getenv("TG_API_HASH", os.getenv("api_hash", ""))
+    # Path to the channels list .txt file (overridable for Docker volume mounts)
+    TG_CHANNELS_FILE: str = os.getenv(
+        "TG_CHANNELS_FILE",
+        os.path.join(os.path.dirname(__file__), "../job_discovery/telegram_channels.txt")
+    )
     
     # Feature Flags
     AI_MENTOR_ENABLED: bool = os.getenv("AI_MENTOR_ENABLED", "True").lower() == "true"
@@ -114,6 +120,10 @@ except Exception:
         QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
         TG_API_ID = os.getenv("TG_API_ID", os.getenv("api_id", ""))
         TG_API_HASH = os.getenv("TG_API_HASH", os.getenv("api_hash", ""))
+        TG_CHANNELS_FILE = os.getenv(
+            "TG_CHANNELS_FILE",
+            os.path.join(os.path.dirname(__file__), "../job_discovery/telegram_channels.txt")
+        )
 
         AI_MENTOR_ENABLED = os.getenv("AI_MENTOR_ENABLED", "True").lower() == "true"
         VOICE_MENTOR_ENABLED = os.getenv("VOICE_MENTOR_ENABLED", "False").lower() == "true"

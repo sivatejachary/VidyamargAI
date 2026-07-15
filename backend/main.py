@@ -79,7 +79,24 @@ async def run_db_migrations():
             await conn.execute(
                 text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;")
             )
-            logger.info("Database schema migration completed successfully on archive.legacy_mcp_chat_messages and jobs.")
+            # Seed job sources
+            await conn.execute(
+                text("""
+                INSERT INTO job_sources (name, display_name, source_type, is_active, priority)
+                VALUES 
+                    ('linkedin', 'LinkedIn', 'api', true, 2),
+                    ('linkedin_posts', 'LinkedIn Posts', 'api', true, 3),
+                    ('telegram', 'Telegram', 'api', true, 4),
+                    ('naukri', 'Naukri', 'api', true, 5),
+                    ('serper_jobs', 'Serper Jobs', 'api', true, 1)
+                ON CONFLICT (name) DO UPDATE SET is_active = true;
+                """)
+            )
+            # Deactivate unwanted sources
+            await conn.execute(
+                text("UPDATE job_sources SET is_active = false WHERE name IN ('remoteok', 'indeed_rss');")
+            )
+            logger.info("Database schema migration and job source seeding completed successfully.")
     except Exception as e:
         logger.error(f"Failed to run database schema migrations on archive schema: {e}")
         # Fallback to standard table name
@@ -94,7 +111,24 @@ async def run_db_migrations():
                 await conn.execute(
                     text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;")
                 )
-                logger.info("Fallback schema database migration completed successfully.")
+                 # Seed job sources in fallback
+                await conn.execute(
+                    text("""
+                    INSERT INTO job_sources (name, display_name, source_type, is_active, priority)
+                    VALUES 
+                        ('linkedin', 'LinkedIn', 'api', true, 2),
+                        ('linkedin_posts', 'LinkedIn Posts', 'api', true, 3),
+                        ('telegram', 'Telegram', 'api', true, 4),
+                        ('naukri', 'Naukri', 'api', true, 5),
+                        ('serper_jobs', 'Serper Jobs', 'api', true, 1)
+                    ON CONFLICT (name) DO UPDATE SET is_active = true;
+                    """)
+                )
+                # Deactivate unwanted sources in fallback
+                await conn.execute(
+                    text("UPDATE job_sources SET is_active = false WHERE name IN ('remoteok', 'indeed_rss');")
+                )
+                logger.info("Fallback schema database migration and job source seeding completed successfully.")
         except Exception as e_inner:
             logger.error(f"Failed fallback database migration: {e_inner}")
 
@@ -102,18 +136,23 @@ async def run_db_migrations():
 async def start_event_bus_and_workers():
     logger.info("Initializing Redis EventBus connection...")
     try:
+
         from app.core.event_bus import event_bus
         await event_bus.connect(redis_url)
-        
+
         # Start background workers
         from app.job_discovery.workers.embedding.worker import start_embedding_worker
         from app.job_discovery.workers.matching.worker import start_matching_worker
         from app.job_discovery.workers.recommendation.worker import start_recommendation_worker
-        
+        from app.job_discovery.workers.delay_worker import start_delay_worker
+
         await start_embedding_worker()
         await start_matching_worker()
         await start_recommendation_worker()
-        
+
+        # Start ZSET delay queue worker (companion to exponential backoff retry)
+        asyncio.create_task(start_delay_worker())
+
         # Start split scheduler
         from app.core.scheduler import start_scheduler
         start_scheduler()
@@ -129,46 +168,20 @@ async def shutdown_event_bus_and_workers():
     except Exception as e:
         logger.error(f"Failed to shutdown scheduler: {e}")
 
-# WebSockets connection registry
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: dict[str, list[WebSocket]] = {}
-
-    async def connect(self, client_id: str, websocket: WebSocket):
-        await websocket.accept()
-        if client_id not in self.active_connections:
-            self.active_connections[client_id] = []
-        self.active_connections[client_id].append(websocket)
-        logger.info(f"WebSocket client connected: '{client_id}'")
-
-    def disconnect(self, client_id: str, websocket: WebSocket):
-        if client_id in self.active_connections:
-            self.active_connections[client_id].remove(websocket)
-            if not self.active_connections[client_id]:
-                del self.active_connections[client_id]
-        logger.info(f"WebSocket client disconnected: '{client_id}'")
-
-    async def broadcast_to_client(self, client_id: str, event_payload: dict):
-        if client_id in self.active_connections:
-            for connection in self.active_connections[client_id]:
-                try:
-                    await connection.send_json(event_payload)
-                except Exception as e:
-                    logger.error(f"WebSocket send error to client '{client_id}': {e}")
-
-ws_manager = ConnectionManager()
-
+# WebSocket endpoint — uses the GLOBAL singleton manager from app.core.ws
+# so that background agents and workers can broadcast to connected clients.
+# The local ws_manager below is intentionally REMOVED to fix the split-registry bug.
 @app.websocket("/ws/{candidate_id}")
 async def websocket_endpoint(websocket: WebSocket, candidate_id: str):
     """Real-time event stream channel for active candidate updates."""
-    await ws_manager.connect(candidate_id, websocket)
+    from app.core.ws import manager as global_ws_manager
+    await global_ws_manager.connect(candidate_id, websocket)
     try:
         while True:
-            # Keep connection alive, listen for ping/pong or client messages
             data = await websocket.receive_text()
             logger.info(f"Received from WebSocket client '{candidate_id}': {data}")
     except WebSocketDisconnect:
-        ws_manager.disconnect(candidate_id, websocket)
+        global_ws_manager.disconnect(candidate_id, websocket)
 
 class ChatRequest(BaseModel):
     session_id: str = Field(..., description="Active session key")

@@ -14,8 +14,9 @@ logger = logging.getLogger("services.candidate_service.app.router")
 router = APIRouter(prefix="/candidates", tags=["candidates"])
 
 # Dependency inject placeholder
-# In production, db_manager is initialized in main app
-db_manager = DatabaseManager(database_url="postgresql+asyncpg://postgres:postgres@localhost:5432/postgres")
+import os
+db_url = os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/postgres")
+db_manager = DatabaseManager(database_url=db_url)
 
 async def get_db() -> AsyncSession:
     async for session in db_manager.get_session():

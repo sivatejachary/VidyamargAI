@@ -25,7 +25,7 @@ class EventBus:
         """Connect to Redis, fallback to in-memory if it fails."""
         try:
             import redis.asyncio as aioredis
-            self._redis = await aioredis.from_url(redis_url, socket_connect_timeout=2, socket_timeout=2, decode_responses=True)
+            self._redis = await aioredis.from_url(redis_url, socket_connect_timeout=10, socket_timeout=10, decode_responses=True)
             # Try to ping to verify connection
             await self._redis.ping()
             await self._ensure_streams()
@@ -101,29 +101,43 @@ class EventBus:
                     logger.error(f"Fallback handler error for {stream}: {e}")
             return "fallback-id"
 
+    async def _ensure_group(self, stream: str, group_name: str):
+        """Creates the stream and consumer group if they do not exist."""
+        if not self._redis:
+            return
+        try:
+            await self._redis.xgroup_create(
+                stream, group_name, "$", mkstream=True
+            )
+        except Exception:
+            pass  # Group or stream already exists
+
     async def subscribe(
         self,
         stream: str,
         handler: Callable,
+        group_name: str = "agent_consumers",
         consumer_name: str = "default",
         batch_size: int = 10
     ):
-        """Subscribe to a stream. If in fallback mode, register to in-memory list."""
+        """Subscribe to a stream under a specific consumer group."""
         if stream not in self._fallback_listeners:
             self._fallback_listeners[stream] = []
         if handler not in self._fallback_listeners[stream]:
             self._fallback_listeners[stream].append(handler)
 
         if not self._fallback_mode and self._redis:
+            # Ensure the specific consumer group exists for this stream
+            await self._ensure_group(stream, group_name)
             # Start background Redis consumer loop
             asyncio.create_task(
-                self._consume_loop(stream, handler, consumer_name, batch_size)
+                self._consume_loop(stream, handler, group_name, consumer_name, batch_size)
             )
-            logger.info(f"Registered Redis consumer for {stream} (consumer: {consumer_name})")
+            logger.info(f"Registered Redis consumer for {stream} (group: {group_name}, consumer: {consumer_name})")
         else:
             logger.info(f"Registered In-Memory consumer for {stream}")
 
-    async def _consume_loop(self, stream, handler, consumer_name, batch_size):
+    async def _consume_loop(self, stream, handler, group_name, consumer_name, batch_size):
         """Background loop that processes Redis Streams events."""
         while True:
             try:
@@ -133,7 +147,7 @@ class EventBus:
 
                 # Read new messages (id ">" means only messages never delivered to other consumers)
                 messages = await self._redis.xreadgroup(
-                    groupname="agent_consumers",
+                    groupname=group_name,
                     consumername=consumer_name,
                     streams={stream: ">"},
                     count=batch_size,
@@ -152,12 +166,17 @@ class EventBus:
                                 loop = asyncio.get_running_loop()
                                 await loop.run_in_executor(None, handler, event)
                             # Acknowledge after successful processing
-                            await self._redis.xack(stream, "agent_consumers", msg_id)
+                            await self._redis.xack(stream, group_name, msg_id)
                         except Exception as e:
                             logger.error(f"Handler error for {stream}/{msg_id}: {e}")
             except Exception as e:
-                logger.error(f"Consumer loop error for {stream}: {e}")
-                await asyncio.sleep(5)
+                err_str = str(e).lower()
+                if "timeout" in err_str or "connection" in err_str:
+                    logger.debug(f"Consumer loop timeout/retry for {stream}: {e}")
+                    await asyncio.sleep(0.5)
+                else:
+                    logger.error(f"Consumer loop error for {stream}: {e}")
+                    await asyncio.sleep(5)
 
 
 event_bus = EventBus()

@@ -64,8 +64,23 @@ class QdrantVectorStore:
                         collection_name=col,
                         vectors_config=VectorParams(size=768, distance=Distance.COSINE)
                     )
+                else:
+                    # Assert collection vector dimension size is 768
+                    info = self.client.get_collection(col)
+                    params = info.config.params
+                    if hasattr(params, "vectors") and params.vectors:
+                        # Extract size depending on Qdrant SDK object wrapper type
+                        if hasattr(params.vectors, "size"):
+                            size = params.vectors.size
+                        elif isinstance(params.vectors, dict):
+                            size = params.vectors.get("size", 768)
+                        else:
+                            size = getattr(params.vectors, "size", 768)
+                        if size != 768:
+                            raise ValueError(f"Qdrant collection '{col}' has dimension {size}, expected 768.")
             except Exception as e:
                 logger.error(f"Error checking/creating Qdrant collection '{col}': {e}")
+                raise e
 
     async def upsert_job(self, job_id: int, title: str, company: str, description: str, skills: List[str]) -> bool:
         """Embeds and indexes a job in the 'job_embeddings' and 'jobs' collections using NVIDIA Embeddings."""

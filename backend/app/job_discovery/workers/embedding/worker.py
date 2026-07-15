@@ -72,6 +72,7 @@ async def start_embedding_worker():
     await event_bus.subscribe(
         stream="jobs.persisted.v1",
         handler=handle_job_persisted_event,
+        group_name="embedding_workers_group",
         consumer_name="embedding_worker"
     )
     logger.info("[Embedding Worker] Registered subscriber for 'jobs.persisted.v1'.")
