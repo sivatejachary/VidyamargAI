@@ -28,6 +28,12 @@ import type {
   InterviewPrep,
 } from "@/types/jobAgent";
 
+interface ExtendedJobMatch extends Omit<JobMatch, "id"> {
+  id: number | string;
+  is_hr_job?: boolean;
+  raw_hr_job?: any;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // ICONS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -179,11 +185,11 @@ function AgentStatusPill({ status }: { status: string }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function JobCard({ job, onSave, onApply, onHide, onViewPrep, selected, onClick }: {
-  job: JobMatch;
-  onSave: (id: number) => void;
-  onApply: (job: JobMatch) => void;
-  onHide: (id: number) => void;
-  onViewPrep: (job: JobMatch) => void;
+  job: ExtendedJobMatch;
+  onSave: (id: number | string) => void;
+  onApply: (job: ExtendedJobMatch) => void;
+  onHide: (id: number | string) => void;
+  onViewPrep: (job: ExtendedJobMatch) => void;
   selected: boolean;
   onClick: () => void;
 }) {
@@ -554,22 +560,7 @@ function InterviewPrepPanel({ prep }: { prep: InterviewPrep }) {
 const HR_AGENT_URL = process.env.NEXT_PUBLIC_HR_AGENT_URL || "http://localhost:3000";
 const TENANT_SLUG = process.env.NEXT_PUBLIC_HR_TENANT_SLUG || "dev-tenant";
 
-interface HRAgentJob {
-  id: string;
-  title: string;
-  description: string;
-  requirements: string[];
-  status: string;
-  employment_type?: string;
-  location_type?: string;
-  salary_min?: number;
-  salary_max?: number;
-  currency?: string;
-  created_at: string;
-  department_id?: string;
-}
-
-function ApplyModal({ job, onClose }: { job: HRAgentJob; onClose: () => void }) {
+function ApplyModal({ job, onClose }: { job: ExtendedJobMatch; onClose: () => void }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [resumeText, setResumeText] = useState("");
@@ -592,7 +583,7 @@ function ApplyModal({ job, onClose }: { job: HRAgentJob; onClose: () => void }) 
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Tenant-Slug": TENANT_SLUG },
         body: JSON.stringify({
-          job_id: job.id,
+          job_id: typeof job.id === "string" ? job.id.replace("hr-", "") : job.id,
           candidate_name: name.trim(),
           candidate_email: email.trim(),
           resume_text: resumeText.trim(),
@@ -706,14 +697,14 @@ function ApplyModal({ job, onClose }: { job: HRAgentJob; onClose: () => void }) 
 // MAIN PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 
-type TabId = "feed" | "career" | "applications" | "skills" | "interview" | "market" | "insights" | "hr-jobs";
+type TabId = "feed" | "career" | "applications" | "skills" | "interview" | "market" | "insights";
 
 export default function JobAgentPage() {
   const [activeTab, setActiveTab] = useState<TabId>("feed");
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
-  const [jobs, setJobs] = useState<JobMatch[]>([]);
-  const [selectedJob, setSelectedJob] = useState<JobMatch | null>(null);
-  const [jobDetail, setJobDetail] = useState<JobMatch | null>(null);
+  const [jobs, setJobs] = useState<ExtendedJobMatch[]>([]);
+  const [selectedJob, setSelectedJob] = useState<ExtendedJobMatch | null>(null);
+  const [jobDetail, setJobDetail] = useState<ExtendedJobMatch | null>(null);
   const [applications, setApplications] = useState<Application[]>([]);
   const [skillGap, setSkillGap] = useState<SkillGap | null>(null);
   const [interviewPrep, setInterviewPrep] = useState<InterviewPrep | null>(null);
@@ -731,47 +722,14 @@ export default function JobAgentPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [fastMode, setFastMode] = useState(false);
 
-  const [hrJobs, setHrJobs] = useState<HRAgentJob[]>([]);
-  const [hrSelectedJob, setHrSelectedJob] = useState<HRAgentJob | null>(null);
-  const [hrJobsLoading, setHrJobsLoading] = useState(false);
-  const [hrSearch, setHrSearch] = useState("");
-  const [hrTypeFilter, setHrTypeFilter] = useState("ALL");
-  const [hrApplyingJob, setHrApplyingJob] = useState<HRAgentJob | null>(null);
-
-  const loadHRAgentJobs = useCallback(async () => {
-    setHrJobsLoading(true);
-    try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
-      const base = apiBase.replace(/\/api\/v1\/?$/, "");
-      const res = await fetch(`${base}/api/v1/public/jobs`, {
-        headers: { "X-Tenant-Slug": TENANT_SLUG },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setHrJobs(data || []);
-        if (data && data.length > 0) {
-          setHrSelectedJob(data[0]);
-        }
-      }
-    } catch (err) {
-      console.error("Failed to load HR Agent jobs:", err);
-    } finally {
-      setHrJobsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (activeTab === "hr-jobs") {
-      loadHRAgentJobs();
-    }
-  }, [activeTab, loadHRAgentJobs]);
+  const [hrApplyingJob, setHrApplyingJob] = useState<ExtendedJobMatch | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const tab = params.get("tab");
       if (tab === "hr-jobs") {
-        setActiveTab("hr-jobs");
+        setActiveTab("feed");
       }
     }
   }, []);
@@ -804,12 +762,54 @@ export default function JobAgentPage() {
   const loadJobs = useCallback(async (page = 1) => {
     setJobsLoading(true);
     try {
+      // 1. Fetch AI Job Feed matches
       const data = await apiClient.getJobFeed({ page, page_size: 20 });
-      setJobs(page === 1 ? data.jobs : prev => [...prev, ...data.jobs]);
-      setJobTotal(data.total);
+      let aiJobs: ExtendedJobMatch[] = data.jobs || [];
+
+      // 2. Fetch HR Agent jobs (on page 1 only to avoid duplicate pagination fetches)
+      let hrJobsList: ExtendedJobMatch[] = [];
+      if (page === 1) {
+        try {
+          const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+          const base = apiBase.replace(/\/api\/v1\/?$/, "");
+          const res = await fetch(`${base}/api/v1/public/jobs`, {
+            headers: { "X-Tenant-Slug": TENANT_SLUG },
+          });
+          if (res.ok) {
+            const rawHrJobs = await res.json();
+            hrJobsList = (rawHrJobs || []).map((j: any) => ({
+              id: `hr-${j.id}`, // String ID prefix to avoid key collision
+              title: j.title,
+              company_name: "Corporate Partner",
+              location: j.location_type || "Onsite",
+              is_remote: j.location_type === "remote",
+              is_hybrid: j.location_type === "hybrid",
+              required_skills: j.requirements || [],
+              preferred_skills: [],
+              salary_min: j.salary_min,
+              salary_max: j.salary_max,
+              salary_currency: j.currency || "USD",
+              description: j.description,
+              is_hr_job: true,
+              raw_hr_job: j
+            }));
+          }
+        } catch (err) {
+          console.error("Failed to fetch HR jobs in feed:", err);
+        }
+      }
+
+      const mergedJobs = page === 1 ? [...hrJobsList, ...aiJobs] : aiJobs;
+      setJobs(page === 1 ? mergedJobs : prev => [...prev, ...mergedJobs]);
+      setJobTotal(data.total + hrJobsList.length);
       setJobPage(page);
+      
+      if (page === 1 && mergedJobs.length > 0) {
+        setSelectedJob(mergedJobs[0]);
+      }
+      
       if (page === 1 && typeof window !== "undefined") {
-        localStorage.setItem("cache_job_agent_jobs", JSON.stringify({ jobs: data.jobs, total: data.total }));
+        localStorage.setItem("cache_job_agent_jobs", JSON.stringify({ jobs: mergedJobs, total: data.total + hrJobsList.length }));
       }
     } catch (e: any) {
       console.error("Jobs load error:", e);
@@ -909,45 +909,57 @@ export default function JobAgentPage() {
   };
 
   // Job actions
-  const handleSaveJob = async (jobId: number) => {
-    await apiClient.reactToJob(jobId, "saved");
-    setJobs(prev => prev.map(j => j.id === jobId ? { ...j, match: { ...j.match!, is_saved: true } } : j));
+  const handleSaveJob = async (jobId: number | string) => {
+    if (typeof jobId === "number") {
+      await apiClient.reactToJob(jobId, "saved");
+      setJobs(prev => prev.map(j => j.id === jobId ? { ...j, match: { ...j.match!, is_saved: true } } : j));
+    }
   };
 
-  const handleHideJob = async (jobId: number) => {
-    await apiClient.reactToJob(jobId, "hidden");
+  const handleHideJob = async (jobId: number | string) => {
+    if (typeof jobId === "number") {
+      await apiClient.reactToJob(jobId, "hidden");
+    }
     setJobs(prev => prev.filter(j => j.id !== jobId));
   };
 
-  const handleApplyJob = async (job: JobMatch) => {
+  const handleApplyJob = async (job: ExtendedJobMatch) => {
     try {
-      await apiClient.createApplication({ job_id: job.id, status: "applied" });
-      setJobs(prev => prev.map(j => j.id === job.id ? { ...j, application: { id: 0, status: "applied" } } : j));
+      if (typeof job.id === "number") {
+        await apiClient.createApplication({ job_id: job.id, status: "applied" });
+        setJobs(prev => prev.map(j => j.id === job.id ? { ...j, application: { id: 0, status: "applied" } } : j));
+      }
       if (job.apply_url) window.open(job.apply_url, "_blank");
     } catch (e) {
       if (job.apply_url) window.open(job.apply_url, "_blank");
     }
   };
 
-  const handleViewInterviewPrep = async (job: JobMatch) => {
+  const handleViewInterviewPrep = async (job: ExtendedJobMatch) => {
     setSelectedJob(job);
     setActiveTab("interview");
     setInterviewPrep(null);
     try {
-      const data = await apiClient.getInterviewPrep(job.id);
-      setInterviewPrep(data);
+      if (typeof job.id === "number") {
+        const data = await apiClient.getInterviewPrep(job.id);
+        setInterviewPrep(data);
+      }
     } catch (e) {
       console.error(e);
     }
   };
 
-  const handleSelectJob = async (job: JobMatch) => {
+  const handleSelectJob = async (job: ExtendedJobMatch) => {
     setSelectedJob(job);
     try {
-      const detail = await apiClient.getJobDetail(job.id);
-      setJobDetail(detail);
+      if (typeof job.id === "number") {
+        const detail = await apiClient.getJobDetail(job.id);
+        setJobDetail(detail);
+      } else {
+        setJobDetail(job);
+      }
     } catch (e) {
-      setJobDetail(job as any);
+      setJobDetail(job);
     }
   };
 
@@ -964,7 +976,6 @@ export default function JobAgentPage() {
   // ── TAB DEFINITIONS ──────────────────────────────────────────────────────
   const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
     { id: "feed", label: "Job Feed", icon: <Icon.Briefcase /> },
-    { id: "hr-jobs", label: "HR Openings", icon: <Icon.Briefcase /> },
     { id: "career", label: "Career Intel", icon: <Icon.Brain /> },
     { id: "applications", label: "Applications", icon: <Icon.Check /> },
     { id: "skills", label: "Skill Gaps", icon: <Icon.Target /> },
@@ -1319,15 +1330,24 @@ export default function JobAgentPage() {
 
                   {/* Actions */}
                   <div className="flex gap-3">
-                    <a
-                      href={selectedJob.apply_url || selectedJob.job_url || "#"}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => handleApplyJob(selectedJob)}
-                      className="flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold py-3 rounded-xl transition-all text-center text-sm"
-                    >
-                      Apply Now
-                    </a>
+                    {selectedJob.is_hr_job ? (
+                      <button
+                        onClick={() => setHrApplyingJob(selectedJob)}
+                        className="flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold py-3 rounded-xl transition-all text-center text-sm"
+                      >
+                        🚀 Apply Now (HR Agent)
+                      </button>
+                    ) : (
+                      <a
+                        href={selectedJob.apply_url || selectedJob.job_url || "#"}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => handleApplyJob(selectedJob)}
+                        className="flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold py-3 rounded-xl transition-all text-center text-sm"
+                      >
+                        Apply Now
+                      </a>
+                    )}
                     <button
                       onClick={() => handleViewInterviewPrep(selectedJob)}
                       className="px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white rounded-xl transition-colors text-sm"
@@ -1402,152 +1422,6 @@ export default function JobAgentPage() {
                       ~{dashboard.skill_gap.estimated_upskill_months} months to close gaps
                     </p>
                   )}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ── HR AGENT OPENINGS (INTEGRATED) TAB ──────────────────────── */}
-        {activeTab === "hr-jobs" && (
-          <div className="grid grid-cols-12 gap-6">
-            {/* Left Column: HR Openings List */}
-            <div className="col-span-12 lg:col-span-4 xl:col-span-3">
-              <SectionHeader
-                icon={<Icon.Briefcase />}
-                title="HR Openings"
-                count={hrJobs.length}
-                action={
-                  <select
-                    value={hrTypeFilter}
-                    onChange={e => setHrTypeFilter(e.target.value)}
-                    className="bg-white/5 border border-white/10 text-xs text-slate-400 rounded-lg px-2 py-1"
-                  >
-                    <option value="ALL">All Types</option>
-                    <option value="remote">Remote Only</option>
-                    <option value="onsite">Onsite Only</option>
-                    <option value="hybrid">Hybrid Only</option>
-                    <option value="fulltime">Full-time Only</option>
-                    <option value="internship">Internship Only</option>
-                  </select>
-                }
-              />
-
-              <div className="mb-4">
-                <input
-                  type="text"
-                  placeholder="Search openings..."
-                  value={hrSearch}
-                  onChange={e => setHrSearch(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-slate-300 placeholder-slate-500 text-xs focus:outline-none focus:border-violet-500"
-                />
-              </div>
-
-              {hrJobsLoading ? (
-                <LoadingPulse />
-              ) : hrJobs.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-slate-400 text-sm">No openings available</p>
-                  <p className="text-slate-500 text-xs mt-1">Check back later for new roles</p>
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-[calc(100vh-260px)] overflow-y-auto pr-1">
-                  {hrJobs
-                    .filter(j => {
-                      const matchSearch = j.title.toLowerCase().includes(hrSearch.toLowerCase()) ||
-                        j.description?.toLowerCase().includes(hrSearch.toLowerCase());
-                      const matchType = hrTypeFilter === "ALL" || j.location_type === hrTypeFilter || j.employment_type === hrTypeFilter;
-                      return matchSearch && matchType;
-                    })
-                    .map(job => (
-                      <div
-                        key={job.id}
-                        onClick={() => setHrSelectedJob(job)}
-                        className={`group relative rounded-xl border transition-all duration-200 cursor-pointer p-4 ${
-                          hrSelectedJob?.id === job.id
-                            ? "border-violet-500/60 bg-violet-500/10 shadow-violet-500/20 shadow-lg"
-                            : "border-white/10 bg-white/5 hover:border-violet-500/40 hover:bg-white/8"
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-500/30 to-indigo-500/30 flex items-center justify-center text-sm font-bold text-violet-300 border border-violet-500/20 flex-shrink-0">
-                            {job.title[0]}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-white truncate">{job.title}</p>
-                            <p className="text-xs text-slate-400 mt-0.5 capitalize">
-                              {job.location_type || "Onsite"} · {job.employment_type || "Full-time"}
-                            </p>
-                            {job.salary_min && (
-                              <p className="text-xs text-violet-400 font-medium mt-1">
-                                {job.currency || "$"}{job.salary_min.toLocaleString()} - {job.salary_max ? job.salary_max.toLocaleString() : ""}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              )}
-            </div>
-
-            {/* Right Column: HR Opening Details */}
-            <div className="col-span-12 lg:col-span-8 xl:col-span-9">
-              {hrSelectedJob ? (
-                <div className="bg-white/5 rounded-xl border border-white/10 p-6 sticky top-28 space-y-6">
-                  <div className="flex items-start gap-4">
-                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-violet-500/30 to-indigo-500/30 flex items-center justify-center text-xl font-bold text-violet-300 border border-violet-500/20">
-                      {hrSelectedJob.title[0]}
-                    </div>
-                    <div className="flex-1 col-span-8">
-                      <h2 className="text-xl font-bold text-white">{hrSelectedJob.title}</h2>
-                      <div className="flex items-center gap-3 mt-1 flex-wrap text-sm text-slate-400">
-                        <span className="capitalize">📍 {hrSelectedJob.location_type || "Onsite"}</span>
-                        <span>•</span>
-                        <span className="capitalize">💼 {hrSelectedJob.employment_type || "Full-time"}</span>
-                        {hrSelectedJob.salary_min && (
-                          <>
-                            <span>•</span>
-                            <span className="text-violet-400 font-semibold">
-                              💰 {hrSelectedJob.currency || "$"}{hrSelectedJob.salary_min.toLocaleString()} - {hrSelectedJob.salary_max ? hrSelectedJob.salary_max.toLocaleString() : ""}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setHrApplyingJob(hrSelectedJob)}
-                      className="px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-violet-500/20 flex items-center gap-1.5 flex-shrink-0"
-                    >
-                      🚀 Apply Now
-                    </button>
-                  </div>
-
-                  <div className="border-t border-white/5 pt-6">
-                    <h3 className="text-xs font-semibold text-slate-400 mb-3 tracking-wider uppercase">Requirements</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {hrSelectedJob.requirements && hrSelectedJob.requirements.length > 0 ? (
-                        hrSelectedJob.requirements.map(req => (
-                          <span key={req} className="text-xs text-violet-300 bg-violet-500/10 px-2.5 py-1 rounded-lg border border-violet-500/20 font-medium">
-                            {req}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-xs text-slate-500">None specified</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="border-t border-white/5 pt-6">
-                    <h3 className="text-xs font-semibold text-slate-400 mb-3 tracking-wider uppercase">Job Description</h3>
-                    <div className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap font-sans">
-                      {hrSelectedJob.description || "No description provided."}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center h-64 text-slate-600 text-sm rounded-xl border border-white/5">
-                  ← Select an opening to view details
                 </div>
               )}
             </div>
