@@ -107,7 +107,7 @@ class Job(Base):
     """
     __tablename__ = "jobs"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column("job_id", Integer, primary_key=True, index=True)
     external_id = Column(String(500), nullable=True, index=True)   # source-specific ID
     source_id = Column(Integer, ForeignKey("job_sources.id", ondelete="SET NULL"), nullable=True, index=True)
     company_id = Column(Integer, ForeignKey("companies.id", ondelete="SET NULL"), nullable=True, index=True)
@@ -163,7 +163,7 @@ class Job(Base):
     is_active = Column(Boolean, default=True, index=True)
     is_verified = Column(Boolean, default=False)
     is_duplicate = Column(Boolean, default=False)
-    duplicate_of_id = Column(Integer, ForeignKey("jobs.id", ondelete="SET NULL"), nullable=True)
+    duplicate_of_id = Column(Integer, ForeignKey("jobs.job_id", ondelete="SET NULL"), nullable=True)
     rejection_reason = Column(String(255), nullable=True)      # spam, duplicate, expired, fake
     lifecycle_status = Column(String(50), default="discovered", index=True)
 
@@ -362,7 +362,7 @@ class Match(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     candidate_id = Column(Integer, ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, index=True)
-    job_id = Column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, index=True)
+    job_id = Column(Integer, ForeignKey("jobs.job_id", ondelete="CASCADE"), nullable=False, index=True)
     agent_run_id = Column(Integer, ForeignKey("agent_runs.id", ondelete="SET NULL"), nullable=True)
 
     # Composite score
@@ -451,7 +451,7 @@ class Application(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     candidate_id = Column(Integer, ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, index=True)
-    job_id = Column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, index=True)
+    job_id = Column(Integer, ForeignKey("jobs.job_id", ondelete="CASCADE"), nullable=False, index=True)
     match_id = Column(Integer, ForeignKey("matches.id", ondelete="SET NULL"), nullable=True)
 
     # Kanban status
@@ -528,7 +528,7 @@ class InterviewPreparation(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     candidate_id = Column(Integer, ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, index=True)
-    job_id = Column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, index=True)
+    job_id = Column(Integer, ForeignKey("jobs.job_id", ondelete="CASCADE"), nullable=False, index=True)
     application_id = Column(Integer, ForeignKey("applications.id", ondelete="CASCADE"), nullable=True)
 
     company_analysis = Column(JSON, default=dict)          # products, culture, recent news, funding

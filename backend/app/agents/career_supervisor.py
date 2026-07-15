@@ -1657,12 +1657,12 @@ class CareerIntelligenceSupervisor:
 
     PIPELINE = {
         "full": [
-            ResumeAgent, CareerAgent, DiscoveryAgent, VerificationAgent,
+            ResumeAgent, CareerAgent,
             MatchingAgent, SkillGapAgent, RecommendationAgent,
             InterviewAgent, MarketIntelligenceAgent,
         ],
         "matching": [MatchingAgent, SkillGapAgent, RecommendationAgent],
-        "discovery": [DiscoveryAgent, VerificationAgent, MatchingAgent],
+        "discovery": [MatchingAgent],
         "resume": [ResumeAgent, CareerAgent, SkillGapAgent],
     }
 

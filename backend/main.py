@@ -141,17 +141,11 @@ async def start_event_bus_and_workers():
         await event_bus.connect(redis_url)
 
         # Start background workers
-        from app.job_discovery.workers.embedding.worker import start_embedding_worker
         from app.job_discovery.workers.matching.worker import start_matching_worker
         from app.job_discovery.workers.recommendation.worker import start_recommendation_worker
-        from app.job_discovery.workers.delay_worker import start_delay_worker
 
-        await start_embedding_worker()
         await start_matching_worker()
         await start_recommendation_worker()
-
-        # Start ZSET delay queue worker (companion to exponential backoff retry)
-        asyncio.create_task(start_delay_worker())
 
         # Start split scheduler
         from app.core.scheduler import start_scheduler

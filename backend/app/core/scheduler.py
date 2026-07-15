@@ -11,61 +11,6 @@ logger = logging.getLogger("app.scheduler")
 scheduler = AsyncIOScheduler()
 
 
-async def run_periodic_job_discovery():
-    """
-    Orchestrates job discovery on an interval of 30 minutes.
-    Collects roles and locations from active candidate profiles.
-
-    NOTE: DiscoveryOrchestrator is now fully async — no db constructor arg.
-    """
-    import json as _json
-    from app.core.database import SessionLocal
-    from app.models.models import CandidateProfile
-    from app.job_discovery.crawler.orchestrator import DiscoveryOrchestrator
-
-    logger.info("Scheduler: Triggering periodic job discovery...")
-
-    roles: set = set()
-    locations: set = set()
-    skills: set = set()
-
-    with SessionLocal() as db:
-        profiles = (
-            db.query(CandidateProfile)
-            .order_by(CandidateProfile.created_at.desc())
-            .limit(50)
-            .all()
-        )
-        for p in profiles:
-            if p.skills:
-                skills.update(p.skills)
-            if hasattr(p, "parsed_metadata") and p.parsed_metadata:
-                try:
-                    meta = (
-                        _json.loads(p.parsed_metadata)
-                        if isinstance(p.parsed_metadata, str)
-                        else p.parsed_metadata
-                    )
-                    if meta.get("preferred_roles"):
-                        roles.update(meta["preferred_roles"])
-                    if meta.get("locations"):
-                        locations.update(meta["locations"])
-                except Exception:
-                    pass
-
-    role_list = list(roles) or ["Software Engineer", "Full Stack Developer", "Backend Engineer"]
-    location_list = list(locations) or ["India", "Remote"]
-    skill_list = list(skills) or ["Python", "JavaScript", "React"]
-
-    # DiscoveryOrchestrator takes NO db arg — manages its own sessions
-    orchestrator = DiscoveryOrchestrator()
-    await orchestrator.run_discovery(
-        roles=role_list,
-        locations=location_list,
-        skills=skill_list,
-        max_per_source=30,
-    )
-
 
 async def run_hourly_recommendation_updates():
     """
@@ -105,42 +50,11 @@ async def run_periodic_alerts():
             logger.info(f"Scheduler: Found {len(unread)} unread notifications.")
 
 
-async def clean_expired_jobs():
-    """
-    Daily cleanup to deactivate expired jobs.
-    """
-    from app.core.database import SessionLocal
-    from app.models.job_models import Job
-    
-    logger.info("Scheduler: Running daily cleanup for expired jobs...")
-    with SessionLocal() as db:
-        now = datetime.utcnow()
-        expired = db.query(Job).filter(
-            Job.is_active == True,
-            Job.expires_at < now
-        ).all()
-        
-        if expired:
-            logger.info(f"Scheduler: Deactivating {len(expired)} expired jobs.")
-            for job in expired:
-                job.is_active = False
-                job.lifecycle_status = "expired"
-            db.commit()
-
 
 def start_scheduler():
     """Starts the background scheduler and registers cron/interval jobs."""
     try:
-        # 1. Job Discovery (every 30 minutes)
-        scheduler.add_job(
-            run_periodic_job_discovery,
-            'interval',
-            minutes=30,
-            id='run_periodic_job_discovery',
-            replace_existing=True
-        )
-
-        # 2. Recommendation updates (hourly)
+        # 1. Recommendation updates (hourly)
         scheduler.add_job(
             run_hourly_recommendation_updates,
             'interval',
@@ -149,7 +63,7 @@ def start_scheduler():
             replace_existing=True
         )
 
-        # 3. Notification alerts check (every 15 minutes)
+        # 2. Notification alerts check (every 15 minutes)
         scheduler.add_job(
             run_periodic_alerts,
             'interval',
@@ -158,17 +72,8 @@ def start_scheduler():
             replace_existing=True
         )
 
-        # 4. Cleanup expired jobs (daily at 2 AM)
-        scheduler.add_job(
-            clean_expired_jobs,
-            'cron',
-            hour=2,
-            id='clean_expired_jobs',
-            replace_existing=True
-        )
-
         scheduler.start()
-        logger.info("APScheduler AsyncIOScheduler started successfully with 4 jobs registered.")
+        logger.info("APScheduler AsyncIOScheduler started successfully with recommendation & alert jobs registered.")
     except Exception as e:
         logger.error(f"Failed to start APScheduler: {e}")
 

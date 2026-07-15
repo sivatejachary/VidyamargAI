@@ -3,7 +3,7 @@ from app.api.routers import (
     auth, profile, resume, learning, mentor,
     chat, notifications, admin, job_agent
 )
-from app.api.routers import telegram_channels
+
 
 # Backward compatibility exports
 from app.api.routers.learning import _build_curriculum_payload
@@ -21,4 +21,4 @@ router.include_router(chat.router)
 router.include_router(notifications.router)
 router.include_router(admin.router)
 router.include_router(job_agent.router)
-router.include_router(telegram_channels.router)
+
