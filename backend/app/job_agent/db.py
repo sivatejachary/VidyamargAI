@@ -434,7 +434,7 @@ def upsert_jobs_batch(job_records: list) -> int:
     return inserted_count
 
 
-def expire_old_telegram_jobs(days: int = 3) -> int:
+def expire_old_telegram_jobs(days: int = 7) -> int:
     """
     Marks Telegram-sourced jobs older than `days` days as inactive (is_active = FALSE)
     in the main VidyaMarg AI jobs table.

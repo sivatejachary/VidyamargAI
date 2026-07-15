@@ -74,10 +74,10 @@ async def run_expire_old_telegram_jobs():
     if job_agent_dir not in sys.path:
         sys.path.insert(0, os.path.abspath(job_agent_dir))
 
-    logger.info("Scheduler: Running nightly Telegram job expiry (3-day window)...")
+    logger.info("Scheduler: Running nightly Telegram job expiry (7-day window)...")
     try:
         import db as crawler_db
-        expired = crawler_db.expire_old_telegram_jobs(days=3)
+        expired = crawler_db.expire_old_telegram_jobs(days=7)
         logger.info(f"Scheduler: Expired {expired} old Telegram job(s).")
     except Exception as e:
         logger.error(f"Scheduler: Telegram job expiry failed: {e}")

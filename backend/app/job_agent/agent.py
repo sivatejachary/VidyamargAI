@@ -68,7 +68,7 @@ async def run_telegram_crawler():
                 await telegram_sync.sync_channel(
                     client, ch,
                     history_limit=200,
-                    cutoff_days=3,
+                    cutoff_days=7,
                     full=False
                 )
             except Exception as e:
