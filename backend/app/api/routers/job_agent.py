@@ -329,6 +329,40 @@ def get_agent_status(
     }
 
 
+def _auto_ensure_candidate_matches(candidate_id: int, db: Session):
+    """
+    Ensures every active job in the database has a corresponding Match entry
+    for the candidate, so all newly scraped jobs from Telegram instantly appear in the feed.
+    """
+    try:
+        active_jobs = db.query(Job.id).filter(Job.is_active == True).all()
+        active_job_ids = {j[0] for j in active_jobs}
+
+        matched_jobs = db.query(Match.job_id).filter(Match.candidate_id == candidate_id).all()
+        matched_job_ids = {m[0] for m in matched_jobs}
+
+        unmatched_ids = active_job_ids - matched_job_ids
+        if unmatched_ids:
+            new_matches = [
+                Match(
+                    candidate_id=candidate_id,
+                    job_id=jid,
+                    overall_score=75.0,
+                    skill_score=70.0,
+                    experience_score=70.0,
+                    location_score=80.0,
+                    match_reasons=["Discovered from real-time Telegram Job Agent"],
+                    status="new",
+                )
+                for jid in unmatched_ids
+            ]
+            db.bulk_save_objects(new_matches)
+            db.commit()
+    except Exception as e:
+        logger.warning(f"Auto-matching active jobs failed: {e}")
+        db.rollback()
+
+
 @router.get("/dashboard")
 def get_dashboard(
     current_user: User = Depends(get_current_user),
@@ -337,6 +371,11 @@ def get_dashboard(
     """Full dashboard data — single endpoint for the job agent page."""
     candidate = _get_candidate(current_user, db)
     agent = _get_or_create_agent(candidate, db)
+
+    # Ensure all active jobs have a match for this candidate
+    _auto_ensure_candidate_matches(candidate.id, db)
+
+    total_discovered_db = db.query(Job).filter(Job.is_active == True).count()
 
     # Top matches
     top_matches_query = (
@@ -411,8 +450,8 @@ def get_dashboard(
             "skill_graph": agent.skill_graph or {},
             "career_graph": agent.career_graph or {},
             "target_roles": agent.target_roles or [],
-            "total_jobs_discovered": agent.total_jobs_discovered or 0,
-            "total_jobs_matched": agent.total_jobs_matched or 0,
+            "total_jobs_discovered": max(agent.total_jobs_discovered or 0, total_discovered_db),
+            "total_jobs_matched": max(agent.total_jobs_matched or 0, total_matches),
             "total_applications": agent.total_applications or 0,
             "last_discovery_at": agent.last_discovery_at.isoformat() if agent.last_discovery_at else None,
         },
@@ -473,6 +512,9 @@ def get_job_feed(
 ):
     """Paginated job match feed for the candidate."""
     candidate = _get_candidate(current_user, db)
+
+    # Automatically generate default matches for any active jobs in DB that don't have a Match row for this candidate yet
+    _auto_ensure_candidate_matches(candidate.id, db)
 
     query = (
         db.query(Match, Job)
