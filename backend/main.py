@@ -137,13 +137,6 @@ async def start_event_bus_and_workers():
         from app.core.event_bus import event_bus
         await event_bus.connect(redis_url)
 
-        # Start background workers
-        from app.job_discovery.workers.matching.worker import start_matching_worker
-        from app.job_discovery.workers.recommendation.worker import start_recommendation_worker
-
-        await start_matching_worker()
-        await start_recommendation_worker()
-
         # Start split scheduler
         from app.core.scheduler import start_scheduler
         start_scheduler()
