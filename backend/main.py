@@ -147,10 +147,13 @@ def test_db_connections():
     results = {}
     urls_to_test = {
         "ENV_DATABASE_URL": os.getenv("DATABASE_URL"),
+        "INTERNAL_THOMAS_PORT_5432": "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@thomas:5432/railway",
+        "INTERNAL_THOMAS_PORT_5432_POSTGRES": "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@thomas:5432/postgres",
+        "INTERNAL_THOMAS_INTERNAL_5432": "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@thomas.railway.internal:5432/railway",
+        "INTERNAL_THOMAS_INTERNAL_5432_POSTGRES": "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@thomas.railway.internal:5432/postgres",
+        "INTERNAL_THOMAS_PORT_5432_VIDYAMARGAI": "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@thomas:5432/Vidyamargai",
+        "INTERNAL_THOMAS_INTERNAL_5432_VIDYAMARGAI": "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@thomas.railway.internal:5432/Vidyamargai",
         "INTERNAL_POSTGRES_PORT_5432": "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@postgres:5432/railway",
-        "INTERNAL_POSTGRES_PORT_5432_POSTGRES": "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@postgres:5432/postgres",
-        "INTERNAL_POSTGRES_INTERNAL_5432": "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@postgres.railway.internal:5432/railway",
-        "INTERNAL_POSTGRES_INTERNAL_5432_POSTGRES": "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@postgres.railway.internal:5432/postgres",
         "FALLBACK_THOMAS_PROXY": "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@thomas.proxy.rlwy.net:20637/Vidyamargai",
     }
     
