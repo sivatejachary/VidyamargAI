@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     # Database (Fallback to production Railway PostgreSQL)
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL", 
-        "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@thomas.proxy.rlwy.net:20637/Vidyamargai"
+        "postgresql://postgres:CDVByqTUKjxAlWjBkyOIjXTAlcAaakUf@hayabusa.proxy.rlwy.net:42919/railway"
     )
     
     # Storage (MinIO / S3)
@@ -105,7 +105,7 @@ except Exception:
         ACCESS_TOKEN_EXPIRE_MINUTES = 15
         DATABASE_URL = os.getenv(
             "DATABASE_URL",
-            "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@thomas.proxy.rlwy.net:20637/Vidyamargai"
+            "postgresql://postgres:CDVByqTUKjxAlWjBkyOIjXTAlcAaakUf@hayabusa.proxy.rlwy.net:42919/railway"
         )
         MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "localhost:9000")
         MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")

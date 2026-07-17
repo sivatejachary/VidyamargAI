@@ -49,7 +49,7 @@ app.include_router(candidate_router)
 
 raw_db_url = os.getenv(
     "DATABASE_URL",
-    "postgresql+asyncpg://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@thomas.proxy.rlwy.net:20637/Vidyamargai"
+    "postgresql+asyncpg://postgres:CDVByqTUKjxAlWjBkyOIjXTAlcAaakUf@hayabusa.proxy.rlwy.net:42919/railway"
 )
 if raw_db_url.startswith("postgresql://"):
     db_url = raw_db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
@@ -147,14 +147,8 @@ def test_db_connections():
     results = {}
     urls_to_test = {
         "ENV_DATABASE_URL": os.getenv("DATABASE_URL"),
-        "INTERNAL_THOMAS_PORT_5432": "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@thomas:5432/railway",
-        "INTERNAL_THOMAS_PORT_5432_POSTGRES": "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@thomas:5432/postgres",
-        "INTERNAL_THOMAS_INTERNAL_5432": "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@thomas.railway.internal:5432/railway",
-        "INTERNAL_THOMAS_INTERNAL_5432_POSTGRES": "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@thomas.railway.internal:5432/postgres",
-        "INTERNAL_THOMAS_PORT_5432_VIDYAMARGAI": "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@thomas:5432/Vidyamargai",
-        "INTERNAL_THOMAS_INTERNAL_5432_VIDYAMARGAI": "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@thomas.railway.internal:5432/Vidyamargai",
-        "INTERNAL_POSTGRES_PORT_5432": "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@postgres:5432/railway",
-        "FALLBACK_THOMAS_PROXY": "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@thomas.proxy.rlwy.net:20637/Vidyamargai",
+        "INTERNAL_POSTGRES_INTERNAL_5432": "postgresql://postgres:CDVByqTUKjxAlWjBkyOIjXTAlcAaakUf@postgres.railway.internal:5432/railway",
+        "PUBLIC_HAYABUSA_PROXY_42919": "postgresql://postgres:CDVByqTUKjxAlWjBkyOIjXTAlcAaakUf@hayabusa.proxy.rlwy.net:42919/railway",
     }
     
     for name, url in urls_to_test.items():

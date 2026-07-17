@@ -25,11 +25,11 @@
   "history_limit": 300,
   "postgres": {
     "enabled": true,
-    "host": "thomas.proxy.rlwy.net",
-    "port": 20637,
-    "database": "Vidyamargai",
+    "host": "hayabusa.proxy.rlwy.net",
+    "port": 42919,
+    "database": "railway",
     "user": "postgres",
-    "password": "qPKoMqtzapoyltHQVdheOKyldfbnYrPH",
+    "password": "CDVByqTUKjxAlWjBkyOIjXTAlcAaakUf",
     "table_name": "jobs"
   },
   "telegram_session_string": "1BVtsOGkBuy2M7zEpIe3OeKUaGEGNAJWxNS2WuUp0Z7YYcg0KDPIZO3TmfJnboyGi_4AbDXrtqTBBW7iIkAOCUPL0Hp5JjogNZju304EFfcPre1nQ-XPqZyvCXFYL371ChztT8lqHXfLqc8HD6CGZ6oERXrZIQyL74SwGlydbDIggrRsB8ZzJzwGKCc8IbR2ns2-T9Uew659peeCxnPYi1Hd3i1rhW6d6zQD5QIWg94XF2crZher-lix0aWBGp2Sm9DMt9e3PHYaHIaM9VfR3MqJ6R-CH17VDZLP96MhrK0jnjRmSKqpkWB3CWfNpxFc5hMkkvSZBTvf6IwlF1KL96yxTMff9OuM="

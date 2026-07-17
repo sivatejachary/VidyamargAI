@@ -17,7 +17,7 @@ router = APIRouter(prefix="/candidates", tags=["candidates"])
 import os
 raw_db_url = os.getenv(
     "DATABASE_URL",
-    "postgresql+asyncpg://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@thomas.proxy.rlwy.net:20637/Vidyamargai"
+    "postgresql+asyncpg://postgres:CDVByqTUKjxAlWjBkyOIjXTAlcAaakUf@hayabusa.proxy.rlwy.net:42919/railway"
 )
 if raw_db_url.startswith("postgresql://"):
     db_url = raw_db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
