@@ -80,12 +80,15 @@ async def run_db_migrations():
             await conn.execute(
                 text("ALTER TABLE archive.legacy_mcp_chat_messages ADD COLUMN IF NOT EXISTS interactive_card JSON;")
             )
-            # Add lifecycle_status and deleted_at to jobs
+            # Add lifecycle_status, deleted_at, and job_hash to jobs
             await conn.execute(
                 text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS lifecycle_status VARCHAR(50) DEFAULT 'discovered';")
             )
             await conn.execute(
                 text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;")
+            )
+            await conn.execute(
+                text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS job_hash VARCHAR(64) UNIQUE;")
             )
             # Seed job sources
             await conn.execute(
@@ -118,6 +121,9 @@ async def run_db_migrations():
                 )
                 await conn.execute(
                     text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;")
+                )
+                await conn.execute(
+                    text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS job_hash VARCHAR(64) UNIQUE;")
                 )
                  # Seed job sources in fallback
                 await conn.execute(

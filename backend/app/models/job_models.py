@@ -109,6 +109,7 @@ class Job(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     external_id = Column(String(500), nullable=True, index=True)   # source-specific ID
+    job_hash = Column(String(64), unique=True, nullable=True, index=True)
     source_id = Column(Integer, ForeignKey("job_sources.id", ondelete="SET NULL"), nullable=True, index=True)
     company_id = Column(Integer, ForeignKey("companies.id", ondelete="SET NULL"), nullable=True, index=True)
 
