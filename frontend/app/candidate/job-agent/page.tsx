@@ -1113,6 +1113,7 @@ function ApplyModal({ job, onClose }: { job: ExtendedJobMatch; onClose: () => vo
             candidate_email: cEmail,
             resume_text: rText,
             resume_url: `https://vidyamargai.app/resumes/${encodeURIComponent(cName.replace(" ", "_"))}.pdf`,
+            gdpr_consent: true,
           }),
         });
         if (res.ok) {
