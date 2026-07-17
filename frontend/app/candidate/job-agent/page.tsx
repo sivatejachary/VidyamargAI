@@ -304,9 +304,223 @@ const APP_STATUSES = [
   { key: "rejected", label: "Rejected", color: "border-red-500/30 bg-red-500/10", dot: "bg-red-400" },
 ];
 
-function KanbanBoard({ applications, onStatusChange }: {
+function McqExamModal({ app, onClose, onFinish }: { app: any; onClose: () => void; onFinish: () => void }) {
+  const [attemptId, setAttemptId] = useState<string | null>(null);
+  const [currentQuestion, setCurrentQuestion] = useState<any | null>(null);
+  const [selectedOption, setSelectedOption] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(true);
+  const [submitting, setSubmitting] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
+  const [finished, setFinished] = useState<boolean>(false);
+  const [finalScore, setFinalScore] = useState<number | null>(null);
+  const [qCount, setQCount] = useState<number>(1);
+
+  useEffect(() => {
+    startAttempt();
+  }, []);
+
+  const startAttempt = async () => {
+    setLoading(true);
+    setError("");
+    const endpoints = [
+      process.env.NEXT_PUBLIC_HR_AGENT_API_URL,
+      process.env.NEXT_PUBLIC_API_URL,
+      "https://nirvahai-production.up.railway.app/api/v1",
+      "http://localhost:8000/api/v1",
+    ].filter(Boolean) as string[];
+
+    let attId = null;
+    for (const ep of endpoints) {
+      try {
+        const base = ep.replace(/\/api\/v1\/?$/, "");
+        const res = await fetch(`${base}/api/v1/public/assessments/attempts`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Tenant-Slug": TENANT_SLUG },
+          body: JSON.stringify({ application_id: app.id, type: "MCQ" }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          attId = data.attempt_id;
+          setAttemptId(attId);
+          break;
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    if (attId) {
+      await fetchNextQuestion(attId);
+    } else {
+      setError("Failed to initialize MCQ exam. Please check your connection.");
+      setLoading(false);
+    }
+  };
+
+  const fetchNextQuestion = async (attId: string) => {
+    setLoading(true);
+    setSelectedOption("");
+    const endpoints = [
+      process.env.NEXT_PUBLIC_HR_AGENT_API_URL,
+      process.env.NEXT_PUBLIC_API_URL,
+      "https://nirvahai-production.up.railway.app/api/v1",
+      "http://localhost:8000/api/v1",
+    ].filter(Boolean) as string[];
+
+    for (const ep of endpoints) {
+      try {
+        const base = ep.replace(/\/api\/v1\/?$/, "");
+        const res = await fetch(`${base}/api/v1/public/assessments/attempts/${attId}/next`, {
+          headers: { "X-Tenant-Slug": TENANT_SLUG },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.finished || !data.question) {
+            setFinished(true);
+          } else {
+            setCurrentQuestion(data.question);
+          }
+          break;
+        }
+      } catch {
+        continue;
+      }
+    }
+    setLoading(false);
+  };
+
+  const handleSubmitAnswer = async () => {
+    if (!selectedOption || !attemptId || !currentQuestion) return;
+    setSubmitting(true);
+    const endpoints = [
+      process.env.NEXT_PUBLIC_HR_AGENT_API_URL,
+      process.env.NEXT_PUBLIC_API_URL,
+      "https://nirvahai-production.up.railway.app/api/v1",
+      "http://localhost:8000/api/v1",
+    ].filter(Boolean) as string[];
+
+    for (const ep of endpoints) {
+      try {
+        const base = ep.replace(/\/api\/v1\/?$/, "");
+        const res = await fetch(`${base}/api/v1/public/assessments/attempts/${attemptId}/submit`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Tenant-Slug": TENANT_SLUG },
+          body: JSON.stringify({
+            question_id: currentQuestion.id,
+            candidate_answer: selectedOption,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.score !== undefined && data.score !== null) {
+            setFinalScore(data.score);
+            setFinished(true);
+          } else {
+            setQCount(prev => prev + 1);
+            await fetchNextQuestion(attemptId);
+          }
+          break;
+        }
+      } catch {
+        continue;
+      }
+    }
+    setSubmitting(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="bg-[#13131a] border border-violet-500/30 rounded-2xl max-w-lg w-full p-6 text-white shadow-2xl">
+        <div className="flex justify-between items-center pb-3 border-b border-white/10 mb-4">
+          <div>
+            <h3 className="text-base font-bold text-white">📝 MCQ Assessment Exam</h3>
+            <p className="text-xs text-violet-400">{app.job_title}</p>
+          </div>
+          <button onClick={onClose} className="p-1 rounded bg-white/5 hover:bg-white/10 text-white">
+            <Icon.X />
+          </button>
+        </div>
+
+        {finished ? (
+          <div className="text-center py-8">
+            <div className="text-5xl mb-4">🏆</div>
+            <h2 className="text-xl font-bold text-emerald-400 mb-2">Exam Completed!</h2>
+            {finalScore !== null && (
+              <p className="text-2xl font-black text-white mb-4">Score: {Math.round(finalScore)}%</p>
+            )}
+            <p className="text-xs text-slate-400 mb-6">
+              Your responses have been saved in HR Agent. The recruiting team will review your results for the next interview round.
+            </p>
+            <button
+              onClick={() => { onFinish(); onClose(); }}
+              className="px-6 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-xl text-white font-bold text-sm"
+            >
+              Done & Refresh Applications
+            </button>
+          </div>
+        ) : loading ? (
+          <div className="text-center py-12">
+            <div className="w-10 h-10 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+            <p className="text-xs text-slate-400">Loading Question...</p>
+          </div>
+        ) : currentQuestion ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-400">Question #{qCount}</span>
+              {currentQuestion.difficulty && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/30 uppercase">
+                  {currentQuestion.difficulty}
+                </span>
+              )}
+            </div>
+
+            <p className="text-sm font-semibold text-white leading-relaxed">{currentQuestion.question_text}</p>
+
+            <div className="space-y-2 pt-2">
+              {currentQuestion.options?.map((opt: string, i: number) => (
+                <label
+                  key={i}
+                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                    selectedOption === opt
+                      ? "border-violet-500 bg-violet-500/20 text-white"
+                      : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="mcq-option"
+                    value={opt}
+                    checked={selectedOption === opt}
+                    onChange={() => setSelectedOption(opt)}
+                    className="accent-violet-500"
+                  />
+                  <span className="text-xs font-medium">{opt}</span>
+                </label>
+              ))}
+            </div>
+
+            <button
+              onClick={handleSubmitAnswer}
+              disabled={!selectedOption || submitting}
+              className="w-full mt-4 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50 text-white font-bold text-sm rounded-xl transition-all shadow-lg shadow-violet-500/20"
+            >
+              {submitting ? "Submitting..." : "Submit Answer →"}
+            </button>
+          </div>
+        ) : (
+          <div className="text-center py-8 text-slate-400 text-sm">
+            {error || "No more questions available for this exam."}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function KanbanBoard({ applications, onStatusChange, onTakeMcq }: {
   applications: Application[];
   onStatusChange: (appId: number, status: string) => void;
+  onTakeMcq?: (app: any) => void;
 }) {
   return (
     <div className="grid grid-cols-5 gap-3 min-w-[900px]">
@@ -326,6 +540,14 @@ function KanbanBoard({ applications, onStatusChange }: {
                   <p className="text-xs text-slate-400 truncate">{app.company_name}</p>
                   {app.applied_at && (
                     <p className="text-xs text-slate-500 mt-1">{new Date(app.applied_at).toLocaleDateString()}</p>
+                  )}
+                  {onTakeMcq && (app.status === "applied" || app.raw_status === "MCQ_STAGE") && (
+                    <button
+                      onClick={() => onTakeMcq(app)}
+                      className="mt-2.5 w-full py-1.5 px-2 bg-violet-600/30 hover:bg-violet-600/50 border border-violet-500/40 rounded-lg text-violet-300 font-bold text-[11px] transition-all text-center"
+                    >
+                      📝 Take MCQ Exam
+                    </button>
                   )}
                 </div>
               ))}
@@ -749,6 +971,7 @@ export default function JobAgentPage() {
 
   const [hrApplyingJob, setHrApplyingJob] = useState<ExtendedJobMatch | null>(null);
   const [filterType, setFilterType] = useState<string>("");
+  const [activeExamApp, setActiveExamApp] = useState<any | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -1621,7 +1844,7 @@ export default function JobAgentPage() {
               count={applications.length}
             />
             <div className="overflow-x-auto">
-              <KanbanBoard applications={applications} onStatusChange={handleAppStatusChange} />
+              <KanbanBoard applications={applications} onStatusChange={handleAppStatusChange} onTakeMcq={(app) => setActiveExamApp(app)} />
             </div>
           </div>
         )}
@@ -1805,6 +2028,15 @@ export default function JobAgentPage() {
         <ApplyModal
           job={hrApplyingJob}
           onClose={() => setHrApplyingJob(null)}
+        />
+      )}
+      {activeExamApp && (
+        <McqExamModal
+          app={activeExamApp}
+          onClose={() => setActiveExamApp(null)}
+          onFinish={() => {
+            loadTabData("applications");
+          }}
         />
       )}
       <AutonomousWorkflowVisualizer defaultWorkflow="job" isExecuting={runningAgent || initializing} />
