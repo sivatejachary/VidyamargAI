@@ -576,28 +576,48 @@ function ApplyModal({ job, onClose }: { job: ExtendedJobMatch; onClose: () => vo
     setLoading(true);
     setError("");
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
-      const base = apiBase.replace(/\/api\/v1\/?$/, "");
+      const endpoints = [
+        process.env.NEXT_PUBLIC_HR_AGENT_API_URL,
+        process.env.NEXT_PUBLIC_API_URL,
+        "https://nirvahai-production.up.railway.app/api/v1",
+        "http://localhost:8000/api/v1",
+      ].filter(Boolean) as string[];
 
-      const res = await fetch(`${base}/api/v1/public/applications`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Tenant-Slug": TENANT_SLUG },
-        body: JSON.stringify({
-          job_id: typeof job.id === "string" ? job.id.replace("hr-", "") : job.id,
-          candidate_name: name.trim(),
-          candidate_email: email.trim(),
-          resume_text: resumeText.trim(),
-          resume_url: `https://vidyamargai.app/resumes/${encodeURIComponent(name.replace(" ", "_"))}.pdf`,
-        }),
-      });
-      if (res.ok) {
-        setSuccess(true);
-      } else {
-        const data = await res.json();
-        setError(data.detail || "Application failed. Please try again.");
+      let appliedOk = false;
+      let lastErrMsg = "";
+
+      for (const ep of endpoints) {
+        try {
+          const base = ep.replace(/\/api\/v1\/?$/, "");
+          const res = await fetch(`${base}/api/v1/public/applications`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Tenant-Slug": TENANT_SLUG },
+            body: JSON.stringify({
+              job_id: typeof job.id === "string" ? job.id.replace("hr-", "") : job.id,
+              candidate_name: name.trim(),
+              candidate_email: email.trim(),
+              resume_text: resumeText.trim(),
+              resume_url: `https://vidyamargai.app/resumes/${encodeURIComponent(name.replace(" ", "_"))}.pdf`,
+            }),
+          });
+          if (res.ok) {
+            if (typeof window !== "undefined") {
+              localStorage.setItem("candidate_applied_email", email.trim());
+            }
+            setSuccess(true);
+            appliedOk = true;
+            break;
+          } else {
+            const data = await res.json();
+            lastErrMsg = data.detail || "Application failed.";
+          }
+        } catch {
+          continue;
+        }
       }
-    } catch {
-      setError("Cannot connect to server. Make sure HR Agent backend is running.");
+      if (!appliedOk) {
+        setError(lastErrMsg || "Cannot connect to server. Make sure HR Agent backend is running.");
+      }
     } finally {
       setLoading(false);
     }
@@ -723,6 +743,7 @@ export default function JobAgentPage() {
   const [fastMode, setFastMode] = useState(false);
 
   const [hrApplyingJob, setHrApplyingJob] = useState<ExtendedJobMatch | null>(null);
+  const [filterType, setFilterType] = useState<string>("");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -730,6 +751,7 @@ export default function JobAgentPage() {
       const tab = params.get("tab");
       if (tab === "hr-jobs") {
         setActiveTab("feed");
+        setFilterType("nirvah_ai");
       }
     }
   }, []);
@@ -769,33 +791,44 @@ export default function JobAgentPage() {
       // 2. Fetch HR Agent jobs (on page 1 only to avoid duplicate pagination fetches)
       let hrJobsList: ExtendedJobMatch[] = [];
       if (page === 1) {
-        try {
-          const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
-          const base = apiBase.replace(/\/api\/v1\/?$/, "");
-          const res = await fetch(`${base}/api/v1/public/jobs`, {
-            headers: { "X-Tenant-Slug": TENANT_SLUG },
-          });
-          if (res.ok) {
-            const rawHrJobs = await res.json();
-            hrJobsList = (rawHrJobs || []).map((j: any) => ({
-              id: `hr-${j.id}`, // String ID prefix to avoid key collision
-              title: j.title,
-              company_name: "Corporate Partner",
-              location: j.location_type || "Onsite",
-              is_remote: j.location_type === "remote",
-              is_hybrid: j.location_type === "hybrid",
-              required_skills: j.requirements || [],
-              preferred_skills: [],
-              salary_min: j.salary_min,
-              salary_max: j.salary_max,
-              salary_currency: j.currency || "USD",
-              description: j.description,
-              is_hr_job: true,
-              raw_hr_job: j
-            }));
+        const endpoints = [
+          process.env.NEXT_PUBLIC_HR_AGENT_API_URL,
+          process.env.NEXT_PUBLIC_API_URL,
+          "https://nirvahai-production.up.railway.app/api/v1",
+          "http://localhost:8000/api/v1",
+        ].filter(Boolean) as string[];
+
+        for (const ep of endpoints) {
+          try {
+            const base = ep.replace(/\/api\/v1\/?$/, "");
+            const res = await fetch(`${base}/api/v1/public/jobs`, {
+              headers: { "X-Tenant-Slug": TENANT_SLUG },
+            });
+            if (res.ok) {
+              const rawHrJobs = await res.json();
+              if (Array.isArray(rawHrJobs) && rawHrJobs.length > 0) {
+                hrJobsList = rawHrJobs.map((j: any) => ({
+                  id: `hr-${j.id}`, // String ID prefix to avoid key collision
+                  title: j.title,
+                  company_name: "NirvahAI HR Agent",
+                  location: j.location_type || "Onsite",
+                  is_remote: j.location_type === "remote",
+                  is_hybrid: j.location_type === "hybrid",
+                  required_skills: j.requirements || [],
+                  preferred_skills: [],
+                  salary_min: j.salary_min,
+                  salary_max: j.salary_max,
+                  salary_currency: j.currency || "USD",
+                  description: j.description,
+                  is_hr_job: true,
+                  raw_hr_job: j
+                }));
+                break; // Successfully fetched HR jobs
+              }
+            }
+          } catch (err) {
+            console.error("Endpoint fetch error for HR jobs:", err);
           }
-        } catch (err) {
-          console.error("Failed to fetch HR jobs in feed:", err);
         }
       }
 
@@ -822,8 +855,47 @@ export default function JobAgentPage() {
   const loadTabData = useCallback(async (tab: TabId) => {
     try {
       if (tab === "applications") {
-        const data = await apiClient.getApplications();
-        setApplications(data.applications || []);
+        let aiApps: Application[] = [];
+        try {
+          const data = await apiClient.getApplications();
+          aiApps = data.applications || [];
+        } catch {
+          aiApps = [];
+        }
+
+        let hrApps: any[] = [];
+        const candEmail = typeof window !== "undefined"
+          ? (localStorage.getItem("candidate_applied_email") || "")
+          : "";
+
+        if (candEmail) {
+          const endpoints = [
+            process.env.NEXT_PUBLIC_HR_AGENT_API_URL,
+            process.env.NEXT_PUBLIC_API_URL,
+            "https://nirvahai-production.up.railway.app/api/v1",
+            "http://localhost:8000/api/v1",
+          ].filter(Boolean) as string[];
+
+          for (const ep of endpoints) {
+            try {
+              const base = ep.replace(/\/api\/v1\/?$/, "");
+              const res = await fetch(`${base}/api/v1/public/applications/status?email=${encodeURIComponent(candEmail)}`, {
+                headers: { "X-Tenant-Slug": TENANT_SLUG },
+              });
+              if (res.ok) {
+                const data = await res.json();
+                if (Array.isArray(data) && data.length > 0) {
+                  hrApps = data;
+                  break;
+                }
+              }
+            } catch {
+              continue;
+            }
+          }
+        }
+
+        setApplications([...hrApps, ...aiApps]);
       } else if (tab === "skills") {
         const data = await apiClient.getSkillGaps();
         setSkillGap(data);
@@ -869,7 +941,7 @@ export default function JobAgentPage() {
   }, [loadDashboard]);
 
   useEffect(() => {
-    if (agentInitialized && activeTab === "feed") {
+    if (activeTab === "feed") {
       loadJobs(1);
     } else if (agentInitialized) {
       loadTabData(activeTab);
@@ -987,7 +1059,7 @@ export default function JobAgentPage() {
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
   // ── NOT INITIALIZED STATE ─────────────────────────────────────────────────
-  if (!loading && !agentInitialized) {
+  if (!loading && !agentInitialized && filterType !== "nirvah_ai") {
     return (
       <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-6">
         <div className="max-w-lg w-full text-center">
@@ -1199,51 +1271,73 @@ export default function JobAgentPage() {
           <div className="grid grid-cols-12 gap-6">
             {/* Left: Job list */}
             <div className="col-span-12 lg:col-span-4 xl:col-span-3">
-              <SectionHeader
-                icon={<Icon.Briefcase />}
-                title="Job Matches"
-                count={jobTotal}
-                action={
-                  <select className="bg-white/5 border border-white/10 text-xs text-slate-400 rounded-lg px-2 py-1">
-                    <option value="">All Jobs</option>
-                    <option value="remote">Remote Only</option>
-                    <option value="senior">Senior+</option>
-                  </select>
-                }
-              />
-
-              {jobsLoading && jobs.length === 0 ? (
-                <LoadingPulse />
-              ) : jobs.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-slate-400 text-sm">No matches yet</p>
-                  <p className="text-slate-500 text-xs mt-1">Run the agent to discover jobs</p>
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto pr-1">
-                  {jobs.map(job => (
-                    <JobCard
-                      key={job.id}
-                      job={job}
-                      selected={selectedJob?.id === job.id}
-                      onClick={() => handleSelectJob(job)}
-                      onSave={handleSaveJob}
-                      onApply={handleApplyJob}
-                      onHide={handleHideJob}
-                      onViewPrep={handleViewInterviewPrep}
+              {(() => {
+                const filteredJobs = jobs.filter(job => {
+                  if (filterType === "nirvah_ai") return job.is_hr_job === true;
+                  if (filterType === "remote") return job.is_remote;
+                  if (filterType === "senior") {
+                    const titleLower = (job.title || "").toLowerCase();
+                    return titleLower.includes("senior") || titleLower.includes("lead") || titleLower.includes("sr");
+                  }
+                  return true;
+                });
+                return (
+                  <>
+                    <SectionHeader
+                      icon={<Icon.Briefcase />}
+                      title="Job Matches"
+                      count={filterType ? filteredJobs.length : jobTotal}
+                      action={
+                        <select
+                          value={filterType}
+                          onChange={(e) => setFilterType(e.target.value)}
+                          className="bg-white/5 border border-white/10 text-xs text-slate-400 rounded-lg px-2 py-1"
+                        >
+                          <option value="">All Jobs</option>
+                          <option value="nirvah_ai">NirvahAI</option>
+                          <option value="remote">Remote Only</option>
+                          <option value="senior">Senior+</option>
+                        </select>
+                      }
                     />
-                  ))}
-                  {jobs.length < jobTotal && (
-                    <button
-                      onClick={() => loadJobs(jobPage + 1)}
-                      disabled={jobsLoading}
-                      className="w-full py-2 text-xs text-slate-400 hover:text-violet-400 bg-white/5 rounded-xl border border-white/10 transition-colors"
-                    >
-                      {jobsLoading ? "Loading..." : `Load more (${jobTotal - jobs.length} remaining)`}
-                    </button>
-                  )}
-                </div>
-              )}
+
+                    {jobsLoading && jobs.length === 0 ? (
+                      <LoadingPulse />
+                    ) : filteredJobs.length === 0 ? (
+                      <div className="text-center py-12">
+                        <p className="text-slate-400 text-sm">No matches found</p>
+                        <p className="text-slate-500 text-xs mt-1">
+                          {jobs.length === 0 ? "Run the agent to discover jobs" : "Try changing the filter options"}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto pr-1">
+                        {filteredJobs.map(job => (
+                          <JobCard
+                            key={job.id}
+                            job={job}
+                            selected={selectedJob?.id === job.id}
+                            onClick={() => handleSelectJob(job)}
+                            onSave={handleSaveJob}
+                            onApply={handleApplyJob}
+                            onHide={handleHideJob}
+                            onViewPrep={handleViewInterviewPrep}
+                          />
+                        ))}
+                        {jobs.length < jobTotal && !filterType && (
+                          <button
+                            onClick={() => loadJobs(jobPage + 1)}
+                            disabled={jobsLoading}
+                            className="w-full py-2 text-xs text-slate-400 hover:text-violet-400 bg-white/5 rounded-xl border border-white/10 transition-colors"
+                          >
+                            {jobsLoading ? "Loading..." : `Load more (${jobTotal - jobs.length} remaining)`}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
 
             {/* Center: Job detail */}
