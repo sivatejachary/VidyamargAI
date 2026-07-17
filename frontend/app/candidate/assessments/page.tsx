@@ -110,6 +110,84 @@ function PipelineGrid({ stages, applicationId }: { stages: StageData[]; applicat
               {stage.scheduled_at && <p className="text-[10px] text-blue-400 mt-1.5">📅 {new Date(stage.scheduled_at).toLocaleString()}</p>}
               {stage.completed_at && <p className="text-[10px] text-slate-400 mt-1">✅ {new Date(stage.completed_at).toLocaleDateString()}</p>}
               {stage.feedback && <p className="text-[10px] text-slate-400 mt-2 leading-relaxed line-clamp-2">{stage.feedback}</p>}
+              
+              {/* Stage 7: AI Interview Coordinator Controls */}
+              {stage.stage_number === 7 && isPending && (
+                <div className="mt-3 bg-white/5 border border-white/10 rounded-lg p-2.5 space-y-2">
+                  <p className="text-[10px] font-bold text-violet-400">📅 Select Preferred Slot:</p>
+                  <div className="space-y-1">
+                    {[
+                      { label: "Tomorrow at 10:00 AM", iso: new Date(Date.now() + 86400000).toISOString().split('T')[0] + "T10:00:00" },
+                      { label: "Tomorrow at 2:00 PM", iso: new Date(Date.now() + 86400000).toISOString().split('T')[0] + "T14:00:00" },
+                      { label: "Day After at 11:00 AM", iso: new Date(Date.now() + 172800000).toISOString().split('T')[0] + "T11:00:00" }
+                    ].map((slot, sidx) => (
+                      <button
+                        key={sidx}
+                        onClick={async () => {
+                          try {
+                            const hrBase = 'https://nirvahai-production.up.railway.app';
+                            const res = await fetch(`${hrBase}/api/v1/pipeline/applications/${applicationId}/stages/7/schedule-interview`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json', 'X-Tenant-Slug': 'nirvah-ai' },
+                              body: JSON.stringify({ preferred_slots: [slot.iso], interview_type: 'ONLINE' })
+                            });
+                            if (res.ok) {
+                              alert("Interview Scheduled Successfully!");
+                              window.location.reload();
+                            }
+                          } catch (err) {
+                            console.error(err);
+                          }
+                        }}
+                        className="w-full text-left bg-slate-950/60 border border-white/5 hover:border-violet-500/50 rounded p-1.5 text-[10px] text-slate-300 hover:text-white transition"
+                      >
+                        {slot.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {stage.stage_number === 7 && stage.status === 'SCHEDULED' && (
+                <div className="mt-3 space-y-2">
+                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2.5">
+                    <p className="text-[10px] text-emerald-400 font-semibold">📅 Scheduled: {stage.scheduled_at ? new Date(stage.scheduled_at).toLocaleString() : ''}</p>
+                    <p className="text-[9px] text-slate-400 mt-0.5">Online Interview with James & Sarah</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <a
+                      href="https://meet.nirvahai.com/interview-session"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center py-1.5 rounded bg-violet-600 hover:bg-violet-500 text-white text-[10px] font-bold transition"
+                    >
+                      📹 Join Meeting
+                    </a>
+                    <button
+                      onClick={async () => {
+                        if (confirm("Are you sure you want to reschedule?")) {
+                          try {
+                            const hrBase = 'https://nirvahai-production.up.railway.app';
+                            // Reset stage to PENDING in mock
+                            await fetch(`${hrBase}/api/v1/pipeline/applications/${applicationId}/stages/7`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json', 'X-Tenant-Slug': 'nirvah-ai' },
+                              body: JSON.stringify({ status: 'PENDING' })
+                            });
+                            window.location.reload();
+                          } catch (err) {
+                            console.error(err);
+                          }
+                        }
+                      }}
+                      className="flex items-center justify-center py-1.5 rounded border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 text-[10px] font-medium transition"
+                    >
+                      🔄 Reschedule
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {isPending && stage.stage_number === 2 && (
                 <a href={`/candidate/job-agent?tab=applications`} className="mt-2.5 flex items-center justify-center gap-1.5 w-full py-1.5 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-[11px] font-bold transition-all">
                   📝 Take MCQ Exam
