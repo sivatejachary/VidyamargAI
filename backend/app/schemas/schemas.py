@@ -19,6 +19,7 @@ class UserCreate(BaseModel):
     password: str
     full_name: str
     role: Optional[str] = "candidate"  # candidate, admin
+    security_key: Optional[str] = None
 
 class UserLogin(BaseModel):
     email: EmailStr

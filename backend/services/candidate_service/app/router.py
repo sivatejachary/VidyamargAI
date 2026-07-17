@@ -15,7 +15,14 @@ router = APIRouter(prefix="/candidates", tags=["candidates"])
 
 # Dependency inject placeholder
 import os
-db_url = os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/postgres")
+raw_db_url = os.getenv(
+    "DATABASE_URL",
+    "postgresql+asyncpg://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@thomas.proxy.rlwy.net:20637/Vidyamargai"
+)
+if raw_db_url.startswith("postgresql://"):
+    db_url = raw_db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+else:
+    db_url = raw_db_url
 db_manager = DatabaseManager(database_url=db_url)
 
 async def get_db() -> AsyncSession:

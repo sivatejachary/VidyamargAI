@@ -88,12 +88,24 @@ def signup(request: Request, user_in: schemas.UserCreate, db: Session = Depends(
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
         
+    role = (user_in.role or "candidate").strip().lower()
+    if role not in ["candidate", "admin", "super_admin"]:
+        role = "candidate"
+
+    if role in ["admin", "super_admin"]:
+        expected_key = os.getenv("ADMIN_REGISTRATION_KEY", "VM_ADMIN_2026")
+        if user_in.security_key != expected_key:
+            raise HTTPException(
+                status_code=403,
+                detail="Invalid Administrative Security Key. Access blocked."
+            )
+
     hashed_pwd = get_password_hash(user_in.password)
     user = User(
         email=user_in.email,
         password_hash=hashed_pwd,
         full_name=user_in.full_name,
-        role=user_in.role
+        role=role
     )
     db.add(user)
     db.commit()

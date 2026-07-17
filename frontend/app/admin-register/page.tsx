@@ -49,7 +49,8 @@ export default function AdminRegister() {
         email,
         password,
         full_name: fullName,
-        role: "admin"
+        role: "admin",
+        security_key: securityKey
       });
       
       // 2. Log in immediately
