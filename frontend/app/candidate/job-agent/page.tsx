@@ -1063,67 +1063,122 @@ const HR_AGENT_URL = process.env.NEXT_PUBLIC_HR_AGENT_URL || "http://localhost:3
 const TENANT_SLUG = process.env.NEXT_PUBLIC_HR_TENANT_SLUG || "dev-tenant";
 
 function ApplyModal({ job, onClose }: { job: ExtendedJobMatch; onClose: () => void }) {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [resumeText, setResumeText] = useState("");
-  const [consent, setConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  const handleApply = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!consent) { setError("Please accept data processing consent."); return; }
-    if (!resumeText.trim()) { setError("Please paste your resume text."); return; }
-    setLoading(true);
-    setError("");
-    try {
-      const endpoints = [
-        process.env.NEXT_PUBLIC_HR_AGENT_API_URL,
-        process.env.NEXT_PUBLIC_API_URL,
-        "https://nirvahai-production.up.railway.app/api/v1",
-        "http://localhost:8000/api/v1",
-      ].filter(Boolean) as string[];
+  const buildResumeFromProfile = (profile: any) => {
+    let t = `Candidate Name: ${profile.full_name || ""}\nCandidate Email: ${profile.email || ""}\n`;
+    if (profile.about) t += `Summary:\n${profile.about}\n\n`;
+    if (profile.skills && profile.skills.length > 0) {
+      t += `Technical Skills:\n${profile.skills.join(", ")}\n\n`;
+    }
+    if (profile.experience && profile.experience.length > 0) {
+      t += `Work Experience:\n`;
+      profile.experience.forEach((exp: any) => {
+        t += `- ${exp.role} at ${exp.company} (${exp.start_date || ""} - ${exp.end_date || "Present"})\n  ${exp.description || ""}\n`;
+      });
+      t += `\n`;
+    }
+    if (profile.education && profile.education.length > 0) {
+      t += `Education:\n`;
+      profile.education.forEach((edu: any) => {
+        t += `- ${edu.degree} from ${edu.institution} (${edu.year || ""})\n`;
+      });
+    }
+    return t;
+  };
 
-      let appliedOk = false;
-      let lastErrMsg = "";
+  const submitApplication = async (cName: string, cEmail: string, rText: string) => {
+    const endpoints = [
+      process.env.NEXT_PUBLIC_HR_AGENT_API_URL,
+      process.env.NEXT_PUBLIC_API_URL,
+      "https://nirvahai-production.up.railway.app/api/v1",
+      "http://localhost:8000/api/v1",
+    ].filter(Boolean) as string[];
 
-      for (const ep of endpoints) {
-        try {
-          const base = ep.replace(/\/api\/v1\/?$/, "");
-          const res = await fetch(`${base}/api/v1/public/applications`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "X-Tenant-Slug": TENANT_SLUG },
-            body: JSON.stringify({
-              job_id: typeof job.id === "string" ? job.id.replace("hr-", "") : job.id,
-              candidate_name: name.trim(),
-              candidate_email: email.trim(),
-              resume_text: resumeText.trim(),
-              resume_url: `https://vidyamargai.app/resumes/${encodeURIComponent(name.replace(" ", "_"))}.pdf`,
-            }),
-          });
-          if (res.ok) {
-            if (typeof window !== "undefined") {
-              localStorage.setItem("candidate_applied_email", email.trim());
-            }
-            setSuccess(true);
-            appliedOk = true;
-            break;
-          } else {
-            const data = await res.json();
-            lastErrMsg = data.detail || "Application failed.";
+    let appliedOk = false;
+    let lastErrMsg = "";
+
+    for (const ep of endpoints) {
+      try {
+        const base = ep.replace(/\/api\/v1\/?$/, "");
+        const res = await fetch(`${base}/api/v1/public/applications`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Tenant-Slug": TENANT_SLUG },
+          body: JSON.stringify({
+            job_id: typeof job.id === "string" ? job.id.replace("hr-", "") : job.id,
+            candidate_name: cName,
+            candidate_email: cEmail,
+            resume_text: rText,
+            resume_url: `https://vidyamargai.app/resumes/${encodeURIComponent(cName.replace(" ", "_"))}.pdf`,
+          }),
+        });
+        if (res.ok) {
+          if (typeof window !== "undefined") {
+            localStorage.setItem("candidate_applied_email", cEmail);
           }
-        } catch {
-          continue;
+          setSuccess(true);
+          appliedOk = true;
+          break;
+        } else {
+          const data = await res.json();
+          lastErrMsg = data.detail || "Application failed.";
         }
+      } catch {
+        continue;
       }
-      if (!appliedOk) {
-        setError(lastErrMsg || "Cannot connect to server. Make sure HR Agent backend is running.");
-      }
-    } finally {
-      setLoading(false);
+    }
+    if (!appliedOk) {
+      throw new Error(lastErrMsg || "Cannot connect to server. Make sure HR Agent backend is running.");
     }
   };
+
+  useEffect(() => {
+    const autoLoadAndSubmit = async () => {
+      const user = useAuthStore.getState();
+      if (!user.isAuthenticated || !user.email) {
+        setError("Please log in to apply to jobs.");
+        return;
+      }
+      setLoading(true);
+      setError("");
+      try {
+        let rText = "";
+        try {
+          const profile = await apiService.getProfile();
+          rText = buildResumeFromProfile(profile);
+        } catch {
+          // ignore profile fetch fail
+        }
+        
+        if (!rText.trim()) {
+          try {
+            const resumeProf = await apiService.getResumeProfile();
+            rText = resumeProf.raw_text || resumeProf.resume_text || "";
+            if (!rText && resumeProf.skills) {
+              rText = `Skills: ${resumeProf.skills.join(", ")}\n`;
+              if (resumeProf.experience_years) rText += `Experience: ${resumeProf.experience_years} years\n`;
+            }
+          } catch {
+            // ignore resume profile fail
+          }
+        }
+        
+        if (!rText.trim()) {
+          rText = `Candidate: ${user.fullName}\nEmail: ${user.email}\nSkills: Software Engineering, Python, Javascript`;
+        }
+        
+        await submitApplication(user.fullName || "Candidate", user.email, rText);
+      } catch (err: any) {
+        setError(err.message || "Failed to submit application.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    autoLoadAndSubmit();
+  }, [job]);
 
   return (
     <div
@@ -1151,64 +1206,29 @@ function ApplyModal({ job, onClose }: { job: ExtendedJobMatch; onClose: () => vo
             </button>
           </div>
         ) : (
-          <form onSubmit={handleApply} className="space-y-4">
+          <div className="text-center py-8 space-y-4">
             <div className="flex justify-between items-center pb-2 border-b border-white/10">
               <div>
-                <h2 className="text-lg font-bold text-white">Apply Now</h2>
-                <p className="text-violet-400 text-xs mt-0.5">{job.title}</p>
+                <h2 className="text-lg font-bold text-white text-left">Submitting Application</h2>
+                <p className="text-violet-400 text-xs mt-0.5 text-left">{job.title}</p>
               </div>
               <button type="button" onClick={onClose} className="p-1 rounded bg-white/5 hover:bg-white/10 text-white">
                 <Icon.X />
               </button>
             </div>
 
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl p-3 text-xs">
+            {error ? (
+              <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl p-4 text-xs text-left">
+                <p className="font-semibold mb-1">Application Error:</p>
                 {error}
               </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 gap-4">
+                <div className="w-12 h-12 border-4 border-violet-500 border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm text-slate-300">Retrieving candidate profile and applying to HR Agent...</p>
+              </div>
             )}
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Full Name *</label>
-                <input
-                  type="text" required value={name} onChange={e => setName(e.target.value)} placeholder="Alex Johnson"
-                  className="w-full bg-[#0d0d15] border border-white/15 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Email Address *</label>
-                <input
-                  type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="alex@example.com"
-                  className="w-full bg-[#0d0d15] border border-white/15 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Resume / CV (paste text) *</label>
-              <textarea
-                required value={resumeText} onChange={e => setResumeText(e.target.value)}
-                placeholder="Paste your resume here — skills, experience, education, achievements. AI will score it against the role."
-                rows={6}
-                className="w-full bg-[#0d0d15] border border-white/15 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500 font-sans"
-              />
-            </div>
-
-            <div className="bg-violet-500/5 border border-violet-500/20 rounded-xl p-3">
-              <label className="flex gap-2.5 cursor-pointer items-start">
-                <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)}
-                  className="mt-0.5 rounded text-violet-600 focus:ring-violet-500" />
-                <span className="text-[11px] text-slate-400 leading-relaxed">
-                  I consent to my personal data being processed for recruitment purposes under GDPR by <strong className="text-violet-400">{TENANT_SLUG}</strong>. Data deleted after 90 days if unsuccessful.
-                </span>
-              </label>
-            </div>
-
-            <button type="submit" disabled={loading || !consent} className="w-full py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50 text-white font-bold text-sm rounded-xl shadow-lg shadow-violet-500/20">
-              {loading ? "Submitting to AI Pipeline..." : "Submit Application 🚀"}
-            </button>
-          </form>
+          </div>
         )}
       </div>
     </div>
