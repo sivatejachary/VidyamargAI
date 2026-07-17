@@ -788,72 +788,75 @@ export default function JobAgentPage() {
 
   const loadJobs = useCallback(async (page = 1) => {
     setJobsLoading(true);
-    try {
-      // 1. Fetch AI Job Feed matches
-      const data = await apiClient.getJobFeed({ page, page_size: 20 });
-      let aiJobs: ExtendedJobMatch[] = data.jobs || [];
+    let aiJobs: ExtendedJobMatch[] = [];
+    let hrJobsList: ExtendedJobMatch[] = [];
+    let totalMatches = 0;
 
-      // 2. Fetch HR Agent jobs (on page 1 only to avoid duplicate pagination fetches)
-      let hrJobsList: ExtendedJobMatch[] = [];
-      if (page === 1) {
-        const endpoints = [
-          process.env.NEXT_PUBLIC_HR_AGENT_API_URL,
-          process.env.NEXT_PUBLIC_API_URL,
-          "https://nirvahai-production.up.railway.app/api/v1",
-          "http://localhost:8000/api/v1",
-        ].filter(Boolean) as string[];
+    // 1. Fetch HR Agent jobs (on page 1) independently first
+    if (page === 1) {
+      const endpoints = [
+        process.env.NEXT_PUBLIC_HR_AGENT_API_URL,
+        process.env.NEXT_PUBLIC_API_URL,
+        "https://nirvahai-production.up.railway.app/api/v1",
+        "http://localhost:8000/api/v1",
+      ].filter(Boolean) as string[];
 
-        for (const ep of endpoints) {
-          try {
-            const base = ep.replace(/\/api\/v1\/?$/, "");
-            const res = await fetch(`${base}/api/v1/public/jobs`, {
-              headers: { "X-Tenant-Slug": TENANT_SLUG },
-            });
-            if (res.ok) {
-              const rawHrJobs = await res.json();
-              if (Array.isArray(rawHrJobs) && rawHrJobs.length > 0) {
-                hrJobsList = rawHrJobs.map((j: any) => ({
-                  id: `hr-${j.id}`, // String ID prefix to avoid key collision
-                  title: j.title,
-                  company_name: "NirvahAI HR Agent",
-                  location: j.location_type || "Onsite",
-                  is_remote: j.location_type === "remote",
-                  is_hybrid: j.location_type === "hybrid",
-                  required_skills: j.requirements || [],
-                  preferred_skills: [],
-                  salary_min: j.salary_min,
-                  salary_max: j.salary_max,
-                  salary_currency: j.currency || "USD",
-                  description: j.description,
-                  is_hr_job: true,
-                  raw_hr_job: j
-                }));
-                break; // Successfully fetched HR jobs
-              }
+      for (const ep of endpoints) {
+        try {
+          const base = ep.replace(/\/api\/v1\/?$/, "");
+          const res = await fetch(`${base}/api/v1/public/jobs`, {
+            headers: { "X-Tenant-Slug": TENANT_SLUG },
+          });
+          if (res.ok) {
+            const rawHrJobs = await res.json();
+            if (Array.isArray(rawHrJobs) && rawHrJobs.length > 0) {
+              hrJobsList = rawHrJobs.map((j: any) => ({
+                id: `hr-${j.id}`, // String ID prefix to avoid key collision
+                title: j.title,
+                company_name: "NirvahAI HR Agent",
+                location: j.location_type || "Onsite",
+                is_remote: j.location_type === "remote",
+                is_hybrid: j.location_type === "hybrid",
+                required_skills: j.requirements || [],
+                preferred_skills: [],
+                salary_min: j.salary_min,
+                salary_max: j.salary_max,
+                salary_currency: j.currency || "USD",
+                description: j.description,
+                is_hr_job: true,
+                raw_hr_job: j
+              }));
+              break; // Successfully fetched HR jobs
             }
-          } catch (err) {
-            console.error("Endpoint fetch error for HR jobs:", err);
           }
+        } catch (err) {
+          console.error("Endpoint fetch error for HR jobs:", err);
         }
       }
-
-      const mergedJobs = page === 1 ? [...hrJobsList, ...aiJobs] : aiJobs;
-      setJobs(page === 1 ? mergedJobs : prev => [...prev, ...mergedJobs]);
-      setJobTotal(data.total + hrJobsList.length);
-      setJobPage(page);
-      
-      if (page === 1 && mergedJobs.length > 0) {
-        setSelectedJob(mergedJobs[0]);
-      }
-      
-      if (page === 1 && typeof window !== "undefined") {
-        localStorage.setItem("cache_job_agent_jobs", JSON.stringify({ jobs: mergedJobs, total: data.total + hrJobsList.length }));
-      }
-    } catch (e: any) {
-      console.error("Jobs load error:", e);
-    } finally {
-      setJobsLoading(false);
     }
+
+    // 2. Fetch AI Job Feed matches safely
+    try {
+      const data = await apiClient.getJobFeed({ page, page_size: 20 });
+      aiJobs = data.jobs || [];
+      totalMatches = data.total || 0;
+    } catch (e: any) {
+      console.warn("AI job feed fetch error (non-fatal):", e);
+    }
+
+    const mergedJobs = page === 1 ? [...hrJobsList, ...aiJobs] : aiJobs;
+    setJobs(page === 1 ? mergedJobs : prev => [...prev, ...mergedJobs]);
+    setJobTotal(totalMatches + hrJobsList.length);
+    setJobPage(page);
+    
+    if (page === 1 && mergedJobs.length > 0) {
+      setSelectedJob(mergedJobs[0]);
+    }
+    
+    if (page === 1 && typeof window !== "undefined") {
+      localStorage.setItem("cache_job_agent_jobs", JSON.stringify({ jobs: mergedJobs, total: totalMatches + hrJobsList.length }));
+    }
+    setJobsLoading(false);
   }, []);
 
   // Load section data on tab change
