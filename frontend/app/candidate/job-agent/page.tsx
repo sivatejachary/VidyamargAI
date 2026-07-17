@@ -216,6 +216,11 @@ function JobCard({ job, onSave, onApply, onHide, onViewPrep, selected, onClick }
           <p className="text-sm font-semibold text-white truncate">{job.title}</p>
           <p className="text-xs text-slate-400 truncate">{job.company_name}</p>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
+            {job.is_hr_job && (
+              <span className="text-xs font-bold text-violet-300 bg-gradient-to-r from-violet-600/30 to-indigo-600/30 px-2 py-0.5 rounded-full border border-violet-500/50 flex items-center gap-1 shadow-sm">
+                🤖 NirvahAI Job
+              </span>
+            )}
             {job.is_remote && (
               <span className="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">Remote</span>
             )}
@@ -1294,12 +1299,28 @@ export default function JobAgentPage() {
                           className="bg-white/5 border border-white/10 text-xs text-slate-400 rounded-lg px-2 py-1"
                         >
                           <option value="">All Jobs</option>
-                          <option value="nirvah_ai">NirvahAI</option>
+                          <option value="nirvah_ai">NirvahAI Jobs</option>
                           <option value="remote">Remote Only</option>
                           <option value="senior">Senior+</option>
                         </select>
                       }
                     />
+
+                    {/* Prominent NirvahAI Filter Tabs */}
+                    <div className="flex gap-1.5 mb-3 bg-white/5 p-1 rounded-xl border border-white/10">
+                      <button
+                        onClick={() => setFilterType("")}
+                        className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold transition-all ${!filterType ? "bg-violet-600 text-white shadow-md" : "text-slate-400 hover:text-white"}`}
+                      >
+                        All Jobs ({jobs.length})
+                      </button>
+                      <button
+                        onClick={() => setFilterType("nirvah_ai")}
+                        className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1 ${filterType === "nirvah_ai" ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-500/30" : "text-violet-300 hover:text-white bg-violet-500/10"}`}
+                      >
+                        🤖 NirvahAI ({jobs.filter(j => j.is_hr_job).length})
+                      </button>
+                    </div>
 
                     {jobsLoading && jobs.length === 0 ? (
                       <LoadingPulse />
