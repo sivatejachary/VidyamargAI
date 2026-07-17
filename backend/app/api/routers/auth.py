@@ -84,48 +84,40 @@ def test_resend_directly():
 @router.post("/auth/signup", response_model=schemas.UserResponse)
 @limiter.limit("5/minute")
 def signup(request: Request, user_in: schemas.UserCreate, db: Session = Depends(get_db)):
-    try:
-        db_user = db.query(User).filter(User.email == user_in.email).first()
-        if db_user:
-            raise HTTPException(status_code=400, detail="Email already registered")
-            
-        role = (user_in.role or "candidate").strip().lower()
-        if role not in ["candidate", "admin", "super_admin"]:
-            role = "candidate"
-
-        if role in ["admin", "super_admin"]:
-            expected_key = os.getenv("ADMIN_REGISTRATION_KEY", "VM_ADMIN_2026")
-            if user_in.security_key != expected_key:
-                raise HTTPException(
-                    status_code=403,
-                    detail="Invalid Administrative Security Key. Access blocked."
-                )
-
-        hashed_pwd = get_password_hash(user_in.password)
-        user = User(
-            email=user_in.email,
-            password_hash=hashed_pwd,
-            full_name=user_in.full_name,
-            role=role
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+    db_user = db.query(User).filter(User.email == user_in.email).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
         
-        # If role is candidate, automatically create an empty candidate profile
-        if user.role == "candidate":
-            candidate = Candidate(user_id=user.id, status="Registered", current_step="Profile")
-            db.add(candidate)
-            db.commit()
-            
-        return user
-    except Exception as e:
-        import traceback
-        tb = traceback.format_exc()
-        logger.error(f"Signup error traceback: {tb}")
-        if isinstance(e, HTTPException):
-            raise e
-        raise HTTPException(status_code=400, detail=f"Signup failed: {str(e)} \nTraceback:\n{tb}")
+    role = (user_in.role or "candidate").strip().lower()
+    if role not in ["candidate", "admin", "super_admin"]:
+        role = "candidate"
+
+    if role in ["admin", "super_admin"]:
+        expected_key = os.getenv("ADMIN_REGISTRATION_KEY", "VM_ADMIN_2026")
+        if user_in.security_key != expected_key:
+            raise HTTPException(
+                status_code=403,
+                detail="Invalid Administrative Security Key. Access blocked."
+            )
+
+    hashed_pwd = get_password_hash(user_in.password)
+    user = User(
+        email=user_in.email,
+        password_hash=hashed_pwd,
+        full_name=user_in.full_name,
+        role=role
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    
+    # If role is candidate, automatically create an empty candidate profile
+    if user.role == "candidate":
+        candidate = Candidate(user_id=user.id, status="Registered", current_step="Profile")
+        db.add(candidate)
+        db.commit()
+        
+    return user
 
 @router.post("/auth/login", response_model=schemas.Token)
 @limiter.limit("5/minute")
