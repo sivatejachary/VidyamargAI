@@ -16,7 +16,8 @@ def get_db_connection():
         port=pg.get("port", 5432),
         database=pg.get("database", "postgres"),
         user=pg.get("user", "postgres"),
-        password=pg.get("password", "")
+        password=pg.get("password", ""),
+        options="-c search_path=vidyamarg"
     )
 
 def init_db():

@@ -180,7 +180,8 @@ def save_records_to_postgres(records: list):
             port=port,
             database=database,
             user=user,
-            password=password
+            password=password,
+            options="-c search_path=vidyamarg"
         )
         conn.autocommit = True
         cursor = conn.cursor()
@@ -332,7 +333,8 @@ def load_recent_records_from_postgres(days: int) -> list:
             port=port,
             database=database,
             user=user,
-            password=password
+            password=password,
+            options="-c search_path=vidyamarg"
         )
         cursor = conn.cursor()
         
@@ -416,7 +418,8 @@ def load_unresolved_from_postgres() -> list:
             port=port,
             database=database,
             user=user,
-            password=password
+            password=password,
+            options="-c search_path=vidyamarg"
         )
         cursor = conn.cursor()
         query = f"""
@@ -477,7 +480,8 @@ def load_all_jobs_from_postgres() -> list:
             port=port,
             database=database,
             user=user,
-            password=password
+            password=password,
+            options="-c search_path=vidyamarg"
         )
         cursor = conn.cursor()
         query = f"""
@@ -1704,6 +1708,7 @@ async def main():
                 database=cfg["postgres"]["database"],
                 user=cfg["postgres"]["user"],
                 password=cfg["postgres"]["password"],
+                options="-c search_path=vidyamarg"
             )
             conn.autocommit = True
             cur = conn.cursor()
