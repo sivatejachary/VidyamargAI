@@ -199,6 +199,10 @@ async def start_event_bus_and_workers():
         # Start split scheduler
         from app.core.scheduler import start_scheduler
         start_scheduler()
+
+        # Trigger immediate run of job crawling cycle in the background
+        from app.core.scheduler import run_periodic_job_sync
+        asyncio.create_task(run_periodic_job_sync())
     except Exception as e:
         logger.error(f"Failed to initialize EventBus, workers, or scheduler: {e}")
 
