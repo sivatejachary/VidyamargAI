@@ -140,6 +140,57 @@ async def run_db_migrations():
         except Exception as e_inner:
             logger.error(f"Failed fallback database migration: {e_inner}")
 
+@app.get("/api/v1/db-test")
+def test_db_connections():
+    import psycopg2
+    import os
+    results = {}
+    urls_to_test = {
+        "ENV_DATABASE_URL": os.getenv("DATABASE_URL"),
+        "INTERNAL_POSTGRES_PORT_5432": "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@postgres:5432/railway",
+        "INTERNAL_POSTGRES_PORT_5432_POSTGRES": "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@postgres:5432/postgres",
+        "INTERNAL_POSTGRES_INTERNAL_5432": "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@postgres.railway.internal:5432/railway",
+        "INTERNAL_POSTGRES_INTERNAL_5432_POSTGRES": "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@postgres.railway.internal:5432/postgres",
+        "FALLBACK_THOMAS_PROXY": "postgresql://postgres:qPKoMqtzapoyltHQVdheOKyldfbnYrPH@thomas.proxy.rlwy.net:20637/Vidyamargai",
+    }
+    
+    for name, url in urls_to_test.items():
+        if not url:
+            results[name] = "Not Configured / Empty"
+            continue
+        try:
+            # Parse postgresql connection parameters
+            clean_url = url.replace("postgresql+asyncpg://", "").replace("postgresql://", "")
+            auth, rest = clean_url.split("@")
+            user, password = auth.split(":")
+            host_port, dbname = rest.split("/")
+            if ":" in host_port:
+                host, port = host_port.split(":")
+            else:
+                host, port = host_port, 5432
+            
+            conn = psycopg2.connect(
+                host=host,
+                port=port,
+                database=dbname,
+                user=user,
+                password=password,
+                connect_timeout=3
+            )
+            cur = conn.cursor()
+            cur.execute("SELECT 1;")
+            val = cur.fetchone()[0]
+            cur.close()
+            conn.close()
+            results[name] = f"SUCCESS! Query returns: {val}"
+        except Exception as e:
+            results[name] = f"FAILED: {str(e)}"
+            
+    return {
+        "environment_variables": {k: os.getenv(k) for k in ["DATABASE_URL", "PORT", "ENV", "ENVIRONMENT"]},
+        "results": results
+    }
+
 @app.on_event("startup")
 async def start_event_bus_and_workers():
     logger.info("Initializing Redis EventBus connection...")
