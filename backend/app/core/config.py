@@ -49,7 +49,10 @@ class Settings(BaseSettings):
     MINIO_REGION: str = os.getenv("MINIO_REGION", "us-east-1")
     
     # Redis
-    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    REDIS_URL: str = os.getenv(
+        "REDIS_URL", 
+        "redis://default:RzSjHlUiNuxBTUnuYrgCjORDjOivNFqk@thomas.proxy.rlwy.net:32069"
+    )
     
     # AI Keys
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
@@ -113,7 +116,10 @@ except Exception:
         MINIO_SECURE = os.getenv("MINIO_SECURE", "False").lower() == "true"
         MINIO_BUCKET = os.getenv("MINIO_BUCKET", "hireai")
         MINIO_REGION = os.getenv("MINIO_REGION", "us-east-1")
-        REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        REDIS_URL = os.getenv(
+            "REDIS_URL",
+            "redis://default:RzSjHlUiNuxBTUnuYrgCjORDjOivNFqk@thomas.proxy.rlwy.net:32069"
+        )
         GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
         OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
         NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")

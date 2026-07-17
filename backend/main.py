@@ -58,7 +58,10 @@ else:
 db_manager = DatabaseManager(database_url=db_url)
 ai_client = AppAIClient(api_key=os.getenv("GROQ_API_KEY", "mock_key"))
 
-redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+redis_url = os.getenv(
+    "REDIS_URL",
+    "redis://default:RzSjHlUiNuxBTUnuYrgCjORDjOivNFqk@thomas.proxy.rlwy.net:32069"
+)
 qdrant_host = os.getenv("QDRANT_HOST", "localhost")
 qdrant_api_key = os.getenv("QDRANT_API_KEY", None)
 
