@@ -38,11 +38,11 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "VidyamargAI Team" }],
   creator: "VidyamargAI",
-  metadataBase: new URL("https://vidyamargai-production.up.railway.app"),
+  metadataBase: new URL("https://vidyamargai-production-1fc2.up.railway.app"),
   openGraph: {
     type: "website",
     locale: "en_IN",
-    url: "https://vidyamargai-production.up.railway.app",
+    url: "https://vidyamargai-production-1fc2.up.railway.app",
     siteName: "VidyamargAI",
     title: "VidyamargAI — AI-Powered Career & Learning Platform",
     description:
