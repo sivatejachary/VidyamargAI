@@ -17,7 +17,7 @@ engine = create_engine(
     settings.DATABASE_URL,
     poolclass=NullPool,
     connect_args={
-        "options": "-c idle_in_transaction_session_timeout=120000 -c lock_timeout=5000"
+        "options": "-c search_path=vidyamarg -c idle_in_transaction_session_timeout=120000 -c lock_timeout=5000"
     }
 )
 

@@ -27,6 +27,11 @@ class DatabaseManager:
             max_overflow=10,
             pool_recycle=1800,
             pool_pre_ping=True,
+            connect_args={
+                "server_settings": {
+                    "search_path": "vidyamarg"
+                }
+            }
         )
         
         self.session_factory = async_sessionmaker(
