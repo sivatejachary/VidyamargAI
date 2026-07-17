@@ -122,6 +122,7 @@ export interface Application {
   id: number;
   job_id: number;
   status: string;
+  raw_status?: string;
   job_title: string;
   company_name: string;
   location?: string;

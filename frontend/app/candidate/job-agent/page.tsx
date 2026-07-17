@@ -17,6 +17,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { apiClient } from "@/services/api";
+import { useAuthStore } from "@/store/authStore";
 import AutonomousWorkflowVisualizer from "@/components/AutonomousWorkflowVisualizer";
 import type {
   DashboardData,
@@ -1146,7 +1147,7 @@ function ApplyModal({ job, onClose }: { job: ExtendedJobMatch; onClose: () => vo
       try {
         let rText = "";
         try {
-          const profile = await apiService.getProfile();
+          const profile = await apiClient.getProfile();
           rText = buildResumeFromProfile(profile);
         } catch {
           // ignore profile fetch fail
@@ -1154,7 +1155,7 @@ function ApplyModal({ job, onClose }: { job: ExtendedJobMatch; onClose: () => vo
         
         if (!rText.trim()) {
           try {
-            const resumeProf = await apiService.getResumeProfile();
+            const resumeProf = await apiClient.getResumeProfile();
             rText = resumeProf.raw_text || resumeProf.resume_text || "";
             if (!rText && resumeProf.skills) {
               rText = `Skills: ${resumeProf.skills.join(", ")}\n`;
