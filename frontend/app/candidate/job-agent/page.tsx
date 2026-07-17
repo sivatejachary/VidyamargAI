@@ -517,10 +517,276 @@ function McqExamModal({ app, onClose, onFinish }: { app: any; onClose: () => voi
   );
 }
 
-function KanbanBoard({ applications, onStatusChange, onTakeMcq }: {
+function CodingChallengeModal({ app, onClose, onFinish }: { app: any; onClose: () => void; onFinish: () => void }) {
+  const [attemptId, setAttemptId] = useState<string | null>(null);
+  const [challenges, setChallenges] = useState<any[]>([]);
+  const [selectedChallenge, setSelectedChallenge] = useState<any | null>(null);
+  const [code, setCode] = useState<string>("");
+  const [language, setLanguage] = useState<string>("python");
+  const [loading, setLoading] = useState<boolean>(true);
+  const [submitting, setSubmitting] = useState<boolean>(false);
+  const [runningTest, setRunningTest] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
+  const [finished, setFinished] = useState<boolean>(false);
+  const [testResults, setTestResults] = useState<any | null>(null);
+
+  useEffect(() => {
+    startAttempt();
+  }, []);
+
+  const startAttempt = async () => {
+    setLoading(true);
+    setError("");
+    const endpoints = [
+      process.env.NEXT_PUBLIC_HR_AGENT_API_URL,
+      process.env.NEXT_PUBLIC_API_URL,
+      "https://nirvahai-production.up.railway.app/api/v1",
+      "http://localhost:8000/api/v1",
+    ].filter(Boolean) as string[];
+
+    let attId = null;
+    for (const ep of endpoints) {
+      try {
+        const base = ep.replace(/\/api\/v1\/?$/, "");
+        const res = await fetch(`${base}/api/v1/public/assessments/attempts`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Tenant-Slug": TENANT_SLUG },
+          body: JSON.stringify({ application_id: app.id, type: "CODING" }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          attId = data.attempt_id;
+          setAttemptId(attId);
+          break;
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    if (attId) {
+      await fetchChallenges(attId);
+    } else {
+      setError("Failed to initialize Coding Assessment. Please check connection.");
+      setLoading(false);
+    }
+  };
+
+  const fetchChallenges = async (attId: string) => {
+    setLoading(true);
+    const endpoints = [
+      process.env.NEXT_PUBLIC_HR_AGENT_API_URL,
+      process.env.NEXT_PUBLIC_API_URL,
+      "https://nirvahai-production.up.railway.app/api/v1",
+      "http://localhost:8000/api/v1",
+    ].filter(Boolean) as string[];
+
+    for (const ep of endpoints) {
+      try {
+        const base = ep.replace(/\/api\/v1\/?$/, "");
+        const res = await fetch(`${base}/api/v1/public/challenges/${attId}`, {
+          headers: { "X-Tenant-Slug": TENANT_SLUG },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setChallenges(data || []);
+          if (data && data.length > 0) {
+            setSelectedChallenge(data[0]);
+            setCode(data[0].starter_code?.[language] || "");
+          }
+          break;
+        }
+      } catch {
+        continue;
+      }
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (selectedChallenge) {
+      setCode(selectedChallenge.starter_code?.[language] || "");
+    }
+  }, [language, selectedChallenge]);
+
+  const handleRunTest = async (draft = true) => {
+    if (!attemptId || !selectedChallenge) return;
+    if (draft) setRunningTest(true);
+    else setSubmitting(true);
+    setTestResults(null);
+
+    const endpoints = [
+      process.env.NEXT_PUBLIC_HR_AGENT_API_URL,
+      process.env.NEXT_PUBLIC_API_URL,
+      "https://nirvahai-production.up.railway.app/api/v1",
+      "http://localhost:8000/api/v1",
+    ].filter(Boolean) as string[];
+
+    let success = false;
+    for (const ep of endpoints) {
+      try {
+        const base = ep.replace(/\/api\/v1\/?$/, "");
+        const res = await fetch(`${base}/api/v1/public/challenges/${attemptId}/submit`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Tenant-Slug": TENANT_SLUG },
+          body: JSON.stringify({
+            challenge_id: selectedChallenge.id,
+            code: code,
+            language: language,
+            run_draft_only: draft
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setTestResults(data);
+          if (!draft) {
+            setFinished(true);
+          }
+          success = true;
+          break;
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    if (!success) {
+      setError("Execution request failed. Please check connection.");
+    }
+    setRunningTest(false);
+    setSubmitting(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="bg-[#0f0f15] border border-violet-500/30 rounded-2xl max-w-4xl w-full p-6 text-white shadow-2xl flex flex-col max-h-[90vh]">
+        <div className="flex justify-between items-center pb-3 border-b border-white/10 mb-4">
+          <div>
+            <h3 className="text-base font-bold text-white">💻 Coding Assessment</h3>
+            <p className="text-xs text-violet-400">{app.job_title}</p>
+          </div>
+          <button onClick={onClose} className="p-1 rounded bg-white/5 hover:bg-white/10 text-white">
+            <Icon.X />
+          </button>
+        </div>
+
+        {finished ? (
+          <div className="text-center py-12 flex-1 flex flex-col justify-center items-center">
+            <div className="text-5xl mb-4">💻</div>
+            <h2 className="text-xl font-bold text-emerald-400 mb-2">Coding Submission Recorded!</h2>
+            {testResults && (
+              <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl max-w-md w-full mb-6">
+                <p className="text-sm font-semibold text-white mb-2">Outcome: <span className={testResults.status === "ACCEPTED" ? "text-emerald-400" : "text-rose-400"}>{testResults.status}</span></p>
+                <p className="text-xs text-slate-400">Passed: {testResults.passed_count} / {testResults.total_test_cases} test cases.</p>
+              </div>
+            )}
+            <button
+              onClick={() => { onFinish(); onClose(); }}
+              className="px-6 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-xl text-white font-bold text-sm"
+            >
+              Done & Refresh Status
+            </button>
+          </div>
+        ) : loading ? (
+          <div className="text-center py-20 flex-1">
+            <div className="w-10 h-10 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+            <p className="text-xs text-slate-400">Loading coding challenges...</p>
+          </div>
+        ) : selectedChallenge ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-hidden flex-1">
+            {/* Left Column: Description & Instructions */}
+            <div className="space-y-4 overflow-y-auto pr-2 max-h-[60vh]">
+              <div>
+                <h4 className="text-sm font-bold text-white mb-1">{selectedChallenge.title}</h4>
+                <div className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed bg-white/5 p-4 rounded-xl border border-white/5">
+                  {selectedChallenge.description}
+                </div>
+              </div>
+
+              {testResults && (
+                <div className="space-y-2">
+                  <h5 className="text-xs font-bold text-slate-400 uppercase">Test Execution Console</h5>
+                  <div className="bg-slate-950 p-4 rounded-xl border border-white/5 font-mono text-xs space-y-2">
+                    <p className="font-semibold">Status: <span className={testResults.status === "ACCEPTED" ? "text-emerald-400" : "text-rose-400"}>{testResults.status}</span></p>
+                    <p className="text-slate-400">Passed: {testResults.passed_count} / {testResults.total_test_cases} test cases.</p>
+                    
+                    <div className="divide-y divide-white/5 mt-2 pt-2 border-t border-white/5">
+                      {testResults.results?.map((res: any, i: number) => (
+                        <div key={i} className="py-2 space-y-1">
+                          <p className="text-[11px] flex justify-between">
+                            <span>Case #{res.test_case_index + 1}:</span>
+                            <span className={res.passed ? "text-emerald-400" : "text-rose-400"}>{res.passed ? "Passed" : "Failed"}</span>
+                          </p>
+                          {res.error ? (
+                            <p className="text-red-400 text-[10px] whitespace-pre-wrap bg-red-950/20 p-2 rounded">{res.error}</p>
+                          ) : (
+                            <div className="text-[10px] text-slate-400 space-y-0.5 pl-2">
+                              <p>Expected: <code className="text-slate-200">{res.expected}</code></p>
+                              <p>Got: <code className={res.passed ? "text-emerald-400" : "text-rose-400"}>{res.got}</code></p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Right Column: Code Editor */}
+            <div className="flex flex-col space-y-4 max-h-[60vh]">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-semibold text-slate-400">Write Solution</span>
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  className="bg-[#181824] border border-white/10 rounded-lg px-2.5 py-1 text-xs text-white"
+                >
+                  <option value="python">Python 3</option>
+                  <option value="javascript">NodeJS (Javascript)</option>
+                </select>
+              </div>
+
+              <textarea
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                className="flex-1 bg-[#09090c] border border-white/10 rounded-xl p-4 font-mono text-xs text-slate-200 focus:outline-none focus:border-violet-500/50 resize-none min-h-[300px]"
+                placeholder="# Write your code here..."
+              />
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleRunTest(true)}
+                  disabled={runningTest || submitting}
+                  className="flex-1 py-2.5 border border-violet-500/40 hover:bg-violet-500/10 text-violet-300 text-xs font-bold rounded-xl transition"
+                >
+                  {runningTest ? "Running tests..." : "⚙️ Run Sample Test"}
+                </button>
+                <button
+                  onClick={() => handleRunTest(false)}
+                  disabled={runningTest || submitting}
+                  className="flex-1 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl transition shadow-lg shadow-violet-500/10"
+                >
+                  {submitting ? "Submitting..." : "🚀 Submit Solution"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-8 text-slate-400 text-sm">
+            {error || "No coding challenges configured for this position."}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function KanbanBoard({ applications, onStatusChange, onTakeMcq, onTakeCoding }: {
   applications: Application[];
   onStatusChange: (appId: number, status: string) => void;
   onTakeMcq?: (app: any) => void;
+  onTakeCoding?: (app: any) => void;
 }) {
   return (
     <div className="grid grid-cols-5 gap-3 min-w-[900px]">
@@ -549,8 +815,17 @@ function KanbanBoard({ applications, onStatusChange, onTakeMcq }: {
                       📝 Take MCQ Exam
                     </button>
                   )}
+                  {onTakeCoding && (app.status === "interview_scheduled" || app.raw_status === "CODING_STAGE") && (
+                    <button
+                      onClick={() => onTakeCoding(app)}
+                      className="mt-2.5 w-full py-1.5 px-2 bg-fuchsia-600/30 hover:bg-fuchsia-600/50 border border-fuchsia-500/40 rounded-lg text-fuchsia-300 font-bold text-[11px] transition-all text-center"
+                    >
+                      💻 Take Coding Exam
+                    </button>
+                  )}
                 </div>
               ))}
+
               {apps.length === 0 && (
                 <p className="text-xs text-slate-500 text-center py-4">No applications</p>
               )}

@@ -18,6 +18,7 @@ from ai_os.memory.manager import MemoryManager
 # Microservice routers
 from services.candidate_service.app.router import router as candidate_router
 from app.api.endpoints import router as legacy_api_router
+from app.api.v1.sync import router as sync_router
 
 # Configure logging
 configure_telemetry(service_name="vidyamarg-api")
@@ -46,6 +47,7 @@ app.add_middleware(
 # Mount legacy api router under /api/v1 and candidate service router
 app.include_router(legacy_api_router, prefix="/api/v1")
 app.include_router(candidate_router)
+app.include_router(sync_router, prefix="/api/v1")
 
 raw_db_url = os.getenv(
     "DATABASE_URL",
@@ -110,6 +112,58 @@ async def run_db_migrations():
             await conn.execute(
                 text("UPDATE job_sources SET is_active = false WHERE name IN ('remoteok', 'indeed_rss');")
             )
+            # Create HR Agent sync tables (idempotent)
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS hr_synced_jobs (
+                    id SERIAL PRIMARY KEY,
+                    hr_job_id VARCHAR(100) UNIQUE NOT NULL,
+                    tenant_slug VARCHAR(100),
+                    title VARCHAR(255),
+                    description TEXT,
+                    company_name VARCHAR(255),
+                    location VARCHAR(255),
+                    salary_min FLOAT,
+                    salary_max FLOAT,
+                    currency VARCHAR(20),
+                    employment_type VARCHAR(100),
+                    location_type VARCHAR(100),
+                    requirements TEXT,
+                    skills TEXT,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    synced_at TIMESTAMPTZ DEFAULT now(),
+                    created_at TIMESTAMPTZ DEFAULT now()
+                );
+            """))
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS hr_synced_applications (
+                    id SERIAL PRIMARY KEY,
+                    hr_application_id VARCHAR(100) UNIQUE NOT NULL,
+                    candidate_email VARCHAR(320) NOT NULL,
+                    hr_job_id VARCHAR(100),
+                    job_title VARCHAR(255),
+                    current_status VARCHAR(50) DEFAULT 'APPLIED',
+                    synced_at TIMESTAMPTZ DEFAULT now(),
+                    created_at TIMESTAMPTZ DEFAULT now()
+                );
+            """))
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS hr_application_stages (
+                    id SERIAL PRIMARY KEY,
+                    hr_application_id VARCHAR(100) NOT NULL,
+                    stage_number INTEGER NOT NULL,
+                    stage_name VARCHAR(100),
+                    status VARCHAR(30) DEFAULT 'LOCKED',
+                    score FLOAT,
+                    feedback TEXT,
+                    scheduled_at TIMESTAMPTZ,
+                    completed_at TIMESTAMPTZ,
+                    synced_at TIMESTAMPTZ DEFAULT now(),
+                    UNIQUE (hr_application_id, stage_number)
+                );
+            """))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_synced_jobs_slug ON hr_synced_jobs(tenant_slug);"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_synced_apps_email ON hr_synced_applications(candidate_email);"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_synced_stages_appid ON hr_application_stages(hr_application_id);"))
             logger.info("Database schema migration and job source seeding completed successfully.")
     except Exception as e:
         logger.error(f"Failed to run database schema migrations on archive schema: {e}")
