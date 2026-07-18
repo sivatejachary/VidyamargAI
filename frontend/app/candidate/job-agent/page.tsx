@@ -1198,9 +1198,9 @@ function ApplyModal({ job, onClose }: { job: ExtendedJobMatch; onClose: () => vo
             </p>
             <div className="bg-violet-500/10 rounded-xl p-4 text-left mb-6 border border-violet-500/20">
               <p className="text-slate-400 text-xs mb-1">Track your application status at:</p>
-              <a href={`${HR_AGENT_URL}/admin/candidates`} target="_blank" rel="noopener noreferrer"
+              <a href={`${HR_AGENT_URL}/dashboard/candidates`} target="_blank" rel="noopener noreferrer"
                 className="text-violet-400 text-xs font-semibold hover:underline">
-                {HR_AGENT_URL}/admin/candidates →
+                {HR_AGENT_URL}/dashboard/candidates →
               </a>
             </div>
             <button onClick={onClose} className="px-6 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-xl text-white font-bold text-sm">
