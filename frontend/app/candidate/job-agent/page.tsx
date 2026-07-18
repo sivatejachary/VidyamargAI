@@ -1060,7 +1060,7 @@ function InterviewPrepPanel({ prep }: { prep: InterviewPrep }) {
 // HR AGENT TYPES & INTEGRATED APPLY MODAL
 // ─────────────────────────────────────────────────────────────────────────────
 
-const HR_AGENT_URL = process.env.NEXT_PUBLIC_HR_AGENT_URL || "http://localhost:3000";
+const HR_AGENT_URL = process.env.NEXT_PUBLIC_HR_AGENT_URL || (typeof window !== "undefined" ? window.location.origin : "https://vidyamarg-ai.vercel.app");
 const TENANT_SLUG = process.env.NEXT_PUBLIC_HR_TENANT_SLUG || "dev-tenant";
 
 function ApplyModal({ job, onClose }: { job: ExtendedJobMatch; onClose: () => void }) {
@@ -1198,9 +1198,9 @@ function ApplyModal({ job, onClose }: { job: ExtendedJobMatch; onClose: () => vo
             </p>
             <div className="bg-violet-500/10 rounded-xl p-4 text-left mb-6 border border-violet-500/20">
               <p className="text-slate-400 text-xs mb-1">Track your application status at:</p>
-              <a href={`${HR_AGENT_URL}/dashboard/candidates`} target="_blank" rel="noopener noreferrer"
+              <a href={`${HR_AGENT_URL}/admin/candidates`} target="_blank" rel="noopener noreferrer"
                 className="text-violet-400 text-xs font-semibold hover:underline">
-                {HR_AGENT_URL}/dashboard/candidates →
+                {HR_AGENT_URL}/admin/candidates →
               </a>
             </div>
             <button onClick={onClose} className="px-6 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-xl text-white font-bold text-sm">
