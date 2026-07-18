@@ -263,12 +263,22 @@ function JobCard({ job, onSave, onApply, onHide, onViewPrep, selected, onClick }
 
       {/* Actions */}
       <div className="mt-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button
-          onClick={e => { e.stopPropagation(); onApply(job); }}
-          className="flex-1 bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium py-1.5 rounded-lg transition-colors"
-        >
-          Apply
-        </button>
+        {job.application?.status === "applied" ? (
+          <button
+            disabled
+            onClick={e => { e.stopPropagation(); }}
+            className="flex-1 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-medium py-1.5 rounded-lg cursor-default"
+          >
+            Applied
+          </button>
+        ) : (
+          <button
+            onClick={e => { e.stopPropagation(); onApply(job); }}
+            className="flex-1 bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium py-1.5 rounded-lg transition-colors"
+          >
+            Apply
+          </button>
+        )}
         <button
           onClick={e => { e.stopPropagation(); onSave(job.id); }}
           className={`p-1.5 rounded-lg border transition-colors ${match?.is_saved ? "bg-amber-500/20 border-amber-500/30 text-amber-400" : "border-white/10 text-slate-400 hover:text-white"}`}
@@ -1063,7 +1073,7 @@ function InterviewPrepPanel({ prep }: { prep: InterviewPrep }) {
 const HR_AGENT_URL = process.env.NEXT_PUBLIC_HR_AGENT_URL || (typeof window !== "undefined" ? window.location.origin : "https://vidyamarg-ai.vercel.app");
 const TENANT_SLUG = process.env.NEXT_PUBLIC_HR_TENANT_SLUG || "dev-tenant";
 
-function ApplyModal({ job, onClose }: { job: ExtendedJobMatch; onClose: () => void }) {
+function ApplyModal({ job, onClose, onSuccess }: { job: ExtendedJobMatch; onClose: () => void; onSuccess?: () => void }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -1122,6 +1132,7 @@ function ApplyModal({ job, onClose }: { job: ExtendedJobMatch; onClose: () => vo
           }
           setSuccess(true);
           appliedOk = true;
+          if (onSuccess) onSuccess();
           break;
         } else {
           const data = await res.json();
@@ -1969,12 +1980,21 @@ export default function JobAgentPage() {
                   {/* Actions */}
                   <div className="flex gap-3">
                     {selectedJob.is_hr_job ? (
-                      <button
-                        onClick={() => setHrApplyingJob(selectedJob)}
-                        className="flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold py-3 rounded-xl transition-all text-center text-sm"
-                      >
-                        🚀 Apply Now (HR Agent)
-                      </button>
+                      selectedJob.application?.status === "applied" ? (
+                        <button
+                          disabled
+                          className="flex-1 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-semibold py-3 rounded-xl cursor-default text-center text-sm"
+                        >
+                          ✓ Applied (HR Agent)
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setHrApplyingJob(selectedJob)}
+                          className="flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold py-3 rounded-xl transition-all text-center text-sm"
+                        >
+                          🚀 Apply Now (HR Agent)
+                        </button>
+                      )
                     ) : (
                       <a
                         href={selectedJob.apply_url || selectedJob.job_url || "#"}
@@ -2325,6 +2345,19 @@ export default function JobAgentPage() {
         <ApplyModal
           job={hrApplyingJob}
           onClose={() => setHrApplyingJob(null)}
+          onSuccess={() => {
+            // Update local jobs list
+            setJobs(prev => prev.map(j => j.id === hrApplyingJob.id ? { ...j, application: { id: 0, status: "applied" } } : j));
+            // Update currently selected job
+            setSelectedJob(prev => prev && prev.id === hrApplyingJob.id ? { ...prev, application: { id: 0, status: "applied" } } : prev);
+            // Update dashboard summary count
+            setDashboard(prev => {
+              if (!prev) return null;
+              const summary = { ...prev.applications_summary };
+              summary.applied = (summary.applied || 0) + 1;
+              return { ...prev, applications_summary: summary };
+            });
+          }}
         />
       )}
       {activeExamApp && (
