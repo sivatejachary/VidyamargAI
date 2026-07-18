@@ -878,7 +878,7 @@ def apply_to_hr_job(
                 detail=f"HR Agent recruitment portal rejected application: {response.text}"
             )
         hr_app_data = response.json()
-        hr_app_id = hr_app_data.get("id")
+        hr_app_id = hr_app_data.get("application_id") or hr_app_data.get("id")
     except Exception as e:
         logger.error(f"Failed to forward application to HR Agent: {e}")
         raise HTTPException(
