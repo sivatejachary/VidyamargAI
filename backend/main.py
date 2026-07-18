@@ -18,7 +18,7 @@ from ai_os.memory.manager import MemoryManager
 # Microservice routers
 from services.candidate_service.app.router import router as candidate_router
 from app.api.endpoints import router as legacy_api_router
-from app.api.v1.sync import router as sync_router
+from app.api.v1.sync import router as sync_router, events_router
 
 # Configure logging
 configure_telemetry(service_name="vidyamarg-api")
@@ -48,6 +48,7 @@ app.add_middleware(
 app.include_router(legacy_api_router, prefix="/api/v1")
 app.include_router(candidate_router)
 app.include_router(sync_router, prefix="/api/v1")
+app.include_router(events_router, prefix="/api/v1")
 
 raw_db_url = os.getenv(
     "DATABASE_URL",

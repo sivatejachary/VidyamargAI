@@ -1101,49 +1101,32 @@ function ApplyModal({ job, onClose, onSuccess }: { job: ExtendedJobMatch; onClos
   };
 
   const submitApplication = async (cName: string, cEmail: string, rText: string) => {
-    const endpoints = [
-      process.env.NEXT_PUBLIC_HR_AGENT_API_URL,
-      process.env.NEXT_PUBLIC_API_URL,
-      "https://nirvahai-production.up.railway.app/api/v1",
-      "http://localhost:8000/api/v1",
-    ].filter(Boolean) as string[];
-
-    let appliedOk = false;
-    let lastErrMsg = "";
-
-    for (const ep of endpoints) {
-      try {
-        const base = ep.replace(/\/api\/v1\/?$/, "");
-        const res = await fetch(`${base}/api/v1/public/applications`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Tenant-Slug": TENANT_SLUG },
-          body: JSON.stringify({
-            job_id: typeof job.id === "string" ? job.id.replace("hr-", "") : job.id,
-            candidate_name: cName,
-            candidate_email: cEmail,
-            resume_text: rText,
-            resume_url: `https://vidyamargai.app/resumes/${encodeURIComponent(cName.replace(" ", "_"))}.pdf`,
-            gdpr_consent: true,
-          }),
-        });
-        if (res.ok) {
-          if (typeof window !== "undefined") {
-            localStorage.setItem("candidate_applied_email", cEmail);
-          }
-          setSuccess(true);
-          appliedOk = true;
-          if (onSuccess) onSuccess();
-          break;
-        } else {
-          const data = await res.json();
-          lastErrMsg = data.detail || "Application failed.";
+    try {
+      const token = useAuthStore.getState().token || localStorage.getItem("token") || "";
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "https://vidyamargai-production-1fc2.up.railway.app/api/v1"}/job-agent/applications/hr`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          hr_job_id: typeof job.id === "string" ? job.id.replace("hr-", "") : String(job.id),
+          tenant_slug: TENANT_SLUG,
+          resume_text: rText,
+        }),
+      });
+      if (res.ok) {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("candidate_applied_email", cEmail);
         }
-      } catch {
-        continue;
+        setSuccess(true);
+        if (onSuccess) onSuccess();
+      } else {
+        const data = await res.json();
+        throw new Error(data.detail || "Application submission failed.");
       }
-    }
-    if (!appliedOk) {
-      throw new Error(lastErrMsg || "Cannot connect to server. Make sure HR Agent backend is running.");
+    } catch (err: any) {
+      throw new Error(err.message || "Failed to submit application.");
     }
   };
 

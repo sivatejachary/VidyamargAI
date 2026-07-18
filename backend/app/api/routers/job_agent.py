@@ -95,6 +95,13 @@ class AnalyticsEventRequest(BaseModel):
     properties: Optional[Dict[str, Any]] = None
 
 
+class HrApplicationCreateRequest(BaseModel):
+    hr_job_id: str
+    tenant_slug: str
+    resume_text: str
+    cover_letter: Optional[str] = None
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # HELPERS
 # ─────────────────────────────────────────────────────────────────────────────
@@ -789,6 +796,123 @@ def create_application(
     db.refresh(app)
 
     return {"id": app.id, "status": app.status, "message": "Application created"}
+
+
+@router.post("/applications/hr", status_code=status.HTTP_201_CREATED)
+def apply_to_hr_job(
+    request: HrApplicationCreateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Submits application locally to Database B (sync registry) and forwards it
+    to HR Agent's secure sync endpoint with an HMAC signature.
+    """
+    candidate = _get_candidate(current_user, db)
+
+    # 1. Fetch details of the synced job from hr_synced_jobs
+    job_row = db.execute(
+        text("SELECT title, company_name FROM hr_synced_jobs WHERE hr_job_id = :jid"),
+        {"jid": request.hr_job_id}
+    ).fetchone()
+
+    job_title = job_row[0] if job_row else "Software Engineer"
+    company_name = job_row[1] if job_row else "NirvahAI Corporation"
+
+    # 2. Call HR Agent API to submit application with HMAC signature
+    import os
+    import httpx
+    import json
+    import hmac
+    import hashlib
+
+    secret = os.getenv("INTEGRATION_SECRET")
+    if not secret:
+        raise HTTPException(
+            status_code=500,
+            detail="INTEGRATION_SECRET environment variable is not configured on VidyaMarg server."
+        )
+
+    # Get skills, experience, education, details safely
+    skills_list = getattr(candidate, "skills", []) or []
+    exp_years = getattr(candidate, "experience_years", 0.0) or 0.0
+    edu_list = getattr(candidate, "education", []) or []
+
+    payload = {
+        "job_id": request.hr_job_id,
+        "candidate_id": str(candidate.id),
+        "candidate_name": current_user.full_name or "Candidate",
+        "candidate_email": current_user.email,
+        "phone": getattr(candidate, "phone", None),
+        "resume_text": request.resume_text,
+        "resume_url": f"https://vidyamargai.app/resumes/{candidate.id}.pdf",
+        "skills": skills_list,
+        "experience_years": float(exp_years),
+        "education": edu_list,
+        "match_score": 75.0,
+        "portfolio_url": getattr(candidate, "portfolio_url", None),
+        "github_url": getattr(candidate, "github_url", None),
+        "linkedin_url": getattr(candidate, "linkedin_url", None),
+        "gdpr_consent": True
+    }
+
+    payload_str = json.dumps(payload, separators=(',', ':'))
+    signature = hmac.new(
+        secret.encode("utf-8"),
+        payload_str.encode("utf-8"),
+        hashlib.sha256
+    ).hexdigest()
+
+    hr_backend_url = os.getenv("NEXT_PUBLIC_HR_AGENT_API_URL") or "https://nirvahai-production.up.railway.app/api/v1"
+    hr_url = f"{hr_backend_url.rstrip('/')}/public/applications/sync"
+
+    try:
+        response = httpx.post(
+            hr_url,
+            headers={
+                "Content-Type": "application/json",
+                "X-Tenant-Slug": request.tenant_slug,
+                "X-Event-Signature": signature
+            },
+            content=payload_str,
+            timeout=15.0
+        )
+        if response.status_code != 201:
+            raise HTTPException(
+                status_code=400,
+                detail=f"HR Agent recruitment portal rejected application: {response.text}"
+            )
+        hr_app_data = response.json()
+        hr_app_id = hr_app_data.get("id")
+    except Exception as e:
+        logger.error(f"Failed to forward application to HR Agent: {e}")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Could not connect to HR Agent recruitment server: {str(e)}"
+        )
+
+    # 3. Create entry in hr_synced_applications table in Database B
+    db.execute(text("""
+        INSERT INTO hr_synced_applications
+            (hr_application_id, candidate_email, hr_job_id, job_title, current_status, synced_at)
+        VALUES (:appid,:email,:jid,:jtitle,:status,now())
+        ON CONFLICT (hr_application_id) DO UPDATE SET
+            current_status=EXCLUDED.current_status, synced_at=now()
+    """), {
+        "appid": hr_app_id,
+        "email": current_user.email,
+        "jid": request.hr_job_id,
+        "jtitle": job_title,
+        "status": "APPLIED"
+    })
+    db.commit()
+
+    return {
+        "success": True,
+        "application_id": hr_app_id,
+        "status": "APPLIED",
+        "message": "Application submitted successfully and forwarded to HR Agent"
+    }
 
 
 @router.patch("/applications/{app_id}")
