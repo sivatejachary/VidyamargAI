@@ -30,7 +30,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, text
 
 from app.core.database import get_db
 from app.core.security import get_current_user
@@ -829,9 +829,33 @@ def apply_to_hr_job(
     secret = os.getenv("INTEGRATION_SECRET") or "nirvahai-shared-integration-secret-2026"
 
     # Get skills, experience, education, details safely
-    skills_list = getattr(candidate, "skills", []) or []
+    raw_skills = getattr(candidate, "skills", []) or []
+    if isinstance(raw_skills, str):
+        skills_list = [s.strip() for s in raw_skills.split(",") if s.strip()]
+    elif isinstance(raw_skills, list):
+        skills_list = raw_skills
+    else:
+        skills_list = []
+
     exp_years = getattr(candidate, "experience_years", 0.0) or 0.0
-    edu_list = getattr(candidate, "education", []) or []
+    if not isinstance(exp_years, (int, float)):
+        try:
+            exp_years = float(exp_years)
+        except Exception:
+            exp_years = 0.0
+
+    raw_edu = getattr(candidate, "education", []) or []
+    if isinstance(raw_edu, str):
+        try:
+            edu_list = json.loads(raw_edu)
+            if not isinstance(edu_list, list):
+                edu_list = []
+        except Exception:
+            edu_list = []
+    elif isinstance(raw_edu, list):
+        edu_list = raw_edu
+    else:
+        edu_list = []
 
     payload = {
         "job_id": request.hr_job_id,
