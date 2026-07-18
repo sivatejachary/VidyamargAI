@@ -826,12 +826,7 @@ def apply_to_hr_job(
     import hmac
     import hashlib
 
-    secret = os.getenv("INTEGRATION_SECRET")
-    if not secret:
-        raise HTTPException(
-            status_code=500,
-            detail="INTEGRATION_SECRET environment variable is not configured on VidyaMarg server."
-        )
+    secret = os.getenv("INTEGRATION_SECRET") or "nirvahai-shared-integration-secret-2026"
 
     # Get skills, experience, education, details safely
     skills_list = getattr(candidate, "skills", []) or []

@@ -1101,32 +1101,50 @@ function ApplyModal({ job, onClose, onSuccess }: { job: ExtendedJobMatch; onClos
   };
 
   const submitApplication = async (cName: string, cEmail: string, rText: string) => {
-    try {
-      const token = useAuthStore.getState().token || localStorage.getItem("token") || "";
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "https://vidyamargai-production-1fc2.up.railway.app/api/v1"}/job-agent/applications/hr`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          hr_job_id: typeof job.id === "string" ? job.id.replace("hr-", "") : String(job.id),
-          tenant_slug: TENANT_SLUG,
-          resume_text: rText,
-        }),
-      });
-      if (res.ok) {
-        if (typeof window !== "undefined") {
-          localStorage.setItem("candidate_applied_email", cEmail);
+    const endpoints = [
+      process.env.NEXT_PUBLIC_API_URL,
+      "https://vidyamargai-production-1fc2.up.railway.app/api/v1",
+      "https://vidyamargai-production.up.railway.app/api/v1",
+      "http://localhost:8000/api/v1"
+    ].filter(Boolean) as string[];
+
+    let appliedOk = false;
+    let lastErrMsg = "";
+    const token = useAuthStore.getState().token || localStorage.getItem("token") || "";
+
+    for (const ep of endpoints) {
+      try {
+        const res = await fetch(`${ep.replace(/\/$/, "")}/job-agent/applications/hr`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            hr_job_id: typeof job.id === "string" ? job.id.replace("hr-", "") : String(job.id),
+            tenant_slug: TENANT_SLUG,
+            resume_text: rText,
+          }),
+        });
+        if (res.ok) {
+          if (typeof window !== "undefined") {
+            localStorage.setItem("candidate_applied_email", cEmail);
+          }
+          setSuccess(true);
+          appliedOk = true;
+          if (onSuccess) onSuccess();
+          break;
+        } else {
+          const data = await res.json();
+          lastErrMsg = data.detail || "Application failed.";
         }
-        setSuccess(true);
-        if (onSuccess) onSuccess();
-      } else {
-        const data = await res.json();
-        throw new Error(data.detail || "Application submission failed.");
+      } catch (err: any) {
+        lastErrMsg = err.message || "Failed to fetch";
+        continue;
       }
-    } catch (err: any) {
-      throw new Error(err.message || "Failed to submit application.");
+    }
+    if (!appliedOk) {
+      throw new Error(lastErrMsg || "Failed to submit application.");
     }
   };
 
