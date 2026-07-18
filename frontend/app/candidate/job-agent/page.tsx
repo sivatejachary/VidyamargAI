@@ -1136,9 +1136,12 @@ function ApplyModal({ job, onClose, onSuccess }: { job: ExtendedJobMatch; onClos
           break;
         } else {
           const data = await res.json();
-          lastErrMsg = data.detail || "Application failed.";
+          throw new Error(data.detail || data.message || "Application failed.");
         }
       } catch (err: any) {
+        if (err.message && err.message !== "Failed to fetch" && !err.message.includes("fetch")) {
+          throw err;
+        }
         lastErrMsg = err.message || "Failed to fetch";
         continue;
       }
