@@ -49,14 +49,17 @@ export const getBaseUrl = () => {
   if (process.env.NEXT_PUBLIC_API_URL) {
     return process.env.NEXT_PUBLIC_API_URL;
   }
-  if (typeof window !== "undefined" && !window.location.hostname.includes("localhost") && !window.location.hostname.includes("127.0.0.1")) {
-    return "https://vidyamargai-production-1fc2.up.railway.app/api/v1";
+  if (typeof window !== "undefined") {
+    return "/api/v1";
   }
   return "http://localhost:8000/api/v1";
 };
 
 export const getBackendBaseUrl = () => {
   const baseUrl = getBaseUrl();
+  if (baseUrl === "/api/v1" && typeof window !== "undefined") {
+    return window.location.origin;
+  }
   return baseUrl.replace(/\/api\/v1\/?$/, "");
 };
 
@@ -64,10 +67,11 @@ export const getWsUrl = () => {
   if (process.env.NEXT_PUBLIC_WS_URL) {
     return process.env.NEXT_PUBLIC_WS_URL;
   }
-  const backendBase = getBackendBaseUrl();
-  const wsProto = backendBase.startsWith("https://") ? "wss://" : "ws://";
-  const domain = backendBase.replace(/^https?:\/\//, "");
-  return `${wsProto}${domain}/ws`;
+  if (typeof window !== "undefined") {
+    const wsProto = window.location.protocol === "https:" ? "wss://" : "ws://";
+    return `${wsProto}${window.location.host}/ws`;
+  }
+  return "ws://localhost:8000/ws";
 };
 
 export const getAgentWsUrl = (runId: number | string) => {
