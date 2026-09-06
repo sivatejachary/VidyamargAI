@@ -1,12 +1,14 @@
-{
+﻿{
   "name": "hireai-root",
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "cd backend && uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}",
+    "start": "cd backend-node && npm start",
+    "start:python": "cd backend && uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}",
     "dev:frontend": "cd frontend && npm run dev",
-    "dev:backend": "python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload",
+    "dev:backend": "cd backend-node && npm run dev",
+    "dev:backend-python": "python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload",
     "dev": "npx -y concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
-    "install:all": "npm install --prefix frontend --legacy-peer-deps && pip install -r backend/requirements.txt"
+    "install:all": "npm install --prefix frontend --legacy-peer-deps && npm install --prefix backend-node"
   }
 }

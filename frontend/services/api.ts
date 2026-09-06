@@ -46,14 +46,13 @@ const customFetch = async (input: RequestInfo | URL, init?: RequestInit): Promis
 };
 
 export const getBaseUrl = () => {
-  // Dynamic host check: if loaded in the browser on a remote domain, bypass localhost config
-  if (typeof window !== "undefined" && !window.location.hostname.includes("localhost") && !window.location.hostname.includes("127.0.0.1")) {
-    return "https://vidyamargai-production-1fc2.up.railway.app/api/v1";
-  }
   if (process.env.NEXT_PUBLIC_API_URL) {
     return process.env.NEXT_PUBLIC_API_URL;
   }
-  return "https://vidyamargai-production-1fc2.up.railway.app/api/v1";
+  if (typeof window !== "undefined" && !window.location.hostname.includes("localhost") && !window.location.hostname.includes("127.0.0.1")) {
+    return "https://vidyamargai-production-1fc2.up.railway.app/api/v1";
+  }
+  return "http://localhost:8000/api/v1";
 };
 
 export const getBackendBaseUrl = () => {
@@ -62,10 +61,6 @@ export const getBackendBaseUrl = () => {
 };
 
 export const getWsUrl = () => {
-  // Dynamic host check: if loaded in the browser on a remote domain, bypass localhost config
-  if (typeof window !== "undefined" && !window.location.hostname.includes("localhost") && !window.location.hostname.includes("127.0.0.1")) {
-    return "wss://vidyamargai-production-1fc2.up.railway.app/ws";
-  }
   if (process.env.NEXT_PUBLIC_WS_URL) {
     return process.env.NEXT_PUBLIC_WS_URL;
   }
