@@ -19,9 +19,8 @@ const nextConfig: NextConfig = {
         pathname: "/**",
       },
       {
-        // Railway MinIO service
         protocol: "https",
-        hostname: "*.railway.app",
+        hostname: "*.vercel.app",
         pathname: "/**",
       },
       {

@@ -336,7 +336,7 @@ function McqExamModal({ app, onClose, onFinish }: { app: any; onClose: () => voi
     const endpoints = [
       process.env.NEXT_PUBLIC_HR_AGENT_API_URL,
       process.env.NEXT_PUBLIC_API_URL,
-      "https://nirvahai-production.up.railway.app/api/v1",
+      "/api/v1",
       "http://localhost:8000/api/v1",
     ].filter(Boolean) as string[];
 
@@ -374,7 +374,7 @@ function McqExamModal({ app, onClose, onFinish }: { app: any; onClose: () => voi
     const endpoints = [
       process.env.NEXT_PUBLIC_HR_AGENT_API_URL,
       process.env.NEXT_PUBLIC_API_URL,
-      "https://nirvahai-production.up.railway.app/api/v1",
+      "/api/v1",
       "http://localhost:8000/api/v1",
     ].filter(Boolean) as string[];
 
@@ -406,7 +406,7 @@ function McqExamModal({ app, onClose, onFinish }: { app: any; onClose: () => voi
     const endpoints = [
       process.env.NEXT_PUBLIC_HR_AGENT_API_URL,
       process.env.NEXT_PUBLIC_API_URL,
-      "https://nirvahai-production.up.railway.app/api/v1",
+      "/api/v1",
       "http://localhost:8000/api/v1",
     ].filter(Boolean) as string[];
 
@@ -551,7 +551,7 @@ function CodingChallengeModal({ app, onClose, onFinish }: { app: any; onClose: (
     const endpoints = [
       process.env.NEXT_PUBLIC_HR_AGENT_API_URL,
       process.env.NEXT_PUBLIC_API_URL,
-      "https://nirvahai-production.up.railway.app/api/v1",
+      "/api/v1",
       "http://localhost:8000/api/v1",
     ].filter(Boolean) as string[];
 
@@ -588,7 +588,7 @@ function CodingChallengeModal({ app, onClose, onFinish }: { app: any; onClose: (
     const endpoints = [
       process.env.NEXT_PUBLIC_HR_AGENT_API_URL,
       process.env.NEXT_PUBLIC_API_URL,
-      "https://nirvahai-production.up.railway.app/api/v1",
+      "/api/v1",
       "http://localhost:8000/api/v1",
     ].filter(Boolean) as string[];
 
@@ -629,7 +629,7 @@ function CodingChallengeModal({ app, onClose, onFinish }: { app: any; onClose: (
     const endpoints = [
       process.env.NEXT_PUBLIC_HR_AGENT_API_URL,
       process.env.NEXT_PUBLIC_API_URL,
-      "https://nirvahai-production.up.railway.app/api/v1",
+      "/api/v1",
       "http://localhost:8000/api/v1",
     ].filter(Boolean) as string[];
 
@@ -1102,9 +1102,8 @@ function ApplyModal({ job, onClose, onSuccess }: { job: ExtendedJobMatch; onClos
 
   const submitApplication = async (cName: string, cEmail: string, rText: string) => {
     const endpoints = [
-      process.env.NEXT_PUBLIC_API_URL,
-      "https://vidyamargai-production-1fc2.up.railway.app/api/v1",
-      "https://vidyamargai-production.up.railway.app/api/v1",
+      process.env.NEXT_PUBLIC_API_URL || "/api/v1",
+      "/api/v1",
       "http://localhost:8000/api/v1"
     ].filter(Boolean) as string[];
 
@@ -1332,7 +1331,7 @@ export default function JobAgentPage() {
       const endpoints = [
         process.env.NEXT_PUBLIC_HR_AGENT_API_URL,
         process.env.NEXT_PUBLIC_API_URL,
-        "https://nirvahai-production.up.railway.app/api/v1",
+        "/api/v1",
         "http://localhost:8000/api/v1",
       ].filter(Boolean) as string[];
 
@@ -1415,7 +1414,7 @@ export default function JobAgentPage() {
           const endpoints = [
             process.env.NEXT_PUBLIC_HR_AGENT_API_URL,
             process.env.NEXT_PUBLIC_API_URL,
-            "https://nirvahai-production.up.railway.app/api/v1",
+            "/api/v1",
             "http://localhost:8000/api/v1",
           ].filter(Boolean) as string[];
 

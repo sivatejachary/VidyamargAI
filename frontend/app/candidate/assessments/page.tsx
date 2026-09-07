@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
-const HR_AGENT_BASE = 'https://nirvahai-production.up.railway.app';
+const HR_AGENT_BASE = process.env.NEXT_PUBLIC_HR_AGENT_URL || '';
 const TENANT_SLUG = 'nirvah-ai';
 
 const STAGE_ICONS: Record<number, string> = {
@@ -125,7 +125,7 @@ function PipelineGrid({ stages, applicationId }: { stages: StageData[]; applicat
                         key={sidx}
                         onClick={async () => {
                           try {
-                            const hrBase = 'https://nirvahai-production.up.railway.app';
+                            const hrBase = HR_AGENT_BASE;
                             const res = await fetch(`${hrBase}/api/v1/pipeline/applications/${applicationId}/stages/7/schedule-interview`, {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json', 'X-Tenant-Slug': 'nirvah-ai' },
@@ -167,7 +167,7 @@ function PipelineGrid({ stages, applicationId }: { stages: StageData[]; applicat
                       onClick={async () => {
                         if (confirm("Are you sure you want to reschedule?")) {
                           try {
-                            const hrBase = 'https://nirvahai-production.up.railway.app';
+                            const hrBase = HR_AGENT_BASE;
                             // Reset stage to PENDING in mock
                             await fetch(`${hrBase}/api/v1/pipeline/applications/${applicationId}/stages/7`, {
                               method: 'PATCH',
@@ -232,9 +232,7 @@ export default function AssessmentsPage() {
     }
     let apps: ApplicationData[] = [];
     try {
-      const baseUrl = typeof window !== 'undefined' && !window.location.hostname.includes('localhost')
-        ? 'https://vidyamargai-production-1fc2.up.railway.app/api/v1'
-        : (process.env.NEXT_PUBLIC_API_URL || 'https://vidyamargai-production-1fc2.up.railway.app/api/v1');
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       const headers: Record<string, string> = {};
       if (token) headers['Authorization'] = `Bearer ${token}`;
