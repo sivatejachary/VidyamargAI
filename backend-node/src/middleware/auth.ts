@@ -1,4 +1,4 @@
-﻿import { Request, Response, NextFunction } from "express";
+import { Request, Response, NextFunction } from "express";
 import * as jose from "jose";
 import { env } from "../config/env.js";
 import { query } from "../database/pool.js";
@@ -40,7 +40,7 @@ export const authenticateJwt = async (
       return;
     }
 
-    const result = await query("SELECT id, email, role, full_name FROM users WHERE email = $1", [email]);
+    const result = await query<AuthenticatedUser>("SELECT id, email, role, full_name FROM users WHERE email = $1", [email]);
     const user = result.rows[0];
 
     if (!user) {

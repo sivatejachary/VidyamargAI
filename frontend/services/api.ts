@@ -52,7 +52,7 @@ export const getBaseUrl = () => {
   if (typeof window !== "undefined") {
     return "/api/v1";
   }
-  return "http://localhost:8000/api/v1";
+  return "http://localhost:5000/api/v1";
 };
 
 export const getBackendBaseUrl = () => {

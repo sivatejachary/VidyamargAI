@@ -1,32 +1,55 @@
-﻿import pg from "pg";
-const { Pool } = pg;
+import pg from "pg";
 import { env } from "../config/env.js";
 
-export const pool = new Pool({
-  connectionString: env.DATABASE_URL,
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
-});
+const { Pool } = pg;
+
+const globalForPg = globalThis as unknown as {
+  pgPool?: pg.Pool;
+};
+
+export const pool =
+  globalForPg.pgPool ??
+  new Pool({
+    connectionString: env.DATABASE_URL,
+    max: 3,
+    idleTimeoutMillis: 10000,
+    connectionTimeoutMillis: 5000,
+  });
+
+if (env.NODE_ENV !== "production") {
+  globalForPg.pgPool = pool;
+}
 
 pool.on("connect", (client) => {
-  client.query("SET search_path TO vidyamarg, public;");
+  client
+    .query("SET search_path TO vidyamarg, public;")
+    .catch((error) => {
+      console.error("[Database] Failed to set search_path:", error);
+    });
 });
 
-export const query = async <T extends pg.QueryResultRow = any>(
+pool.on("error", (error) => {
+  console.error("[Database Pool Error]", error);
+});
+
+export const query = async <T extends pg.QueryResultRow = pg.QueryResultRow>(
   text: string,
-  params?: any[]
+  params?: unknown[]
 ): Promise<pg.QueryResult<T>> => {
   const start = Date.now();
   try {
-    const res = await pool.query<T>(text, params);
+    const result = await pool.query<T>(text, params);
     const duration = Date.now() - start;
     if (duration > 200) {
       console.warn(`[Slow Query - ${duration}ms]: ${text.slice(0, 150)}`);
     }
-    return res;
+    return result;
   } catch (error) {
-    console.error(`[Database Query Error]: ${error instanceof Error ? error.message : String(error)}`, { text });
+    console.error(
+      `[Database Query Error]: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
     throw error;
   }
 };
