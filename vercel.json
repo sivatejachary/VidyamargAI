@@ -1,11 +1,9 @@
 {
   "version": 2,
-  "buildCommand": "cd frontend && npm run build",
-  "outputDirectory": "frontend/.next",
   "rewrites": [
     {
       "source": "/api/v1/:path*",
-      "destination": "/backend-node/api/index.ts"
+      "destination": "/api"
     }
   ]
 }
