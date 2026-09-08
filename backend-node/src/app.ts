@@ -1,4 +1,4 @@
-﻿import express from "express";
+import express from "express";
 import cors from "cors";
 
 import { env } from "./config/env.js";
@@ -38,7 +38,7 @@ app.use(
 
 app.use(express.urlencoded({ extended: true }));
 
-app.get("/health", (_req, res) => {
+app.get(["/health", "/api/v1/health"], (_req, res) => {
   res.status(200).json({
     status: "healthy",
     timestamp: new Date().toISOString(),
